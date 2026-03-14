@@ -1,0 +1,26 @@
+# ============================================
+# Cạp Nông - Frontend Development Dockerfile
+# Next.js 14 (App Router) with Hot Reload
+# ============================================
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files first for dependency caching
+COPY package.json package-lock.json* ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Expose Next.js dev server port
+EXPOSE 3000
+
+# Set environment variable for Next.js telemetry opt-out
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Run Next.js dev server with hot reload
+CMD ["npm", "run", "dev"]

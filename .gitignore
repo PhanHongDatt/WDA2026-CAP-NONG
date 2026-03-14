@@ -1,0 +1,47 @@
+# ============================================
+# Cạp Nông - Git Ignore
+# ============================================
+
+# ─── Environment ───────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── IDE ───────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+
+# ─── OS ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Java / Spring Boot ───────────────────────
+capnong-be/target/
+capnong-be/*.jar
+capnong-be/*.war
+capnong-be/.mvn/wrapper/maven-wrapper.jar
+*.log
+
+# ─── Node.js / Next.js ────────────────────────
+capnong-fe/node_modules/
+capnong-fe/.next/
+capnong-fe/out/
+capnong-fe/.turbo/
+capnong-fe/npm-debug.log*
+capnong-fe/yarn-debug.log*
+capnong-fe/yarn-error.log*
+
+# ─── Docker ────────────────────────────────────
+docker-compose.override.yml
+
+# ─── Misc ──────────────────────────────────────
+*.swp
+*.swo
+*~

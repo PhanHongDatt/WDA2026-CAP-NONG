@@ -1,0 +1,117 @@
+# ============================================
+# Cạp Nông - Docker Compose (Development)
+# Services: PostgreSQL, Redis, Backend, Frontend
+# ============================================
+
+services:
+
+  # ─── PostgreSQL 16 ───────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: capnong-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - capnong-network
+
+  # ─── Redis 7 ─────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: capnong-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - capnong-network
+
+  # ─── Backend (Spring Boot 3 + Java 21) ───────
+  backend:
+    build:
+      context: ./capnong-be
+      dockerfile: Dockerfile.dev
+    container_name: capnong-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Spring datasource
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Redis
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      # Google Gemini AI
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # Telegram Bot
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+      # Spring profile
+      SPRING_PROFILES_ACTIVE: dev
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+      - "5005:5005"
+    volumes:
+      - ./capnong-be/src:/app/src
+      - ./capnong-be/pom.xml:/app/pom.xml
+    networks:
+      - capnong-network
+
+  # ─── Frontend (Next.js 14) ───────────────────
+  frontend:
+    build:
+      context: ./capnong-fe
+      dockerfile: Dockerfile.dev
+    container_name: capnong-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Cạp Nông}
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./capnong-fe:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - capnong-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  capnong-network:
+    driver: bridge
