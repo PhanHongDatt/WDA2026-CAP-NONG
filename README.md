@@ -6,12 +6,13 @@ Nền tảng nông nghiệp thông minh tích hợp AI, hỗ trợ nông dân Vi
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14 (App Router) |
-| Backend | Java 21 + Spring Boot 3 |
+| Frontend | Next.js 14 (App Router), TypeScript, Axios |
+| Backend | Java 21 + Spring Boot 3.4 |
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 |
 | AI | Google Gemini API |
 | Messaging | Telegram Bot API |
+| Docs | Swagger UI (springdoc-openapi) |
 
 ## Yêu cầu
 
@@ -42,7 +43,19 @@ Sau khi chạy xong:
 |---------|-----|
 | Frontend | http://localhost:3000 |
 | Backend API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| Health Check | http://localhost:8080/actuator/health |
 | Remote Debug (Java) | `localhost:5005` |
+
+## API Endpoints
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| POST | `/api/auth/register` | Đăng ký tài khoản | ❌ |
+| POST | `/api/auth/login` | Đăng nhập, nhận JWT | ❌ |
+| GET | `/actuator/health` | Health check | ❌ |
+| GET | `/swagger-ui.html` | API Documentation | ❌ |
+| * | `/api/**` | Các endpoint khác | ✅ Bearer JWT |
 
 ## Các lệnh hữu ích
 
@@ -62,59 +75,69 @@ Sau khi chạy xong:
 ```
 WD2026/
 │
-├── capnong-be/                          # ── BACKEND (Spring Boot) ──────────
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/capnong/
-│   │   │   │   ├── config/              # Cấu hình (Redis, Security, CORS, ...)
-│   │   │   │   │   └── RedisConfig.java
-│   │   │   │   ├── controller/          # REST Controllers (nhận request)
-│   │   │   │   ├── service/             # Business logic
-│   │   │   │   ├── repository/          # JPA Repositories (truy vấn DB)
-│   │   │   │   ├── model/               # Entity classes (mapping bảng DB)
-│   │   │   │   ├── dto/                 # Data Transfer Objects (request/response)
-│   │   │   │   ├── security/            # JWT filter, AuthProvider, ...
-│   │   │   │   ├── exception/           # Global exception handler
-│   │   │   │   ├── util/                # Utility / helper classes
-│   │   │   │   └── CapnongApplication.java  # Main class (@SpringBootApplication)
-│   │   │   └── resources/
-│   │   │       ├── application.yml      # Config chính
-│   │   │       ├── application-dev.yml  # Config riêng cho môi trường dev (nếu cần)
-│   │   │       └── static/              # File tĩnh phục vụ từ backend (nếu có)
-│   │   └── test/java/com/capnong/      # Unit test & Integration test
+├── capnong-be/                              # ── BACKEND (Spring Boot) ──────
+│   ├── src/main/java/com/capnong/
+│   │   ├── CapnongApplication.java          # Main class
+│   │   ├── config/
+│   │   │   ├── SecurityConfig.java          # JWT filter chain, CORS, BCrypt
+│   │   │   └── RedisConfig.java             # @EnableCaching, RedisTemplate
+│   │   ├── security/
+│   │   │   ├── JwtUtils.java                # Generate/validate/parse JWT
+│   │   │   ├── JwtAuthenticationFilter.java # Extract Bearer → SecurityContext
+│   │   │   ├── UserDetailsImpl.java         # UserDetails wrapper
+│   │   │   └── UserDetailsServiceImpl.java  # Load user from DB
+│   │   ├── controller/
+│   │   │   └── AuthController.java          # POST /api/auth/login, /register
+│   │   ├── service/
+│   │   │   ├── AuthService.java             # Login + register logic
+│   │   │   ├── GeminiService.java           # Google Gemini AI integration
+│   │   │   └── TelegramBotService.java      # Telegram Bot sendMessage
+│   │   ├── model/
+│   │   │   ├── User.java                    # JPA entity (users table)
+│   │   │   └── enums/Role.java              # USER, FARMER, EXPERT, ADMIN
+│   │   ├── repository/
+│   │   │   └── UserRepository.java          # JPA queries
+│   │   ├── dto/
+│   │   │   ├── request/                     # LoginRequest, RegisterRequest
+│   │   │   └── response/                    # AuthResponse, ApiResponse<T>
+│   │   └── exception/
+│   │       ├── GlobalExceptionHandler.java  # @RestControllerAdvice
+│   │       ├── AppException.java            # Custom exception + HTTP status
+│   │       └── ResourceNotFoundException.java
+│   ├── src/main/resources/
+│   │   ├── application.yml                  # Config chính (dev)
+│   │   ├── application-prod.yml             # Config production
+│   │   └── logback-spring.xml               # Logging (console + file rotation)
 │   ├── Dockerfile.dev
 │   └── pom.xml
 │
-├── capnong-fe/                          # ── FRONTEND (Next.js 14) ──────────
-│   ├── public/                          # File tĩnh (favicon, images, ...)
+├── capnong-fe/                              # ── FRONTEND (Next.js 14) ──────
 │   ├── src/
-│   │   ├── app/                         # App Router — mỗi folder = 1 route
-│   │   │   ├── layout.tsx               # Layout gốc (HTML, fonts, providers)
-│   │   │   ├── page.tsx                 # Trang chủ "/"
-│   │   │   ├── globals.css              # CSS toàn cục
-│   │   │   ├── (auth)/                  # Route group: login, register
-│   │   │   │   ├── login/page.tsx
-│   │   │   │   └── register/page.tsx
-│   │   │   ├── dashboard/               # Route: /dashboard
-│   │   │   │   └── page.tsx
-│   │   │   └── api/                     # API Routes của Next.js (nếu cần)
-│   │   ├── components/                  # React components tái sử dụng
-│   │   │   ├── ui/                      # Components cơ bản (Button, Input, Modal, ...)
-│   │   │   └── layout/                  # Header, Sidebar, Footer, ...
-│   │   ├── hooks/                       # Custom React hooks
-│   │   ├── services/                    # Gọi API backend (axios/fetch wrappers)
-│   │   ├── lib/                         # Utilities, helpers, constants
-│   │   ├── types/                       # TypeScript type definitions
-│   │   └── styles/                      # CSS modules / styled files
-│   ├── next.config.js
-│   ├── tailwind.config.ts               # (nếu dùng Tailwind)
-│   ├── tsconfig.json
+│   │   ├── app/
+│   │   │   ├── layout.tsx                   # Root layout + AuthProvider
+│   │   │   ├── page.tsx                     # Landing page "/"
+│   │   │   ├── globals.css                  # Design system + styles
+│   │   │   ├── (auth)/
+│   │   │   │   ├── login/page.tsx           # Trang đăng nhập
+│   │   │   │   └── register/page.tsx        # Trang đăng ký
+│   │   │   └── dashboard/page.tsx           # Dashboard (auth protected)
+│   │   ├── contexts/AuthContext.tsx          # Auth state + useAuth() hook
+│   │   ├── services/
+│   │   │   ├── api.ts                       # Axios + JWT interceptor
+│   │   │   └── authService.ts               # Login/register/logout
+│   │   ├── types/index.ts                   # TypeScript interfaces
+│   │   ├── middleware.ts                     # Route protection
+│   │   ├── components/                      # (React components tái sử dụng)
+│   │   ├── hooks/                           # (Custom React hooks)
+│   │   └── lib/                             # (Utilities, constants)
 │   ├── package.json
+│   ├── next.config.js                       # API proxy rewrite
+│   ├── tsconfig.json                        # @/ → src/ alias
 │   └── Dockerfile.dev
 │
-├── docker-compose.yml                   # Orchestrate 4 services
-├── dev.sh                               # Script tiện ích
-├── .env.example                         # Template biến môi trường
+├── docker-compose.yml                       # PostgreSQL, Redis, Backend, Frontend
+├── dev.sh                                   # Script tiện ích (up/down/logs/db/...)
+├── .env.example                             # Template biến môi trường
 ├── .gitignore
 └── README.md
 ```
@@ -123,19 +146,19 @@ WD2026/
 
 | Loại code | Thư mục | Ví dụ |
 |-----------|---------|-------|
-| REST API endpoint | `capnong-be/.../controller/` | `UserController.java` |
-| Xử lý logic | `capnong-be/.../service/` | `UserService.java` |
+| REST API endpoint | `capnong-be/.../controller/` | `AuthController.java` |
+| Xử lý logic | `capnong-be/.../service/` | `AuthService.java` |
 | Truy vấn database | `capnong-be/.../repository/` | `UserRepository.java` |
 | Entity / bảng DB | `capnong-be/.../model/` | `User.java` |
 | Request/Response DTO | `capnong-be/.../dto/` | `LoginRequest.java` |
-| Bảo mật, JWT | `capnong-be/.../security/` | `JwtFilter.java` |
-| Config (Redis, CORS, ...) | `capnong-be/.../config/` | `RedisConfig.java` |
+| Bảo mật, JWT | `capnong-be/.../security/` | `JwtAuthenticationFilter.java` |
+| Config (Redis, CORS, ...) | `capnong-be/.../config/` | `SecurityConfig.java` |
 | Xử lý lỗi chung | `capnong-be/.../exception/` | `GlobalExceptionHandler.java` |
 | Trang / route FE | `capnong-fe/src/app/` | `dashboard/page.tsx` |
 | Component UI | `capnong-fe/src/components/` | `Button.tsx` |
 | Gọi API backend | `capnong-fe/src/services/` | `authService.ts` |
-| Custom hooks | `capnong-fe/src/hooks/` | `useAuth.ts` |
-| TypeScript types | `capnong-fe/src/types/` | `user.ts` |
+| Auth state | `capnong-fe/src/contexts/` | `AuthContext.tsx` |
+| TypeScript types | `capnong-fe/src/types/` | `index.ts` |
 
 ## Biến môi trường
 
@@ -145,7 +168,7 @@ Xem chi tiết trong [`.env.example`](.env.example). Các biến quan trọng:
 |------|-------|
 | `POSTGRES_PASSWORD` | Mật khẩu PostgreSQL |
 | `REDIS_PASSWORD` | Mật khẩu Redis |
-| `JWT_SECRET` | Secret key cho JWT (≥256 bits) |
+| `JWT_SECRET` | Secret key cho JWT (Base64, ≥256 bits) |
 | `GEMINI_API_KEY` | API key Google Gemini |
 | `TELEGRAM_BOT_TOKEN` | Token Telegram Bot |
 
