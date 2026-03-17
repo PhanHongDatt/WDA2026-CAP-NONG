@@ -6,7 +6,7 @@ Nền tảng nông nghiệp thông minh tích hợp AI, hỗ trợ nông dân Vi
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14 (App Router) |
+| Frontend | Next.js 16 (App Router, Turbopack) |
 | Backend | Java 21 + Spring Boot 3 |
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 |
@@ -16,7 +16,7 @@ Nền tảng nông nghiệp thông minh tích hợp AI, hỗ trợ nông dân Vi
 ## Yêu cầu
 
 - [Docker](https://www.docker.com/) & Docker Compose v2+
-- (Tùy chọn) Java 21, Node.js 20 — nếu muốn chạy ngoài Docker
+- (Tùy chọn) Java 21, Node.js 22 — nếu muốn chạy ngoài Docker
 
 ## Bắt đầu nhanh
 
@@ -40,8 +40,8 @@ Sau khi chạy xong:
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8080 |
+| Frontend | <http://localhost:3000> |
+| Backend API | <http://localhost:8080> |
 | Remote Debug (Java) | `localhost:5005` |
 
 ## Các lệnh hữu ích
@@ -85,36 +85,55 @@ WD2026/
 │   ├── Dockerfile.dev
 │   └── pom.xml
 │
-├── capnong-fe/                          # ── FRONTEND (Next.js 14) ──────────
-│   ├── public/                          # File tĩnh (favicon, images, ...)
+├── capnong-fe/                          # ── FRONTEND (Next.js 16) ──────────
+│   ├── public/                          # File tĩnh (favicon, images, manifest)
+│   │   ├── manifest.json               # PWA manifest
+│   │   └── images/                     # Ảnh sản phẩm, banner, farms
 │   ├── src/
 │   │   ├── app/                         # App Router — mỗi folder = 1 route
-│   │   │   ├── layout.tsx               # Layout gốc (HTML, fonts, providers)
-│   │   │   ├── page.tsx                 # Trang chủ "/"
-│   │   │   ├── globals.css              # CSS toàn cục
+│   │   │   ├── layout.tsx               # Layout gốc (OG, Twitter, PWA metadata)
+│   │   │   ├── page.tsx                 # Redirect → /home
+│   │   │   ├── globals.css              # Design System (Tailwind v4 @theme)
+│   │   │   ├── not-found.tsx            # Trang 404 tùy chỉnh
+│   │   │   ├── error.tsx                # Client error boundary
+│   │   │   ├── global-error.tsx         # Root error boundary
+│   │   │   ├── sitemap.ts               # Auto-gen /sitemap.xml
+│   │   │   ├── robots.ts                # Auto-gen /robots.txt
+│   │   │   ├── home/page.tsx            # Trang chủ + JSON-LD
+│   │   │   ├── home/loading.tsx         # Skeleton Loading
+│   │   │   ├── catalog/page.tsx         # Danh mục sản phẩm
+│   │   │   ├── catalog/layout.tsx       # Metadata SEO
+│   │   │   ├── catalog/loading.tsx      # Skeleton Loading
+│   │   │   ├── products/[slug]/page.tsx # Chi tiết sản phẩm
+│   │   │   ├── shops/[slug]/page.tsx    # Gian hàng nông dân
+│   │   │   ├── cart/page.tsx            # Giỏ hàng
+│   │   │   ├── checkout/page.tsx        # Thanh toán
+│   │   │   ├── cooperative/page.tsx     # Dashboard gom đơn
 │   │   │   ├── (auth)/                  # Route group: login, register
 │   │   │   │   ├── login/page.tsx
 │   │   │   │   └── register/page.tsx
-│   │   │   ├── dashboard/               # Route: /dashboard
-│   │   │   │   └── page.tsx
-│   │   │   └── api/                     # API Routes của Next.js (nếu cần)
+│   │   │   └── dashboard/               # Route: /dashboard (nông dân)
+│   │   │       ├── page.tsx
+│   │   │       ├── orders/page.tsx
+│   │   │       ├── products/new/page.tsx
+│   │   │       └── marketing/page.tsx   # 🆕 AI Marketing Lab
 │   │   ├── components/                  # React components tái sử dụng
-│   │   │   ├── ui/                      # Components cơ bản (Button, Input, Modal, ...)
-│   │   │   └── layout/                  # Header, Sidebar, Footer, ...
-│   │   ├── hooks/                       # Custom React hooks
-│   │   ├── services/                    # Gọi API backend (axios/fetch wrappers)
-│   │   ├── lib/                         # Utilities, helpers, constants
-│   │   ├── types/                       # TypeScript type definitions
-│   │   └── styles/                      # CSS modules / styled files
-│   ├── next.config.js
-│   ├── tailwind.config.ts               # (nếu dùng Tailwind)
+│   │   │   ├── ui/                      # ProductCard, FarmCard, HeroBanner, ...
+│   │   │   └── layout/                  # Header, Footer
+│   │   ├── hooks/                       # Custom React hooks (kết nối API)
+│   │   ├── services/                    # Gọi API backend (axios wrappers)
+│   │   ├── lib/                         # Utilities, constants, mock-data
+│   │   └── types/                       # TypeScript type definitions
+│   ├── next.config.ts                   # Image optimization, Security Headers
 │   ├── tsconfig.json
 │   ├── package.json
-│   └── Dockerfile.dev
+│   ├── Dockerfile.dev
+│   └── .dockerignore                    # Exclude node_modules, .next
 │
 ├── docker-compose.yml                   # Orchestrate 4 services
 ├── dev.sh                               # Script tiện ích
 ├── .env.example                         # Template biến môi trường
+├── .env                                 # ⚠️ Biến thật (không commit)
 ├── .gitignore
 └── README.md
 ```
