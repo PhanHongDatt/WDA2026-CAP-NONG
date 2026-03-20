@@ -97,6 +97,7 @@ export default function AIRefiner({
         onChange={(e) => setOriginal(e.target.value)}
         rows={4}
         placeholder={placeholder}
+        aria-label="Mô tả sản phẩm"
         className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none resize-none"
       />
       <div className="flex justify-end mt-2">

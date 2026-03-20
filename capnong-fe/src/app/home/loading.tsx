@@ -16,7 +16,7 @@ export default function HomeLoading() {
       {/* Hero banner skeleton */}
       <div className="py-4 bg-gradient-to-b from-green-50 to-transparent">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex gap-3" style={{ height: 280 }}>
+          <div className="flex gap-3 h-[280px]">
             <div className="flex-1 rounded-xl bg-gray-200 skeleton" />
             <div className="w-[280px] flex flex-col gap-3 shrink-0">
               <div className="flex-1 rounded-xl bg-gray-200 skeleton" />

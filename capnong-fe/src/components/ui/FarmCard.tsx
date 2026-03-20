@@ -21,7 +21,7 @@ export default function FarmCard({ shop }: FarmCardProps) {
       {/* Avatar */}
       <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden shrink-0">
         <Image
-          src={shop.avatar}
+          src={shop.avatar_url || ""}
           alt={shop.name}
           width={64}
           height={64}
@@ -34,10 +34,10 @@ export default function FarmCard({ shop }: FarmCardProps) {
         <h3 className="font-bold text-gray-900">{shop.name}</h3>
         <p className="text-xs text-gray-500">
           {shop.province} •{" "}
-          <span className="text-yellow-500">★ {shop.rating}</span>
+          <span className="text-yellow-500">★ {shop.average_rating}</span>
         </p>
         <p className="text-xs font-medium text-primary mt-1">
-          {shop.yearsOfExperience} năm kinh nghiệm
+          {shop.years_experience} năm kinh nghiệm
         </p>
       </div>
 

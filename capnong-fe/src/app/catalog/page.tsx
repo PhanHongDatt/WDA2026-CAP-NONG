@@ -67,10 +67,11 @@ export default function CatalogPage() {
       <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 ${showFilters ? "block" : "hidden md:grid"}`}>
         {/* Region */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
+          <label htmlFor="filter-region" className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
             Khu vực
           </label>
           <select
+            id="filter-region"
             value={selectedRegion}
             onChange={(e) => setSelectedRegion(e.target.value)}
             className="rounded-xl border-border bg-white text-sm focus:border-primary focus:ring-primary py-2.5 px-3"
@@ -85,10 +86,11 @@ export default function CatalogPage() {
 
         {/* Season */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
+          <label htmlFor="filter-season" className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
             Mùa vụ
           </label>
           <select
+            id="filter-season"
             value={selectedSeason}
             onChange={(e) => setSelectedSeason(e.target.value)}
             className="rounded-xl border-border bg-white text-sm focus:border-primary focus:ring-primary py-2.5 px-3"
@@ -103,10 +105,11 @@ export default function CatalogPage() {
 
         {/* Sort */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
+          <label htmlFor="filter-sort" className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
             Sắp xếp
           </label>
           <select
+            id="filter-sort"
             value={selectedSort}
             onChange={(e) => setSelectedSort(e.target.value)}
             className="rounded-xl border-border bg-white text-sm focus:border-primary focus:ring-primary py-2.5 px-3"

@@ -20,10 +20,8 @@ export default function ProductCard({
   product,
   variant = "seasonal",
 }: ProductCardProps) {
-  const discountPercent =
-    product.originalPrice
-      ? Math.round((1 - product.price / product.originalPrice) * 100)
-      : 0;
+  // originalPrice removed from Product type — discount chỉ dùng trong Flash Deal
+  const discountPercent = 0;
 
   return (
     <div className="product-card-shadow bg-white rounded-xl overflow-hidden relative border border-gray-100 p-4 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
@@ -36,7 +34,7 @@ export default function ProductCard({
 
       {/* Wishlist Button (seasonal only) */}
       {variant === "seasonal" && (
-        <button className="absolute top-2 right-2 z-10 text-gray-400 hover:text-accent">
+        <button aria-label="Thêm vào yêu thích" className="absolute top-2 right-2 z-10 text-gray-400 hover:text-accent">
           <Heart className="w-6 h-6" />
         </button>
       )}
@@ -62,47 +60,50 @@ export default function ProductCard({
       </Link>
 
       {/* Unit */}
-      <p className="text-xs text-gray-500 mb-2">ĐVT: {product.unit}</p>
+      <p className="text-xs text-gray-500 mb-2">ĐVT: {product.unit.symbol}</p>
 
       {/* Price */}
       <div className="mb-3">
         <span className="text-lg font-bold text-primary">
-          {formatCurrency(product.price)}
+          {formatCurrency(product.price_per_unit)}
         </span>
         {variant === "seasonal" && (
-          <span className="text-xs text-gray-400 ml-1">/{product.unit}</span>
+          <span className="text-xs text-gray-400 ml-1">/{product.unit.symbol}</span>
         )}
-        {product.originalPrice && (
-          <span className="text-xs text-gray-400 line-through ml-2">
-            {formatCurrency(product.originalPrice)}
-          </span>
-        )}
+
       </div>
 
       {/* Sold Count — Shopee style */}
-      {product.soldCount > 0 && (
+      {product.sold_count > 0 && (
         <p className="text-xs text-gray-400 mb-2">
-          Đã bán {product.soldCount > 999 ? `${(product.soldCount / 1000).toFixed(1)}k` : product.soldCount}
+          Đã bán {product.sold_count > 999 ? `${(product.sold_count / 1000).toFixed(1)}k` : product.sold_count}
         </p>
       )}
 
-      {/* Badges (seasonal only) */}
-      {variant === "seasonal" && product.badges.length > 0 && (
-        <div className="space-y-1 mb-4">
-          {product.badges.map((badge, i) => (
-            <span
-              key={i}
-              className={
-                badge.type === "organic"
-                  ? "inline-block text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-100 mr-1"
-                  : "inline-block text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 mr-1"
-              }
-            >
-              {badge.label}
-            </span>
-          ))}
-        </div>
-      )}
+      {/* Badges (seasonal only — computed from farming_method/pesticide_free) */}
+      {variant === "seasonal" && (() => {
+        const computedBadges: { label: string; type: "organic" | "certification" }[] = [];
+        if (product.pesticide_free) computedBadges.push({ label: "Không BVTV", type: "organic" });
+        if (product.farming_method === "ORGANIC") computedBadges.push({ label: "Hữu cơ", type: "organic" });
+        if (product.farming_method === "VIETGAP") computedBadges.push({ label: "VietGAP", type: "certification" });
+        if (product.farming_method === "GLOBALGAP") computedBadges.push({ label: "GlobalGAP", type: "certification" });
+        return computedBadges.length > 0 ? (
+          <div className="space-y-1 mb-4">
+            {computedBadges.map((badge, i) => (
+              <span
+                key={i}
+                className={
+                  badge.type === "organic"
+                    ? "inline-block text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-100 mr-1"
+                    : "inline-block text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 mr-1"
+                }
+              >
+                {badge.label}
+              </span>
+            ))}
+          </div>
+        ) : null;
+      })()}
 
       {/* CTA */}
       {variant === "latest" ? (
@@ -111,16 +112,17 @@ export default function ProductCard({
         </button>
       ) : (
         <div className="flex items-center border border-gray-200 rounded overflow-hidden">
-          <button className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-r border-gray-200 text-gray-600">
+          <button aria-label="Giảm số lượng" className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-r border-gray-200 text-gray-600">
             −
           </button>
           <input
+            aria-label="Số lượng"
             className="w-full text-center border-none text-sm p-1 focus:ring-0 bg-transparent"
             type="text"
             defaultValue="1"
             readOnly
           />
-          <button className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-l border-gray-200 text-gray-600">
+          <button aria-label="Tăng số lượng" className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-l border-gray-200 text-gray-600">
             +
           </button>
         </div>

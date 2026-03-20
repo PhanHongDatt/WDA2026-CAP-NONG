@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Flame, Users, Clock, TrendingUp, CheckCircle2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import ProgressBar from "@/components/ui/ProgressBar";
 
 export const metadata: Metadata = {
   title: "Gom Đơn Hàng",
@@ -130,13 +131,13 @@ export default function CooperativePage() {
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-                    <div
+                    <ProgressBar
+                      value={progress}
                       className={`h-full rounded-full transition-all duration-700 ${
                         isFulfilled
                           ? "bg-success"
                           : "bg-gradient-to-r from-primary to-primary-light"
                       }`}
-                      style={{ width: `${progress}%` }}
                     />
                   </div>
                   <span className="text-sm font-bold text-foreground-muted shrink-0">

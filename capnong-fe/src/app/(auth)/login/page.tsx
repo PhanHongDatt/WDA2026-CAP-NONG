@@ -27,18 +27,20 @@ export default function LoginPage() {
           {/* Form */}
           <form className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="login-email" className="block text-sm font-medium mb-2">
                 Email hoặc Số điện thoại
               </label>
               <input
+                id="login-email"
                 type="text"
                 placeholder="Email hoặc SĐT"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Mật khẩu</label>
+              <label htmlFor="login-password" className="block text-sm font-medium mb-2">Mật khẩu</label>
               <input
+                id="login-password"
                 type="password"
                 placeholder="••••••••"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"

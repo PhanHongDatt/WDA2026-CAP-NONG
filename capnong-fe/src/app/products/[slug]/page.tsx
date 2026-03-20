@@ -62,7 +62,7 @@ export default function ProductDetailPage() {
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-border px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/catalog" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <Link href="/catalog" className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Quay lại danh mục">
               <ArrowLeft className="w-5 h-5 text-foreground-muted" />
             </Link>
             <h1 className="text-lg font-bold leading-tight tracking-tight">
@@ -70,10 +70,10 @@ export default function ProductDetailPage() {
             </h1>
           </div>
           <div className="flex gap-2">
-            <button className="flex items-center justify-center rounded-full w-10 h-10 bg-gray-100 text-foreground-muted hover:bg-primary/10 transition-colors">
+            <button aria-label="Chia sẻ" className="flex items-center justify-center rounded-full w-10 h-10 bg-gray-100 text-foreground-muted hover:bg-primary/10 transition-colors">
               <Share2 className="w-5 h-5" />
             </button>
-            <button className="flex items-center justify-center rounded-full w-10 h-10 bg-gray-100 text-foreground-muted hover:bg-red-50 group transition-colors">
+            <button aria-label="Thêm vào yêu thích" className="flex items-center justify-center rounded-full w-10 h-10 bg-gray-100 text-foreground-muted hover:bg-red-50 group transition-colors">
               <Heart className="w-5 h-5 group-hover:text-red-500" />
             </button>
           </div>
@@ -105,6 +105,7 @@ export default function ProductDetailPage() {
                 <button
                   key={i}
                   onClick={() => setSelectedImage(i)}
+                  aria-label={`Xem ảnh ${i + 1}`}
                   className={`w-20 h-20 shrink-0 rounded-lg overflow-hidden cursor-pointer bg-white shadow-sm border-2 transition-colors ${
                     selectedImage === i ? "border-primary" : "border-gray-200"
                   }`}
@@ -128,13 +129,13 @@ export default function ProductDetailPage() {
             </h2>
             <div className="flex items-center gap-2 mb-4">
               <span className="text-foreground-muted text-sm">
-                Đã bán {PRODUCT.soldCount}+
+                Đã bán {PRODUCT.sold_count}+
               </span>
               <span className="text-gray-300">•</span>
               <div className="flex items-center gap-1 text-primary">
                 <Star className="w-4 h-4 fill-primary" />
                 <span className="text-sm font-bold">
-                  {PRODUCT.rating} (42 nhận xét)
+                  {PRODUCT.average_rating} ({PRODUCT.total_reviews} nhận xét)
                 </span>
               </div>
             </div>
@@ -142,9 +143,9 @@ export default function ProductDetailPage() {
             {/* Price */}
             <div className="mb-6">
               <p className="text-3xl font-black text-primary">
-                {formatCurrency(PRODUCT.price)}{" "}
+                {formatCurrency(PRODUCT.price_per_unit)}{" "}
                 <span className="text-lg font-medium text-foreground-muted">
-                  / {PRODUCT.unit}
+                  / {PRODUCT.unit.symbol}
                 </span>
               </p>
             </div>
@@ -165,10 +166,10 @@ export default function ProductDetailPage() {
             <div className="bg-white border border-border rounded-xl p-4 mb-8 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 bg-gray-100">
-                  {PRODUCT.shopAvatar && (
+                  {PRODUCT.shop.avatar_url && (
                     <Image
-                      src={PRODUCT.shopAvatar}
-                      alt={PRODUCT.shopName}
+                      src={PRODUCT.shop.avatar_url}
+                      alt={PRODUCT.shop.name}
                       width={48}
                       height={48}
                       className="w-full h-full object-cover"
@@ -176,22 +177,22 @@ export default function ProductDetailPage() {
                   )}
                 </div>
                 <div>
-                  <p className="font-bold text-foreground">{PRODUCT.shopName}</p>
+                  <p className="font-bold text-foreground">{PRODUCT.shop.name}</p>
                   <div className="flex items-center gap-2 text-xs text-foreground-muted">
                     <span className="flex items-center gap-0.5 text-yellow-500">
                       <Star className="w-3 h-3 fill-yellow-400" />
-                      4.8
+                      {PRODUCT.shop.average_rating}
                     </span>
                     <span>•</span>
                     <span className="flex items-center gap-0.5">
                       <MapPin className="w-3 h-3" />
-                      {PRODUCT.shopLocation}
+                      {PRODUCT.shop.province}
                     </span>
                   </div>
                 </div>
               </div>
               <Link
-                href={`/shops/${PRODUCT.slug}`}
+                href={`/shops/${PRODUCT.shop.slug}`}
                 className="text-primary text-sm font-bold border border-primary px-4 py-2 rounded-lg hover:bg-primary/5 transition-colors"
               >
                 Xem gian hàng
@@ -208,6 +209,7 @@ export default function ProductDetailPage() {
                   <div className="flex items-center border border-border rounded-lg overflow-hidden bg-white">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      aria-label="Giảm số lượng"
                       className="p-2 hover:bg-gray-50 text-foreground-muted"
                     >
                       <Minus className="w-5 h-5" />
@@ -217,13 +219,14 @@ export default function ProductDetailPage() {
                     </span>
                     <button
                       onClick={() => setQuantity(quantity + 1)}
+                      aria-label="Tăng số lượng"
                       className="p-2 hover:bg-gray-50 text-foreground-muted"
                     >
                       <Plus className="w-5 h-5" />
                     </button>
                   </div>
                   <span className="text-sm text-foreground-muted">
-                    Còn {PRODUCT.stock} {PRODUCT.unit.toLowerCase()}
+                    Còn {PRODUCT.available_quantity} {PRODUCT.unit.symbol}
                   </span>
                 </div>
               </div>
@@ -359,12 +362,12 @@ export default function ProductDetailPage() {
               </div>
               <div className="flex flex-col gap-3">
                 {[
-                  { label: "Hợp tác xã", value: PRODUCT.traceability.cooperative },
-                  { label: "Mã vùng trồng", value: PRODUCT.traceability.regionCode },
-                  { label: "Ngày thu hoạch", value: PRODUCT.traceability.harvestDate },
+                  { label: "Hợp tác xã", value: PRODUCT.shop.name },
+                  { label: "Vùng trồng", value: PRODUCT.location_detail },
+                  { label: "Ngày thu hoạch", value: PRODUCT.harvest_date || "Chưa xác định" },
                   {
-                    label: "Tiêu chuẩn",
-                    value: PRODUCT.traceability.certification,
+                    label: "Phương pháp",
+                    value: PRODUCT.farming_method,
                     verified: true,
                   },
                 ].map((item) => (

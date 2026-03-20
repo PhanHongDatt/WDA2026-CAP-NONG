@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Flame, Clock, Users } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { CoopPool } from "@/types/order";
+import ProgressBar from "@/components/ui/ProgressBar";
 
 interface CoopPoolCardProps {
   pool: CoopPool;
@@ -11,9 +12,7 @@ interface CoopPoolCardProps {
  * CoopPoolCard — matching home.html lines 273-308 exactly
  */
 export default function CoopPoolCard({ pool }: CoopPoolCardProps) {
-  const progress = Math.round(
-    (pool.currentQuantity / pool.targetQuantity) * 100
-  );
+  const progress = pool.progress_percent;
 
   return (
     <section className="mb-12">
@@ -25,7 +24,7 @@ export default function CoopPoolCard({ pool }: CoopPoolCardProps) {
             🔥 Đang gom đơn
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            {pool.productName}
+            {pool.product_name}
           </h2>
           <p className="text-gray-600 mb-6 max-w-md">
             Chung tay mua chung để có mức giá tốt nhất trực tiếp từ nhà vườn.
@@ -34,7 +33,7 @@ export default function CoopPoolCard({ pool }: CoopPoolCardProps) {
           <div className="flex items-center gap-3 text-sm text-gray-500 mb-6">
             <span className="flex items-center gap-1">
               <Users className="w-4 h-4" />
-              {pool.participantCount} người tham gia
+              {pool.pledges.length} người tham gia
             </span>
           </div>
           <Link
@@ -57,17 +56,17 @@ export default function CoopPoolCard({ pool }: CoopPoolCardProps) {
               </span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-4 mb-4 overflow-hidden">
-              <div
+              <ProgressBar
+                value={progress}
                 className="bg-primary h-full rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
               />
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="bg-gray-50 p-3 rounded-lg">
                 <p className="text-gray-500 mb-1">Đã gom</p>
                 <p className="font-bold text-gray-900">
-                  {pool.currentQuantity.toLocaleString("vi-VN")} /{" "}
-                  {pool.targetQuantity.toLocaleString("vi-VN")} kg
+                  {pool.current_pledged_quantity.toLocaleString("vi-VN")} /{" "}
+                  {pool.target_quantity.toLocaleString("vi-VN")} {pool.unit.symbol}
                 </p>
               </div>
               <div className="bg-gray-50 p-3 rounded-lg">

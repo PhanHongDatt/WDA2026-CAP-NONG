@@ -80,6 +80,7 @@ export default function MarketingLabPage() {
         <Link
           href="/dashboard"
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          aria-label="Quay lại Dashboard"
         >
           <ArrowLeft className="w-5 h-5 text-foreground-muted" />
         </Link>
@@ -118,10 +119,11 @@ export default function MarketingLabPage() {
             <h3 className="font-bold text-lg mb-4">Tạo Caption Facebook</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="caption-product-name" className="block text-sm font-medium mb-2">
                   Tên sản phẩm
                 </label>
                 <input
+                  id="caption-product-name"
                   type="text"
                   value={productName}
                   onChange={(e) => setProductName(e.target.value)}
@@ -129,10 +131,11 @@ export default function MarketingLabPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="caption-product-desc" className="block text-sm font-medium mb-2">
                   Mô tả ngắn (tùy chọn)
                 </label>
                 <input
+                  id="caption-product-desc"
                   type="text"
                   placeholder="Ví dụ: Cam vừa hái vườn, ngọt lịm"
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
@@ -226,13 +229,7 @@ export default function MarketingLabPage() {
                   🍊
                 </div>
                 <div
-                  className="rounded-xl aspect-square flex items-center justify-center text-4xl"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%)",
-                    backgroundSize: "20px 20px",
-                    backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
-                  }}
+                  className="rounded-xl aspect-square flex items-center justify-center text-4xl checkerboard-bg"
                 >
                   🍊
                 </div>
@@ -262,10 +259,11 @@ export default function MarketingLabPage() {
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="marketing-product-name" className="block text-sm font-medium mb-2">
                 Tên sản phẩm
               </label>
               <input
+                id="marketing-product-name"
                 type="text"
                 defaultValue="Cam Sành Bến Tre"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"

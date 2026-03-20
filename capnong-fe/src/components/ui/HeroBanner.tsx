@@ -57,7 +57,7 @@ export default function HeroBanner() {
   return (
     <section className="mb-6">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex gap-3" style={{ height: 280 }}>
+        <div className="flex gap-3 h-[280px]">
           {/* Main Carousel */}
           <div className="flex-1 relative rounded-xl overflow-hidden group">
             {BANNERS.map((b, i) => (
@@ -81,12 +81,14 @@ export default function HeroBanner() {
             {/* Nav arrows */}
             <button
               onClick={(e) => { e.preventDefault(); prev(); }}
+              aria-label="Banner trước"
               className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={(e) => { e.preventDefault(); next(); }}
+              aria-label="Banner tiếp theo"
               className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
             >
               <ChevronRight className="w-5 h-5" />
@@ -98,6 +100,7 @@ export default function HeroBanner() {
                 <button
                   key={i}
                   onClick={() => setCurrent(i)}
+                  aria-label={`Chuyển đến banner ${i + 1}`}
                   className={`w-2 h-2 rounded-full transition-all ${
                     i === current
                       ? "bg-white w-5"

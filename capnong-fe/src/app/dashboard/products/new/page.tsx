@@ -17,6 +17,7 @@ export default function NewProductPage() {
         <Link
           href="/dashboard"
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          aria-label="Quay lại Dashboard"
         >
           <ArrowLeft className="w-5 h-5 text-foreground-muted" />
         </Link>
@@ -41,10 +42,11 @@ export default function NewProductPage() {
         <div className="bg-white border border-border rounded-xl p-6 shadow-sm space-y-5">
           <h3 className="font-bold text-lg">Thông tin cơ bản</h3>
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label htmlFor="new-product-name" className="block text-sm font-medium mb-2">
               Tên sản phẩm *
             </label>
             <input
+              id="new-product-name"
               type="text"
               placeholder="Ví dụ: Xoài Cát Hòa Lộc Tiền Giang"
               className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
@@ -63,9 +65,10 @@ export default function NewProductPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Giá *</label>
+              <label htmlFor="new-product-price" className="block text-sm font-medium mb-2">Giá *</label>
               <div className="relative">
                 <input
+                  id="new-product-price"
                   type="number"
                   placeholder="95000"
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
@@ -76,10 +79,10 @@ export default function NewProductPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="new-product-unit" className="block text-sm font-medium mb-2">
                 Đơn vị tính *
               </label>
-              <select className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+              <select id="new-product-unit" className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
                 <option>Kg</option>
                 <option>Trái</option>
                 <option>Khay</option>
@@ -88,10 +91,11 @@ export default function NewProductPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="new-product-qty" className="block text-sm font-medium mb-2">
                 Sản lượng *
               </label>
               <input
+                id="new-product-qty"
                 type="number"
                 placeholder="500"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
@@ -100,8 +104,8 @@ export default function NewProductPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Danh mục</label>
-            <select className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+            <label htmlFor="new-product-category" className="block text-sm font-medium mb-2">Danh mục</label>
+            <select id="new-product-category" className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
               <option>Trái cây</option>
               <option>Rau củ</option>
               <option>Ngũ cốc & Hạt</option>
@@ -134,31 +138,33 @@ export default function NewProductPage() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="new-product-location" className="block text-sm font-medium mb-2">
                 Địa điểm canh tác
               </label>
               <input
+                id="new-product-location"
                 type="text"
                 placeholder="Ví dụ: Tiền Giang"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="new-product-harvest" className="block text-sm font-medium mb-2">
                 <Calendar className="w-3.5 h-3.5 inline mr-1" />
                 Ngày thu hoạch (dự kiến)
               </label>
               <input
+                id="new-product-harvest"
                 type="date"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label htmlFor="new-product-farming" className="block text-sm font-medium mb-2">
               Phương thức canh tác
             </label>
-            <select className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+            <select id="new-product-farming" className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
               <option>Hữu cơ</option>
               <option>VietGAP</option>
               <option>GlobalGAP</option>

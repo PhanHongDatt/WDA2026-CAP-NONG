@@ -80,38 +80,42 @@ export default function RegisterPage() {
           {/* Form */}
           <form className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="register-name" className="block text-sm font-medium mb-2">
                 Họ và tên *
               </label>
               <input
+                id="register-name"
                 type="text"
                 placeholder="Nguyễn Văn A"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Email *</label>
+              <label htmlFor="register-email" className="block text-sm font-medium mb-2">Email *</label>
               <input
+                id="register-email"
                 type="email"
                 placeholder="email@example.com"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="register-phone" className="block text-sm font-medium mb-2">
                 Số điện thoại *
               </label>
               <input
+                id="register-phone"
                 type="tel"
                 placeholder="0901 234 567"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label htmlFor="register-password" className="block text-sm font-medium mb-2">
                 Mật khẩu *
               </label>
               <input
+                id="register-password"
                 type="password"
                 placeholder="Tối thiểu 8 ký tự"
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
@@ -121,10 +125,11 @@ export default function RegisterPage() {
             {/* Farmer-specific field */}
             {role === "FARMER" && (
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="register-farm" className="block text-sm font-medium mb-2">
                   Tên nông trại / HTX
                 </label>
                 <input
+                  id="register-farm"
                   type="text"
                   placeholder="Ví dụ: Nông trại Xanh Đà Lạt"
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
@@ -135,6 +140,7 @@ export default function RegisterPage() {
             <div className="flex items-start gap-2">
               <input
                 type="checkbox"
+                aria-label="Đồng ý điều khoản sử dụng"
                 className="accent-primary mt-1 rounded"
               />
               <span className="text-xs text-foreground-muted">

@@ -58,7 +58,7 @@ export default function ShopProfilePage() {
               Gian hàng
             </h2>
           </div>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <button aria-label="Chia sẻ gian hàng" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <Share2 className="w-5 h-5 text-foreground-muted" />
           </button>
         </div>
@@ -78,7 +78,7 @@ export default function ShopProfilePage() {
           <div className="absolute bottom-6 left-6 md:left-10 z-20 flex flex-col md:flex-row items-end md:items-center gap-4">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white overflow-hidden shadow-xl bg-white">
               <Image
-                src={SHOP.avatar}
+                src={SHOP.avatar_url || ""}
                 alt={SHOP.name}
                 width={128}
                 height={128}
@@ -91,8 +91,8 @@ export default function ShopProfilePage() {
                 <MapPin className="w-4 h-4" /> {SHOP.province}
               </p>
               <p className="text-xs md:text-sm text-gray-300 mt-1 font-medium bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full w-fit">
-                {SHOP.rating} đánh giá — {SHOP.yearsOfExperience} năm kinh
-                nghiệm — {SHOP.farmArea} diện tích
+                {SHOP.average_rating} đánh giá — {SHOP.years_experience} năm kinh
+                nghiệm — {SHOP.farm_area_m2 ? `${(SHOP.farm_area_m2 / 10000).toFixed(1)} hecta` : ""} diện tích
               </p>
             </div>
           </div>
@@ -111,7 +111,7 @@ export default function ShopProfilePage() {
                 </h3>
               </div>
               <p className="italic text-foreground-muted leading-relaxed text-lg">
-                &ldquo;Hơn {SHOP.yearsOfExperience} năm gắn bó với mảnh đất{" "}
+                &ldquo;Hơn {SHOP.years_experience} năm gắn bó với mảnh đất{" "}
                 {SHOP.province}, chúng tôi luôn tâm niệm mang đến những sản
                 phẩm sạch, thuận tự nhiên nhất cho mọi gia đình. Vườn dừa và
                 bưởi da xanh của gia đình được chăm sóc bằng cả tâm huyết,
@@ -158,7 +158,7 @@ export default function ShopProfilePage() {
                       : "border-transparent text-foreground-muted hover:text-foreground"
                   }`}
                 >
-                  Sản phẩm ({SHOP.productCount})
+                  Sản phẩm
                 </button>
                 <button
                   onClick={() => setActiveTab("reviews")}
@@ -168,7 +168,7 @@ export default function ShopProfilePage() {
                       : "border-transparent text-foreground-muted hover:text-foreground"
                   }`}
                 >
-                  Đánh giá ({SHOP.reviewCount})
+                  Đánh giá ({SHOP.total_reviews})
                 </button>
               </div>
 
@@ -199,19 +199,13 @@ export default function ShopProfilePage() {
                 <li className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-foreground-muted shrink-0 mt-0.5" />
                   <p className="text-sm text-foreground-muted">
-                    {SHOP.contactAddress}
+                    {SHOP.district}, {SHOP.province}
                   </p>
                 </li>
                 <li className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-foreground-muted shrink-0 mt-0.5" />
                   <p className="text-sm text-foreground-muted">
-                    Mở cửa: {SHOP.openHours} (Hàng ngày)
-                  </p>
-                </li>
-                <li className="flex items-start gap-3">
-                  <ShieldCheck className="w-5 h-5 text-foreground-muted shrink-0 mt-0.5" />
-                  <p className="text-sm text-foreground-muted">
-                    Chứng nhận: {SHOP.certifications.join(", ")}
+                    Mở cửa: 07:00 - 18:00 (Hàng ngày)
                   </p>
                 </li>
               </ul>

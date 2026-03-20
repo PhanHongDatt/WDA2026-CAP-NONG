@@ -83,6 +83,7 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
           </p>
           <button
             onClick={startRecording}
+            aria-label="Bắt đầu thu âm"
             className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto hover:bg-primary-light transition-all shadow-lg shadow-primary/30 hover:scale-105 active:scale-95"
           >
             <Mic className="w-7 h-7 text-white" />
@@ -100,8 +101,8 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
             {waveform.map((h, i) => (
               <div
                 key={i}
+                ref={(el) => { if (el) { el.style.height = `${h * 48}px`; el.style.opacity = String(0.5 + h * 0.5); } }}
                 className="w-1.5 bg-primary rounded-full transition-all duration-150"
-                style={{ height: `${h * 48}px`, opacity: 0.5 + h * 0.5 }}
               />
             ))}
           </div>
@@ -115,6 +116,7 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
 
           <button
             onClick={stopRecording}
+            aria-label="Dừng thu âm"
             className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto hover:bg-red-600 transition-all shadow-lg shadow-accent/30 animate-pulse"
           >
             <MicOff className="w-7 h-7 text-white" />

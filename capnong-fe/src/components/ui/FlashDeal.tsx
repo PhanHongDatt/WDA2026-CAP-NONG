@@ -66,11 +66,10 @@ export default function FlashDeal() {
           {/* Horizontal Product Scroll */}
           <div className="flex gap-0 overflow-x-auto px-1 py-4 scrollbar-hide">
             {MOCK_FLASH_DEALS.map((deal) => {
-              const discountPct = deal.originalPrice
-                ? Math.round((1 - deal.price / deal.originalPrice) * 100)
-                : 0;
+              // Flash deals: giảm giá cứng 30% (mock)
+              const discountPct = 30;
               const soldPct = Math.min(
-                Math.round((deal.soldCount / (deal.soldCount + 50)) * 100),
+                Math.round((deal.sold_count / (deal.sold_count + 50)) * 100),
                 95
               );
 
@@ -98,23 +97,18 @@ export default function FlashDeal() {
                   {/* Price */}
                   <div className="text-center mb-1.5">
                     <span className="text-accent font-bold text-base">
-                      {formatCurrency(deal.price)}
+                      {formatCurrency(deal.price_per_unit)}
                     </span>
-                    {deal.originalPrice && (
-                      <span className="text-xs text-gray-400 line-through ml-1">
-                        {formatCurrency(deal.originalPrice)}
-                      </span>
-                    )}
                   </div>
 
                   {/* Progress bar "Đã bán" — like Shopee */}
                   <div className="relative h-4 bg-red-100 rounded-full overflow-hidden">
                     <div
+                      ref={(el) => { if (el) el.style.width = `${soldPct}%`; }}
                       className="absolute inset-y-0 left-0 bg-gradient-to-r from-accent to-orange-500 rounded-full transition-all"
-                      style={{ width: `${soldPct}%` }}
                     />
                     <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white z-10">
-                      {soldPct > 70 ? "SẮP HẾT" : `Đã bán ${deal.soldCount}`}
+                      {soldPct > 70 ? "SẮP HẾT" : `Đã bán ${deal.sold_count}`}
                     </span>
                   </div>
                 </Link>

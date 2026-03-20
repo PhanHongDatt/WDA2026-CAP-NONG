@@ -91,9 +91,9 @@ WD2026/
 │   │   └── images/                     # Ảnh sản phẩm, banner, farms
 │   ├── src/
 │   │   ├── app/                         # App Router — mỗi folder = 1 route
-│   │   │   ├── layout.tsx               # Layout gốc (OG, Twitter, PWA metadata)
+│   │   │   ├── layout.tsx               # Layout gốc + ClientProviders
 │   │   │   ├── page.tsx                 # Redirect → /home
-│   │   │   ├── globals.css              # Design System (Tailwind v4 @theme)
+│   │   │   ├── globals.css              # Design System + Dark Mode + Font Size
 │   │   │   ├── not-found.tsx            # Trang 404 tùy chỉnh
 │   │   │   ├── error.tsx                # Client error boundary
 │   │   │   ├── global-error.tsx         # Root error boundary
@@ -109,6 +109,8 @@ WD2026/
 │   │   │   ├── cart/page.tsx            # Giỏ hàng
 │   │   │   ├── checkout/page.tsx        # Thanh toán
 │   │   │   ├── cooperative/page.tsx     # Dashboard gom đơn
+│   │   │   ├── cooperative/manage/      # 🆕 Quản lý HTX (COOP_MANAGER)
+│   │   │   │   └── page.tsx
 │   │   │   ├── (auth)/                  # Route group: login, register
 │   │   │   │   ├── login/page.tsx
 │   │   │   │   └── register/page.tsx
@@ -119,7 +121,15 @@ WD2026/
 │   │   │       └── marketing/page.tsx   # 🆕 AI Marketing Lab
 │   │   ├── components/                  # React components tái sử dụng
 │   │   │   ├── ui/                      # ProductCard, FarmCard, HeroBanner, ...
-│   │   │   └── layout/                  # Header, Footer
+│   │   │   │   ├── ThemeToggle.tsx      # 🆕 Nút Dark/Light mode
+│   │   │   │   └── FontSizeToggle.tsx   # 🆕 Nút A⁻ A A⁺
+│   │   │   ├── layout/                  # Header, Footer, ClientProviders
+│   │   │   │   └── ClientProviders.tsx  # 🆕 AuthProvider + ThemeProvider wrapper
+│   │   │   └── auth/                    # 🆕 Auth components
+│   │   │       └── ProtectedRoute.tsx   # 🆕 Route guard theo role
+│   │   ├── contexts/                    # 🆕 React Context providers
+│   │   │   ├── AuthContext.tsx          # 🆕 Auth + 5 roles + mock users
+│   │   │   └── ThemeContext.tsx         # 🆕 Dark mode + font size
 │   │   ├── hooks/                       # Custom React hooks (kết nối API)
 │   │   ├── services/                    # Gọi API backend (axios wrappers)
 │   │   ├── lib/                         # Utilities, constants, mock-data

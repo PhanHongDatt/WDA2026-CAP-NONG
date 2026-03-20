@@ -70,20 +70,22 @@ export default function CheckoutPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">
+                  <label htmlFor="checkout-name" className="block text-sm font-medium mb-2">
                     Họ và tên *
                   </label>
                   <input
+                    id="checkout-name"
                     type="text"
                     placeholder="Nguyễn Văn A"
                     className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">
+                  <label htmlFor="checkout-phone" className="block text-sm font-medium mb-2">
                     Số điện thoại *
                   </label>
                   <input
+                    id="checkout-phone"
                     type="tel"
                     placeholder="0901 234 567"
                     className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
@@ -91,30 +93,33 @@ export default function CheckoutPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="checkout-email" className="block text-sm font-medium mb-2">
                   Email
                 </label>
                 <input
+                  id="checkout-email"
                   type="email"
                   placeholder="email@example.com"
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="checkout-address" className="block text-sm font-medium mb-2">
                   Địa chỉ giao hàng *
                 </label>
                 <textarea
+                  id="checkout-address"
                   placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố"
                   rows={3}
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none resize-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="checkout-note" className="block text-sm font-medium mb-2">
                   Ghi chú
                 </label>
                 <input
+                  id="checkout-note"
                   type="text"
                   placeholder="Ví dụ: Giao ngoài giờ hành chính"
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"

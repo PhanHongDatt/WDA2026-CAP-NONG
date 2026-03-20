@@ -16,7 +16,7 @@ const INITIAL_CART = [
 export default function CartPage() {
   const [cartItems, setCartItems] = useState(INITIAL_CART);
 
-  const updateQuantity = (id: number, delta: number) => {
+  const updateQuantity = (id: string, delta: number) => {
     setCartItems((items) =>
       items.map((item) =>
         item.id === id
@@ -26,12 +26,12 @@ export default function CartPage() {
     );
   };
 
-  const removeItem = (id: number) => {
+  const removeItem = (id: string) => {
     setCartItems((items) => items.filter((item) => item.id !== id));
   };
 
   const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + item.price_per_unit * item.quantity,
     0
   );
   const shippingFee = subtotal > 300000 ? 0 : 30000;
@@ -95,11 +95,12 @@ export default function CartPage() {
                       {item.name}
                     </Link>
                     <p className="text-xs text-foreground-muted">
-                      Nhà vườn: {item.shopName}
+                      Nhà vườn: {item.shop.name}
                     </p>
                   </div>
                   <button
                     onClick={() => removeItem(item.id)}
+                    aria-label="Xóa sản phẩm"
                     className="p-1.5 text-foreground-muted hover:text-accent rounded transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -109,6 +110,7 @@ export default function CartPage() {
                   <div className="flex items-center border border-border rounded-lg overflow-hidden">
                     <button
                       onClick={() => updateQuantity(item.id, -1)}
+                      aria-label="Giảm số lượng"
                       className="p-1.5 hover:bg-gray-50"
                     >
                       <Minus className="w-4 h-4" />
@@ -118,13 +120,14 @@ export default function CartPage() {
                     </span>
                     <button
                       onClick={() => updateQuantity(item.id, 1)}
+                      aria-label="Tăng số lượng"
                       className="p-1.5 hover:bg-gray-50"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
                   <p className="font-bold text-primary text-lg">
-                    {formatCurrency(item.price * item.quantity)}
+                    {formatCurrency(item.price_per_unit * item.quantity)}
                   </p>
                 </div>
               </div>
