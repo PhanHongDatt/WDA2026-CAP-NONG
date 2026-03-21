@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -40,4 +45,5 @@ const nextConfig: NextConfig = {
   compress: true,
 };
 
-export default nextConfig;
+// Paper #7: Bundle analyzer — run with `ANALYZE=true npm run build`
+export default withBundleAnalyzer(nextConfig);

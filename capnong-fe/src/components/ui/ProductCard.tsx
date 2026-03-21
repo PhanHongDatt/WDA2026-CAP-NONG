@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, Minus, Plus, ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { shimmer } from "@/lib/image-placeholder";
 import type { Product } from "@/types/product";
 
 interface ProductCardProps {
@@ -34,7 +35,7 @@ export default function ProductCard({
 
       {/* Wishlist Button (seasonal only) */}
       {variant === "seasonal" && (
-        <button aria-label="Thêm vào yêu thích" className="absolute top-2 right-2 z-10 text-gray-400 hover:text-accent">
+        <button type="button" aria-label="Thêm vào yêu thích" className="absolute top-2 right-2 z-10 text-gray-400 hover:text-accent">
           <Heart className="w-6 h-6" />
         </button>
       )}
@@ -48,6 +49,8 @@ export default function ProductCard({
             width={400}
             height={400}
             className="w-full h-full object-cover rounded-lg"
+            placeholder="blur"
+            blurDataURL={shimmer(400, 400)}
           />
         </div>
       </Link>
@@ -107,12 +110,12 @@ export default function ProductCard({
 
       {/* CTA */}
       {variant === "latest" ? (
-        <button className="w-full py-2 bg-primary text-white rounded-lg font-bold hover:opacity-90 transition-opacity">
+        <button type="button" className="w-full py-2 bg-primary text-white rounded-lg font-bold hover:opacity-90 transition-opacity">
           Thêm vào giỏ
         </button>
       ) : (
         <div className="flex items-center border border-gray-200 rounded overflow-hidden">
-          <button aria-label="Giảm số lượng" className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-r border-gray-200 text-gray-600">
+          <button type="button" aria-label="Giảm số lượng" className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-r border-gray-200 text-gray-600">
             −
           </button>
           <input
@@ -122,7 +125,7 @@ export default function ProductCard({
             defaultValue="1"
             readOnly
           />
-          <button aria-label="Tăng số lượng" className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-l border-gray-200 text-gray-600">
+          <button type="button" aria-label="Tăng số lượng" className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-l border-gray-200 text-gray-600">
             +
           </button>
         </div>

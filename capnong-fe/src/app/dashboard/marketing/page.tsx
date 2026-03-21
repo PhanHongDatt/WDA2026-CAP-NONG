@@ -56,6 +56,7 @@ export default function MarketingLabPage() {
   const [generated, setGenerated] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [bgState, setBgState] = useState<"idle" | "processing" | "done">("idle");
+  const [posterTemplate, setPosterTemplate] = useState<string | null>(null);
 
   const handleGenerate = () => {
     setGenerated(true);
@@ -97,7 +98,7 @@ export default function MarketingLabPage() {
       {/* Tabs */}
       <div className="flex gap-2 mb-8 overflow-x-auto scrollbar-hide">
         {tabs.map((tab) => (
-          <button
+          <button type="button"
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
@@ -141,7 +142,7 @@ export default function MarketingLabPage() {
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
-              <button
+              <button type="button"
                 onClick={handleGenerate}
                 className="w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
               >
@@ -164,7 +165,7 @@ export default function MarketingLabPage() {
                     >
                       {style.label}
                     </span>
-                    <button
+                    <button type="button"
                       onClick={() =>
                         handleCopy(
                           style.id,
@@ -235,11 +236,11 @@ export default function MarketingLabPage() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <button className="flex-1 bg-primary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary-light transition-colors">
+                <button type="button" className="flex-1 bg-primary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary-light transition-colors">
                   <Download className="w-4 h-4" />
                   Tải ảnh đã tách nền
                 </button>
-                <button
+                <button type="button"
                   onClick={() => setBgState("idle")}
                   className="border border-border px-4 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
                 >
@@ -251,51 +252,78 @@ export default function MarketingLabPage() {
         </div>
       )}
 
-      {/* Ad Creative */}
+      {/* Ad Creative — 3 Poster Templates */}
       {activeTab === "creative" && (
-        <div className="bg-white border border-border rounded-xl p-6 shadow-sm">
-          <h3 className="font-bold text-lg mb-4">
-            Tạo ấn phẩm quảng cáo bằng AI
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="marketing-product-name" className="block text-sm font-medium mb-2">
-                Tên sản phẩm
-              </label>
-              <input
-                id="marketing-product-name"
-                type="text"
-                defaultValue="Cam Sành Bến Tre"
-                className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Phong cách thiết kế
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: "Tối giản", emoji: "✨" },
-                  { label: "Sinh động", emoji: "🎨" },
-                  { label: "Chuyên nghiệp", emoji: "💼" },
-                ].map((s) => (
-                  <button
-                    key={s.label}
-                    className="p-3 rounded-xl border-2 border-border hover:border-primary text-center transition-colors"
-                  >
-                    <span className="text-2xl block mb-1">{s.emoji}</span>
-                    <span className="text-xs font-medium">{s.label}</span>
-                  </button>
-                ))}
+        <div className="space-y-6">
+          <div className="bg-white border border-border rounded-xl p-6 shadow-sm">
+            <h3 className="font-bold text-lg mb-4">
+              Tạo ấn phẩm quảng cáo bằng AI
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="marketing-product-name" className="block text-sm font-medium mb-2">
+                  Tên sản phẩm
+                </label>
+                <input
+                  id="marketing-product-name"
+                  type="text"
+                  defaultValue="Cam Sành Bến Tre"
+                  className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-3">
+                  Chọn template poster (bắt buộc)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[
+                    { id: "minimal", label: "Tối giản", emoji: "✨", bg: "bg-white", accent: "border-gray-300", desc: "Nền trắng, typography sạch, focus vào sản phẩm" },
+                    { id: "vibrant", label: "Sống động", emoji: "🎨", bg: "bg-gradient-to-br from-orange-100 to-yellow-50", accent: "border-orange-300", desc: "Màu nóng, dynamic layout, bong bóng trang trí" },
+                    { id: "pro", label: "Chuyên nghiệp", emoji: "💼", bg: "bg-gradient-to-br from-gray-800 to-gray-900", accent: "border-gray-600", desc: "Nền tối, gold accent, dành cho B2B" },
+                  ].map((tmpl) => (
+                    <button type="button"
+                      key={tmpl.id}
+                      onClick={() => setPosterTemplate(tmpl.id)}
+                      className={`relative p-0 rounded-xl border-2 overflow-hidden transition-all ${posterTemplate === tmpl.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : `${tmpl.accent} hover:border-primary/50`}`}
+                    >
+                      {/* Mini poster preview */}
+                      <div className={`${tmpl.bg} h-32 flex flex-col items-center justify-center p-3`}>
+                        <span className="text-3xl mb-1">{tmpl.emoji}</span>
+                        <span className={`text-[10px] font-bold ${tmpl.id === "pro" ? "text-yellow-400" : "text-gray-600"}`}>CAM SÀNH BẾN TRE</span>
+                        <span className={`text-[8px] ${tmpl.id === "pro" ? "text-gray-400" : "text-gray-500"}`}>35.000đ/kg</span>
+                      </div>
+                      <div className="p-2 bg-white dark:bg-surface text-center">
+                        <span className="text-xs font-bold">{tmpl.label}</span>
+                        <p className="text-[10px] text-foreground-muted mt-0.5">{tmpl.desc}</p>
+                      </div>
+                      {posterTemplate === tmpl.id && (
+                        <div className="absolute top-2 right-2 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center">
+                          <Check className="w-3 h-3" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="marketing-upload" className="block text-sm font-medium mb-2">
+                  Ảnh sản phẩm (để AI tách nền)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 dark:border-border rounded-xl p-6 text-center hover:border-primary transition-colors cursor-pointer">
+                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-foreground-muted">Kéo thả hoặc click để chọn ảnh</p>
+                </div>
+              </div>
+
+              <button type="button" disabled={!posterTemplate} className="w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50">
+                <Sparkles className="w-5 h-5" />
+                Tạo ấn phẩm bằng GenAI
+              </button>
+              <p className="text-xs text-foreground-muted text-center">
+                AI sẽ tách nền → generate nội dung → map vào template → xuất file PNG (html2canvas)
+              </p>
             </div>
-            <button className="w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
-              <Sparkles className="w-5 h-5" />
-              Tạo ấn phẩm bằng GenAI
-            </button>
-            <p className="text-xs text-foreground-muted text-center">
-              Tính năng đang phát triển — sẽ tích hợp Gemini Vision + Canvas API
-            </p>
           </div>
         </div>
       )}

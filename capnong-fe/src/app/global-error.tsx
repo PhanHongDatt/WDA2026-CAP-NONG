@@ -25,7 +25,7 @@ export default function GlobalError({
             Cạp Nông đang được cập nhật để phục vụ bạn tốt hơn. Vui lòng thử
             lại sau ít phút!
           </p>
-          <button
+          <button type="button"
             onClick={reset}
             className="inline-flex items-center justify-center gap-2 bg-green-700 text-white font-bold px-6 py-3 rounded-xl hover:bg-green-600 transition-all"
           >

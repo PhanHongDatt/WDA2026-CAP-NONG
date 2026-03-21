@@ -81,7 +81,7 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
             Nhấn nút micro và mô tả sản phẩm bằng giọng nói. AI sẽ tự động
             bóc tách tên, giá, sản lượng, mô tả...
           </p>
-          <button
+          <button type="button"
             onClick={startRecording}
             aria-label="Bắt đầu thu âm"
             className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto hover:bg-primary-light transition-all shadow-lg shadow-primary/30 hover:scale-105 active:scale-95"
@@ -114,7 +114,7 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
             {formatTime(duration)}
           </p>
 
-          <button
+          <button type="button"
             onClick={stopRecording}
             aria-label="Dừng thu âm"
             className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto hover:bg-red-600 transition-all shadow-lg shadow-accent/30 animate-pulse"
@@ -147,7 +147,7 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
               AI đã điền xong form! Kiểm tra và xác nhận bên dưới.
             </span>
           </div>
-          <button
+          <button type="button"
             onClick={reset}
             className="text-xs text-foreground-muted hover:text-primary flex items-center gap-1"
           >

@@ -2,6 +2,9 @@
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import QueryProvider from "@/components/layout/QueryProvider";
+import { ToastProvider } from "@/components/ui/Toast";
+import ServiceWorkerRegistration from "@/components/layout/ServiceWorkerRegistration";
 import type { ReactNode } from "react";
 
 /**
@@ -10,10 +13,15 @@ import type { ReactNode } from "react";
  */
 export default function ClientProviders({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        {children}
-      </ThemeProvider>
-    </AuthProvider>
+    <QueryProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <ServiceWorkerRegistration />
+            {children}
+          </ToastProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryProvider>
   );
 }

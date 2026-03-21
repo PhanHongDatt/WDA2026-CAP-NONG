@@ -25,6 +25,9 @@ export const metadata: Metadata = {
   },
 };
 
+// ISR — Revalidate every 60s for fresh product data (Paper #1: Next.js ISR)
+export const revalidate = 60;
+
 // JSON-LD Structured Data — WebSite + Organization
 const jsonLd = {
   "@context": "https://schema.org",
@@ -108,7 +111,7 @@ export default function HomePage() {
               <div className="flex gap-3">
                 {["Tất cả", "Trái cây", "Rau củ", "Thủy hải sản"].map(
                   (cat, i) => (
-                    <button
+                    <button type="button"
                       key={cat}
                       className={
                         i === 0

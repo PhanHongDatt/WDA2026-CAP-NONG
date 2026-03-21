@@ -1,22 +1,114 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { Users, TrendingUp, Plus, Package, Settings } from "lucide-react";
+import {
+  Users,
+  TrendingUp,
+  Plus,
+  Package,
+  Settings,
+  CheckCircle2,
+  XCircle,
+  UserPlus,
+  Calendar,
+  Trash2,
+} from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import ProgressBar from "@/components/ui/ProgressBar";
 
+/* ─── Types ─── */
+type ManageTab = "overview" | "members" | "bundles" | "seasonal";
+
+/* ─── Mock Data ─── */
 const MOCK_MEMBERS = [
-  { id: 1, name: "Bác Ba Nhà Vườn", product: "Cam sành", qty: 200, share: "20%" },
-  { id: 2, name: "Chú Tư Bến Tre", product: "Bưởi da xanh", qty: 350, share: "35%" },
-  { id: 3, name: "Cô Năm Vĩnh Long", product: "Cam sành", qty: 150, share: "15%" },
-  { id: 4, name: "Anh Sáu Cần Thơ", product: "Xoài cát", qty: 300, share: "30%" },
+  { id: "m-001", name: "Bác Ba Nhà Vườn", phone: "0902222222", product: "Cam sành", qty: 200, share: "20%", joined_at: "2026-01-15" },
+  { id: "m-002", name: "Chú Tư Bến Tre", phone: "0903333333", product: "Bưởi da xanh", qty: 350, share: "35%", joined_at: "2026-01-20" },
+  { id: "m-003", name: "Cô Năm Vĩnh Long", phone: "0907777777", product: "Cam sành", qty: 150, share: "15%", joined_at: "2026-02-01" },
+  { id: "m-004", name: "Anh Sáu Cần Thơ", phone: "0908888888", product: "Xoài cát", qty: 300, share: "30%", joined_at: "2026-02-18" },
 ];
 
+type JoinStatus = "PENDING" | "APPROVED" | "REJECTED";
+const MOCK_JOIN_REQUESTS: {
+  id: string; name: string; phone: string; reason: string; created_at: string; status: JoinStatus;
+}[] = [
+  { id: "jr-001", name: "Trần Văn Minh", phone: "0911111111", reason: "Muốn tham gia gom đơn bán sỉ cam sành", created_at: "2026-03-19T10:00:00Z", status: "PENDING" },
+  { id: "jr-002", name: "Lê Thị Hồng", phone: "0922222222", reason: "Có 2 hecta vườn bưởi, muốn hợp tác tiêu thụ", created_at: "2026-03-20T08:00:00Z", status: "PENDING" },
+];
+
+type BundleStatus = "OPEN" | "FULL" | "CONFIRMED" | "EXPIRED" | "CANCELLED";
+const MOCK_BUNDLES: {
+  id: string; product_name: string; target_kg: number; current_kg: number;
+  price_per_kg: number; deadline: string; status: BundleStatus; pledges_count: number;
+}[] = [
+  { id: "b-001", product_name: "Cam Sành Hà Giang", target_kg: 500, current_kg: 350, price_per_kg: 35000, deadline: "2026-04-01", status: "OPEN", pledges_count: 3 },
+  { id: "b-002", product_name: "Bưởi Da Xanh Bến Tre", target_kg: 300, current_kg: 300, price_per_kg: 55000, deadline: "2026-03-25", status: "FULL", pledges_count: 4 },
+  { id: "b-003", product_name: "Xoài Cát Hòa Lộc", target_kg: 1000, current_kg: 200, price_per_kg: 45000, deadline: "2026-03-15", status: "EXPIRED", pledges_count: 2 },
+];
+
+const MOCK_SEASONAL = [
+  { id: 1, category: "Trái cây", start_month: 3, end_month: 9 },
+  { id: 2, category: "Rau củ", start_month: 10, end_month: 2 },
+];
+const MONTHS = ["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"];
+
+const TAB_CONFIG = [
+  { key: "overview" as ManageTab, label: "Tổng quan", icon: TrendingUp },
+  { key: "members" as ManageTab, label: "Thành viên", icon: Users },
+  { key: "bundles" as ManageTab, label: "Bundle gom đơn", icon: Package },
+  { key: "seasonal" as ManageTab, label: "Mùa vụ", icon: Calendar },
+];
+
+function statusBadge(status: BundleStatus) {
+  switch (status) {
+    case "OPEN": return "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
+    case "FULL": return "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
+    case "CONFIRMED": return "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+    case "EXPIRED": return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
+    case "CANCELLED": return "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300";
+  }
+}
+function statusLabel(status: BundleStatus) {
+  switch (status) {
+    case "OPEN": return "🟢 Đang mở";
+    case "FULL": return "🟡 Đủ SL";
+    case "CONFIRMED": return "✅ Đã xác nhận";
+    case "EXPIRED": return "⏰ Hết hạn";
+    case "CANCELLED": return "❌ Đã hủy";
+  }
+}
+
+/* ═════════════════════════════════════════ */
 function CoopManageContent() {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<ManageTab>("overview");
+  const [joinRequests, setJoinRequests] = useState(MOCK_JOIN_REQUESTS);
+  const [bundles, setBundles] = useState(MOCK_BUNDLES);
+  const [seasonalConfig, setSeasonalConfig] = useState(MOCK_SEASONAL);
+  const [showNewBundle, setShowNewBundle] = useState(false);
+
+  /* join request actions */
+  const handleApproveJoin = (id: string) => {
+    setJoinRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "APPROVED" as JoinStatus } : r));
+  };
+  const handleRejectJoin = (id: string) => {
+    setJoinRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "REJECTED" as JoinStatus } : r));
+  };
+
+  /* bundle actions */
+  const handleConfirmBundle = (id: string) => {
+    setBundles((prev) => prev.map((b) => b.id === id ? { ...b, status: "CONFIRMED" as BundleStatus } : b));
+  };
+  const handleCancelBundle = (id: string) => {
+    setBundles((prev) => prev.map((b) => b.id === id ? { ...b, status: "CANCELLED" as BundleStatus } : b));
+  };
+
+  const pendingJoin = joinRequests.filter((r) => r.status === "PENDING").length;
+  const openBundles = bundles.filter((b) => b.status === "OPEN" || b.status === "FULL").length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -27,19 +119,15 @@ function CoopManageContent() {
             {user?.htx_name || "HTX Trái Cây"} — Xin chào, {user?.full_name}
           </p>
         </div>
-        <button className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity">
-          <Plus className="w-5 h-5" />
-          Tạo Pool Gom Đơn
-        </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Thành viên", value: "4", icon: Users, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
-          { label: "Pool đang mở", value: "2", icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
+          { label: "Thành viên", value: MOCK_MEMBERS.length, icon: Users, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
+          { label: "Yêu cầu GN", value: pendingJoin, icon: UserPlus, color: "text-purple-600 bg-purple-50 dark:bg-purple-900/30" },
+          { label: "Bundle đang mở", value: openBundles, icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
           { label: "Doanh thu tháng", value: formatCurrency(45600000), icon: TrendingUp, color: "text-success bg-green-50 dark:bg-green-900/30" },
-          { label: "Đơn hoàn thành", value: "12", icon: Settings, color: "text-warning bg-yellow-50 dark:bg-yellow-900/30" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white dark:bg-surface rounded-xl p-5 border border-gray-100 dark:border-border">
             <div className={`w-10 h-10 rounded-lg ${stat.color} flex items-center justify-center mb-3`}>
@@ -51,41 +139,260 @@ function CoopManageContent() {
         ))}
       </div>
 
-      {/* Members Table */}
-      <div className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-border flex justify-between items-center">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-foreground">Danh sách Thành viên</h2>
-          <button className="text-sm text-primary font-medium hover:underline">+ Thêm thành viên</button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-background-light text-left">
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Tên</th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Sản phẩm</th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Sản lượng (kg)</th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Tỷ lệ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-border">
-              {MOCK_MEMBERS.map((m) => (
-                <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-foreground">{m.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-foreground-muted">{m.product}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-foreground-muted">{m.qty}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-primary">{m.share}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-border">
+        <nav className="flex gap-0 overflow-x-auto">
+          {TAB_CONFIG.map((tab) => (
+            <button type="button"
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab.key
+                  ? "border-primary text-primary"
+                  : "border-transparent text-gray-500 dark:text-foreground-muted hover:text-gray-700 dark:hover:text-foreground"
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+              {tab.key === "members" && pendingJoin > 0 && (
+                <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingJoin}</span>
+              )}
+            </button>
+          ))}
+        </nav>
       </div>
+
+      {/* ═══ Tab: Tổng quan ═══ */}
+      {activeTab === "overview" && (
+        <div className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-border">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-foreground">Danh sách Thành viên</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-background-light text-left">
+                  <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Tên</th>
+                  <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">SĐT</th>
+                  <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Sản phẩm</th>
+                  <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">SL (kg)</th>
+                  <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Tỷ lệ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-border">
+                {MOCK_MEMBERS.map((m) => (
+                  <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-foreground">{m.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-foreground-muted">{m.phone}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-foreground-muted">{m.product}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-foreground-muted">{m.qty}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-primary">{m.share}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Tab: Thành viên (Duyệt yêu cầu) ═══ */}
+      {activeTab === "members" && (
+        <div className="space-y-4">
+          <h2 className="font-bold text-gray-900 dark:text-foreground">
+            Yêu cầu gia nhập HTX ({joinRequests.filter(r => r.status === "PENDING").length} chờ duyệt)
+          </h2>
+          {joinRequests.map((req) => (
+            <div key={req.id} className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-5">
+              <div className="flex flex-col sm:flex-row justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <p className="font-bold text-gray-900 dark:text-foreground">{req.name}</p>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      req.status === "PENDING" ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                      : req.status === "APPROVED" ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                      : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    }`}>
+                      {req.status === "PENDING" ? "⏳ Chờ" : req.status === "APPROVED" ? "✅ Đã duyệt" : "❌ Từ chối"}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-foreground-muted">📱 {req.phone}</p>
+                  <p className="text-sm text-gray-600 dark:text-foreground-muted">&quot;{req.reason}&quot;</p>
+                  <p className="text-xs text-gray-400">{new Date(req.created_at).toLocaleDateString("vi-VN")}</p>
+                </div>
+                {req.status === "PENDING" && (
+                  <div className="flex items-start gap-2 shrink-0">
+                    <button type="button" onClick={() => handleApproveJoin(req.id)} className="flex items-center gap-1.5 bg-success text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+                      <CheckCircle2 className="w-4 h-4" /> Duyệt
+                    </button>
+                    <button type="button" onClick={() => handleRejectJoin(req.id)} className="flex items-center gap-1.5 bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+                      <XCircle className="w-4 h-4" /> Từ chối
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {joinRequests.length === 0 && (
+            <div className="text-center py-12 text-foreground-muted">
+              <UserPlus className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>Chưa có yêu cầu gia nhập nào</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ Tab: Bundle gom đơn ═══ */}
+      {activeTab === "bundles" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="font-bold text-gray-900 dark:text-foreground">Quản lý Bundle</h2>
+            <button type="button"
+              onClick={() => setShowNewBundle(!showNewBundle)}
+              className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4" /> Tạo Bundle mới
+            </button>
+          </div>
+
+          {/* New Bundle Form */}
+          {showNewBundle && (
+            <div className="bg-white dark:bg-surface rounded-xl border-2 border-primary/20 p-6 space-y-4">
+              <h3 className="font-bold text-sm text-gray-900 dark:text-foreground">🆕 Tạo Bundle gom đơn mới</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="bundle-product" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Loại nông sản</label>
+                  <input id="bundle-product" type="text" placeholder="VD: Cam Sành Hà Giang" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label htmlFor="bundle-target" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Sản lượng mục tiêu (kg)</label>
+                  <input id="bundle-target" type="number" placeholder="500" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label htmlFor="bundle-price" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Giá/kg (VNĐ)</label>
+                  <input id="bundle-price" type="number" placeholder="35000" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label htmlFor="bundle-deadline" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Deadline gom</label>
+                  <input id="bundle-deadline" type="date" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">Tạo Bundle</button>
+                <button type="button" onClick={() => setShowNewBundle(false)} className="border border-gray-200 dark:border-border px-6 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-foreground-muted hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">Hủy</button>
+              </div>
+            </div>
+          )}
+
+          {/* Bundle Cards */}
+          {bundles.map((bundle) => {
+            const pct = Math.min(100, Math.round((bundle.current_kg / bundle.target_kg) * 100));
+            return (
+              <div key={bundle.id} className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-5">
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-bold text-gray-900 dark:text-foreground">{bundle.product_name}</h3>
+                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadge(bundle.status)}`}>
+                        {statusLabel(bundle.status)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 dark:text-foreground-muted">
+                      <span>🎯 {bundle.current_kg}/{bundle.target_kg} kg</span>
+                      <span>💰 {formatCurrency(bundle.price_per_kg)}/kg</span>
+                      <span>👥 {bundle.pledges_count} farmer</span>
+                      <span>📅 Deadline: {new Date(bundle.deadline).toLocaleDateString("vi-VN")}</span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                      <ProgressBar
+                        value={pct}
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          pct >= 100 ? "bg-success" : "bg-gradient-to-r from-primary to-primary-light"
+                        }`}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Tổng giá trị: {formatCurrency(bundle.current_kg * bundle.price_per_kg)} / {formatCurrency(bundle.target_kg * bundle.price_per_kg)}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-start gap-2 shrink-0">
+                    {bundle.status === "FULL" && (
+                      <button type="button" onClick={() => handleConfirmBundle(bundle.id)} className="flex items-center gap-1.5 bg-success text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+                        <CheckCircle2 className="w-4 h-4" /> Xác nhận
+                      </button>
+                    )}
+                    {(bundle.status === "OPEN" || bundle.status === "FULL") && (
+                      <button type="button" onClick={() => handleCancelBundle(bundle.id)} className="flex items-center gap-1.5 text-red-500 border border-red-200 dark:border-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <XCircle className="w-4 h-4" /> Hủy
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ═══ Tab: Mùa vụ vùng HTX ═══ */}
+      {activeTab === "seasonal" && (
+        <div className="space-y-4">
+          <h2 className="font-bold text-gray-900 dark:text-foreground">
+            Cấu hình mùa vụ — {user?.htx_name || "HTX"} ({MOCK_MEMBERS[0]?.product && "Bến Tre"})
+          </h2>
+          <div className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-background-light text-left">
+                    <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Danh mục</th>
+                    <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Thời gian</th>
+                    <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Trực quan</th>
+                    <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase text-right">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-border">
+                  {seasonalConfig.map((cfg) => (
+                    <tr key={cfg.id} className="hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-foreground">{cfg.category}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-foreground-muted">{MONTHS[cfg.start_month - 1]} → {MONTHS[cfg.end_month - 1]}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-[2px]">
+                          {Array.from({ length: 12 }, (_, i) => {
+                            const m = i + 1;
+                            const inSeason = cfg.start_month <= cfg.end_month
+                              ? m >= cfg.start_month && m <= cfg.end_month
+                              : m >= cfg.start_month || m <= cfg.end_month;
+                            return <div key={i} title={MONTHS[i]} className={`w-4 h-4 rounded-sm ${inSeason ? "bg-primary" : "bg-gray-200 dark:bg-gray-700"}`} />;
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button type="button" aria-label="Xóa cấu hình mùa vụ" onClick={() => setSeasonalConfig((prev) => prev.filter((s) => s.id !== cfg.id))} className="text-red-400 hover:text-red-600 text-sm transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /**
- * /cooperative/manage — Chỉ HTX_MANAGER mới truy cập được
+ * /cooperative/manage — Chỉ HTX_MANAGER mới truy cập
+ * UC-07: Tạo HTX (implicit — đã tạo)
+ * UC-09: Duyệt/Từ chối thành viên HTX
+ * UC-29: Tạo Bundle gom đơn
+ * UC-34: Confirm Bundle
+ * UC-36: Config mùa vụ vùng HTX
  */
 export default function CoopManagePage() {
   return (

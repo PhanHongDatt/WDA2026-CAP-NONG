@@ -18,7 +18,7 @@ export default function FontSizeToggle() {
   return (
     <div className="flex items-center border border-gray-200 dark:border-border rounded-lg overflow-hidden">
       {sizes.map((s) => (
-        <button
+        <button type="button"
           key={s.key}
           onClick={() => setFontSize(s.key)}
           className={`px-2.5 py-1.5 text-sm font-medium transition-colors ${

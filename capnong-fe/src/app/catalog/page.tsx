@@ -39,7 +39,7 @@ export default function CatalogPage() {
       {/* Category Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-3 scrollbar-hide mb-6">
         {CATEGORIES.map((cat) => (
-          <button
+          <button type="button"
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
             className={
@@ -54,7 +54,7 @@ export default function CatalogPage() {
       </div>
 
       {/* Filter Toggle Mobile */}
-      <button
+      <button type="button"
         onClick={() => setShowFilters(!showFilters)}
         className="md:hidden flex items-center gap-2 mb-4 text-sm font-medium text-foreground-muted border border-border rounded-lg px-4 py-2"
       >
@@ -144,7 +144,7 @@ export default function CatalogPage() {
 
       {/* Pagination */}
       <div className="mt-12 flex flex-col items-center gap-4">
-        <button className="group flex items-center gap-2 rounded-xl bg-white border-2 border-primary/20 px-8 py-3 text-sm font-bold text-primary hover:bg-primary hover:text-white transition-all shadow-md shadow-primary/5">
+        <button type="button" className="group flex items-center gap-2 rounded-xl bg-white border-2 border-primary/20 px-8 py-3 text-sm font-bold text-primary hover:bg-primary hover:text-white transition-all shadow-md shadow-primary/5">
           Xem thêm sản phẩm
           <ChevronDown className="w-4 h-4 transition-transform group-hover:translate-y-0.5" />
         </button>

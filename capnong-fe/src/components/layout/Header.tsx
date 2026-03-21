@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import FontSizeToggle from "@/components/ui/FontSizeToggle";
+import NotificationBell from "@/components/ui/NotificationBell";
 
 /**
  * Header — Role-based UI
@@ -62,7 +63,7 @@ export default function Header() {
             <div className="flex items-center gap-1 text-xs opacity-80">
               <span>Demo:</span>
               {["buyer", "farmer", "htx_member", "htx_manager", "admin"].map((r) => (
-                <button
+                <button type="button"
                   key={r}
                   onClick={() => loginAs(r)}
                   className={`px-1.5 py-0.5 rounded text-[10px] uppercase transition-colors ${
@@ -75,7 +76,7 @@ export default function Header() {
                 </button>
               ))}
               {isLoggedIn && (
-                <button onClick={logout} className="px-1.5 py-0.5 rounded text-[10px] hover:bg-white/20">
+                <button type="button" onClick={logout} className="px-1.5 py-0.5 rounded text-[10px] hover:bg-white/20">
                   ✕
                 </button>
               )}
@@ -104,7 +105,7 @@ export default function Header() {
           </Link>
 
           {/* Category Toggle */}
-          <button aria-label="Danh mục sản phẩm" className="hidden lg:flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-border rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover shrink-0 transition-colors">
+          <button type="button" aria-label="Danh mục sản phẩm" className="hidden lg:flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-border rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover shrink-0 transition-colors">
             <Menu className="w-5 h-5" />
             <span className="font-medium text-gray-700 dark:text-foreground">Danh mục</span>
           </button>
@@ -117,7 +118,7 @@ export default function Header() {
               placeholder="Tìm kiếm nông sản sạch..."
               type="text"
             />
-            <button aria-label="Tìm kiếm" className="absolute right-1 top-1 bottom-1 px-5 bg-primary text-white rounded-full hover:opacity-90 transition-all">
+            <button type="button" aria-label="Tìm kiếm" className="absolute right-1 top-1 bottom-1 px-5 bg-primary text-white rounded-full hover:opacity-90 transition-all">
               <Search className="w-5 h-5" />
             </button>
           </div>
@@ -136,6 +137,11 @@ export default function Header() {
                 <Heart className="w-6 h-6 text-gray-600 dark:text-foreground-muted hover:text-primary transition-colors" />
               </div>
             )}
+
+            {/* Notifications — only logged in */}
+            <div className="hidden md:block">
+              <NotificationBell />
+            </div>
 
             {/* Cart — only buyers & guests */}
             {(!isLoggedIn || user?.role === "BUYER") && (
@@ -167,7 +173,7 @@ export default function Header() {
             ) : user ? (
               /* Logged in — Avatar Dropdown */
               <div className="relative hidden md:block" ref={userMenuRef}>
-                <button
+                <button type="button"
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors"
                 >
@@ -231,15 +237,23 @@ export default function Header() {
                       </Link>
                     )}
 
+                    {/* Admin link */}
+                    {isAdmin && (
+                      <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-surface-hover text-red-500 font-medium transition-colors" onClick={() => setUserMenuOpen(false)}>
+                        <Shield className="w-4 h-4" />
+                        <span>Quản trị hệ thống</span>
+                      </Link>
+                    )}
+
                     {/* Account */}
-                    <Link href="/account" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-surface-hover text-gray-700 dark:text-foreground transition-colors" onClick={() => setUserMenuOpen(false)}>
+                    <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-surface-hover text-gray-700 dark:text-foreground transition-colors" onClick={() => setUserMenuOpen(false)}>
                       <User className="w-4 h-4" />
                       <span>Tài khoản</span>
                     </Link>
 
                     {/* Logout */}
                     <div className="border-t border-gray-100 dark:border-border mt-1 pt-1">
-                      <button
+                      <button type="button"
                         onClick={() => { logout(); setUserMenuOpen(false); }}
                         className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-surface-hover text-red-500 w-full transition-colors"
                       >
@@ -253,7 +267,7 @@ export default function Header() {
             ) : null}
 
             {/* Mobile menu toggle */}
-            <button
+            <button type="button"
               className="md:hidden p-2"
               aria-label={mobileMenuOpen ? "Đóng menu" : "Mở menu"}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -278,7 +292,7 @@ export default function Header() {
                 placeholder="Tìm kiếm nông sản sạch..."
                 type="text"
               />
-              <button aria-label="Tìm kiếm" className="absolute right-1 top-1 bottom-1 px-4 bg-primary text-white rounded-full">
+              <button type="button" aria-label="Tìm kiếm" className="absolute right-1 top-1 bottom-1 px-4 bg-primary text-white rounded-full">
                 <Search className="w-5 h-5" />
               </button>
             </div>
@@ -335,7 +349,7 @@ export default function Header() {
                       🛡️ Quản lý HTX
                     </Link>
                   )}
-                  <button
+                  <button type="button"
                     onClick={() => { logout(); setMobileMenuOpen(false); }}
                     className="text-left text-red-500 font-medium"
                   >

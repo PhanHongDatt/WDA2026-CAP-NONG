@@ -2,13 +2,35 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Upload, Mic, Sparkles, Calendar, MapPin } from "lucide-react";
+import { ArrowLeft, Upload, Mic, Sparkles, Calendar, MapPin, AlertTriangle } from "lucide-react";
 import VoiceRecorder from "@/components/ui/VoiceRecorder";
 import AIRefiner from "@/components/ui/AIRefiner";
+
+/* Confidence per field (simulated) */
+const VOICE_CONFIDENCE: Record<string, number> = {
+  name: 0.95,
+  description: 0.88,
+  price: 0.55,
+  unit: 0.92,
+  qty: 0.60,
+  category: 0.85,
+};
 
 export default function NewProductPage() {
   const [images, setImages] = useState<string[]>([]);
   const [description, setDescription] = useState("");
+  const [voiceFilled, setVoiceFilled] = useState(false);
+
+  const handleVoiceFill = () => {
+    setVoiceFilled(true);
+    setDescription("Xoài Cát Hòa Lộc, trồng tại Tiền Giang, thu hoạch mùa hè. Ngọt thanh, thịt dày, ít xơ.");
+  };
+
+  const fieldClass = (fieldId: string) => {
+    if (!voiceFilled) return "border-border";
+    const conf = VOICE_CONFIDENCE[fieldId] ?? 1;
+    return conf < 0.7 ? "border-yellow-400 ring-2 ring-yellow-200" : "border-primary/40";
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -32,9 +54,29 @@ export default function NewProductPage() {
       </div>
 
       {/* AI Voice Input */}
-      <div className="mb-8">
+      <div className="mb-4">
         <VoiceRecorder />
       </div>
+
+      {/* Voice auto-fill button */}
+      {!voiceFilled && (
+        <button
+          type="button"
+          onClick={handleVoiceFill}
+          className="mb-6 flex items-center gap-2 text-sm text-primary font-medium hover:underline"
+        >
+          <Mic className="w-4 h-4" />
+          Demo: Tự động điền từ giọng nói (có confidence highlight)
+        </button>
+      )}
+      {voiceFilled && (
+        <div className="mb-6 flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-yellow-600 shrink-0" />
+          <p className="text-xs text-yellow-700 dark:text-yellow-300">
+            Các field viền <strong>vàng</strong> có confidence &lt; 0.7 — vui lòng xác nhận lại thủ công.
+          </p>
+        </div>
+      )}
 
       {/* Form */}
       <form className="space-y-6">
@@ -48,8 +90,9 @@ export default function NewProductPage() {
             <input
               id="new-product-name"
               type="text"
+              defaultValue={voiceFilled ? "Xoài Cát Hòa Lộc Tiền Giang" : ""}
               placeholder="Ví dụ: Xoài Cát Hòa Lộc Tiền Giang"
-              className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
+              className={`w-full px-4 py-3 text-sm border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none ${fieldClass("name")}`}
             />
           </div>
           <div>

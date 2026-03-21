@@ -58,7 +58,7 @@ export default function ShopProfilePage() {
               Gian hàng
             </h2>
           </div>
-          <button aria-label="Chia sẻ gian hàng" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <button type="button" aria-label="Chia sẻ gian hàng" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <Share2 className="w-5 h-5 text-foreground-muted" />
           </button>
         </div>
@@ -123,7 +123,7 @@ export default function ShopProfilePage() {
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold">Hình ảnh vườn</h3>
-                <button className="text-primary font-bold text-sm hover:underline">
+                <button type="button" className="text-primary font-bold text-sm hover:underline">
                   Xem tất cả
                 </button>
               </div>
@@ -150,7 +150,7 @@ export default function ShopProfilePage() {
             {/* Tabs & Products */}
             <section className="mt-10">
               <div className="border-b border-border flex gap-8 mb-6 overflow-x-auto">
-                <button
+                <button type="button"
                   onClick={() => setActiveTab("products")}
                   className={`pb-3 border-b-2 font-medium text-base whitespace-nowrap transition-colors ${
                     activeTab === "products"
@@ -160,7 +160,7 @@ export default function ShopProfilePage() {
                 >
                   Sản phẩm
                 </button>
-                <button
+                <button type="button"
                   onClick={() => setActiveTab("reviews")}
                   className={`pb-3 border-b-2 font-medium text-base whitespace-nowrap transition-colors ${
                     activeTab === "reviews"
@@ -233,7 +233,7 @@ export default function ShopProfilePage() {
       </div>
 
       {/* Floating Contact Button */}
-      <button className="fixed bottom-6 right-6 z-40 bg-primary hover:bg-primary-light text-white flex items-center gap-2 px-6 py-3 rounded-full shadow-2xl transition-transform active:scale-95">
+      <button type="button" className="fixed bottom-6 right-6 z-40 bg-primary hover:bg-primary-light text-white flex items-center gap-2 px-6 py-3 rounded-full shadow-2xl transition-transform active:scale-95">
         <MessageCircle className="w-5 h-5" />
         <span className="font-bold">Liên hệ</span>
       </button>

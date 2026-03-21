@@ -70,10 +70,10 @@ export default function ProductDetailPage() {
             </h1>
           </div>
           <div className="flex gap-2">
-            <button aria-label="Chia sẻ" className="flex items-center justify-center rounded-full w-10 h-10 bg-gray-100 text-foreground-muted hover:bg-primary/10 transition-colors">
+            <button type="button" aria-label="Chia sẻ" className="flex items-center justify-center rounded-full w-10 h-10 bg-gray-100 text-foreground-muted hover:bg-primary/10 transition-colors">
               <Share2 className="w-5 h-5" />
             </button>
-            <button aria-label="Thêm vào yêu thích" className="flex items-center justify-center rounded-full w-10 h-10 bg-gray-100 text-foreground-muted hover:bg-red-50 group transition-colors">
+            <button type="button" aria-label="Thêm vào yêu thích" className="flex items-center justify-center rounded-full w-10 h-10 bg-gray-100 text-foreground-muted hover:bg-red-50 group transition-colors">
               <Heart className="w-5 h-5 group-hover:text-red-500" />
             </button>
           </div>
@@ -102,7 +102,7 @@ export default function ProductDetailPage() {
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {THUMBNAILS.map((thumb, i) => (
-                <button
+                <button type="button"
                   key={i}
                   onClick={() => setSelectedImage(i)}
                   aria-label={`Xem ảnh ${i + 1}`}
@@ -207,7 +207,7 @@ export default function ProductDetailPage() {
                 </p>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center border border-border rounded-lg overflow-hidden bg-white">
-                    <button
+                    <button type="button"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       aria-label="Giảm số lượng"
                       className="p-2 hover:bg-gray-50 text-foreground-muted"
@@ -217,7 +217,7 @@ export default function ProductDetailPage() {
                     <span className="px-4 font-bold min-w-[3rem] text-center">
                       {quantity}
                     </span>
-                    <button
+                    <button type="button"
                       onClick={() => setQuantity(quantity + 1)}
                       aria-label="Tăng số lượng"
                       className="p-2 hover:bg-gray-50 text-foreground-muted"
@@ -231,11 +231,11 @@ export default function ProductDetailPage() {
                 </div>
               </div>
               <div className="flex gap-4">
-                <button className="flex-1 border-2 border-primary text-primary font-bold py-4 rounded-xl hover:bg-primary/5 transition-all flex items-center justify-center gap-2">
+                <button type="button" className="flex-1 border-2 border-primary text-primary font-bold py-4 rounded-xl hover:bg-primary/5 transition-all flex items-center justify-center gap-2">
                   <ShoppingCart className="w-5 h-5" />
                   Thêm vào giỏ
                 </button>
-                <button className="flex-[1.5] bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary-light transition-all shadow-lg shadow-primary/20">
+                <button type="button" className="flex-[1.5] bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary-light transition-all shadow-lg shadow-primary/20">
                   Mua ngay
                 </button>
               </div>
@@ -285,7 +285,7 @@ export default function ProductDetailPage() {
                 <div className="flex flex-wrap gap-2 content-center">
                   {["Tất cả", "5 sao (40)", "4 sao (2)", "Có hình ảnh (15)"].map(
                     (label, i) => (
-                      <button
+                      <button type="button"
                         key={label}
                         className={
                           i === 0
@@ -386,7 +386,7 @@ export default function ProductDetailPage() {
                     </div>
                   </div>
                 ))}
-                <button className="mt-2 w-full flex items-center justify-center gap-2 text-primary font-bold text-sm bg-white border border-primary/20 py-3 rounded-xl hover:bg-primary/5 transition-colors">
+                <button type="button" className="mt-2 w-full flex items-center justify-center gap-2 text-primary font-bold text-sm bg-white border border-primary/20 py-3 rounded-xl hover:bg-primary/5 transition-colors">
                   <QrCode className="w-5 h-5" />
                   Xem chứng chỉ đầy đủ
                 </button>
@@ -413,13 +413,36 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+      {/* Rule-based recommendations */}
+      <div className="max-w-5xl mx-auto px-4 mt-12">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-2xl font-black">💡 Có thể bạn thích</h3>
+          <Link
+            href="/catalog"
+            className="text-primary font-bold text-sm hover:underline"
+          >
+            Khám phá thêm
+          </Link>
+        </div>
+        <p className="text-sm text-foreground-muted mb-4">
+          Gợi ý dựa trên sản phẩm cùng khu vực &amp; mùa vụ đang hoạt động
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {MOCK_SEASONAL_PRODUCTS.slice(4, 8).length > 0
+            ? MOCK_SEASONAL_PRODUCTS.slice(4, 8).map((product) => (
+                <ProductCard key={product.id} product={product} variant="latest" />
+              ))
+            : MOCK_SEASONAL_PRODUCTS.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} variant="latest" />
+              ))}
+        </div>
+      </div>
 
-      {/* Mobile Bottom Action Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border p-4 grid grid-cols-2 gap-3 z-50">
-        <button className="border border-primary text-primary font-bold py-3 rounded-xl text-sm">
+        <button type="button" className="border border-primary text-primary font-bold py-3 rounded-xl text-sm">
           Giỏ hàng
         </button>
-        <button className="bg-primary text-white font-bold py-3 rounded-xl text-sm">
+        <button type="button" className="bg-primary text-white font-bold py-3 rounded-xl text-sm">
           Mua ngay
         </button>
       </div>

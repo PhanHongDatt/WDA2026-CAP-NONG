@@ -42,7 +42,7 @@ export default function FarmCard({ shop }: FarmCardProps) {
       </div>
 
       {/* CTA */}
-      <button className="ml-auto text-primary text-sm font-bold border border-primary px-3 py-1 rounded-md hover:bg-green-50 transition-colors shrink-0">
+      <button type="button" className="ml-auto text-primary text-sm font-bold border border-primary px-3 py-1 rounded-md hover:bg-green-50 transition-colors shrink-0">
         Ghé thăm
       </button>
     </Link>

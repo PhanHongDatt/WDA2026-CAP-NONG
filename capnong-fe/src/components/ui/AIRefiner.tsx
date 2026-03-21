@@ -71,14 +71,14 @@ export default function AIRefiner({
         </div>
 
         <div className="flex gap-2 justify-end">
-          <button
+          <button type="button"
             onClick={reject}
             className="flex items-center gap-1 text-sm text-foreground-muted hover:text-accent px-3 py-1.5 rounded-lg border border-border hover:border-accent transition-colors"
           >
             <X className="w-3.5 h-3.5" />
             Giữ bản gốc
           </button>
-          <button
+          <button type="button"
             onClick={accept}
             className="flex items-center gap-1 text-sm font-bold text-white bg-primary px-4 py-1.5 rounded-lg hover:bg-primary-light transition-colors"
           >

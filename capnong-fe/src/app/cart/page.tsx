@@ -98,7 +98,7 @@ export default function CartPage() {
                       Nhà vườn: {item.shop.name}
                     </p>
                   </div>
-                  <button
+                  <button type="button"
                     onClick={() => removeItem(item.id)}
                     aria-label="Xóa sản phẩm"
                     className="p-1.5 text-foreground-muted hover:text-accent rounded transition-colors"
@@ -108,7 +108,7 @@ export default function CartPage() {
                 </div>
                 <div className="flex items-end justify-between mt-4">
                   <div className="flex items-center border border-border rounded-lg overflow-hidden">
-                    <button
+                    <button type="button"
                       onClick={() => updateQuantity(item.id, -1)}
                       aria-label="Giảm số lượng"
                       className="p-1.5 hover:bg-gray-50"
@@ -118,7 +118,7 @@ export default function CartPage() {
                     <span className="w-10 text-center text-sm font-bold">
                       {item.quantity}
                     </span>
-                    <button
+                    <button type="button"
                       onClick={() => updateQuantity(item.id, 1)}
                       aria-label="Tăng số lượng"
                       className="p-1.5 hover:bg-gray-50"
