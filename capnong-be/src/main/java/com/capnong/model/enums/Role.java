@@ -1,8 +1,9 @@
 package com.capnong.model.enums;
 
 public enum Role {
-    USER,
+    BUYER,
     FARMER,
-    EXPERT,
+    HTX_MEMBER,
+    HTX_MANAGER,
     ADMIN
 }

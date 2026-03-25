@@ -59,7 +59,7 @@ export default function NewProductPage() {
       </div>
 
       {/* Voice auto-fill button */}
-      {!voiceFilled && (
+      {!voiceFilled && process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" && (
         <button
           type="button"
           onClick={handleVoiceFill}

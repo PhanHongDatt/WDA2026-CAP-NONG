@@ -40,12 +40,21 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
+                        // ─── Public endpoints ────────────────────
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/shops/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/units/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/htx-shops/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/orders/guest-lookup").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/reviews/**").permitAll()
+                        // ─── Swagger / Actuator ──────────────────
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // All other endpoints require authentication
+                        // ─── Admin endpoints ─────────────────────
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // ─── All others require auth ─────────────
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter,

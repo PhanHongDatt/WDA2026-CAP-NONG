@@ -1,0 +1,16 @@
+package com.capnong.repository;
+
+import com.capnong.model.HtxJoinRequest;
+import com.capnong.model.enums.JoinRequestStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface HtxJoinRequestRepository extends JpaRepository<HtxJoinRequest, UUID> {
+    List<HtxJoinRequest> findByHtxIdAndStatus(UUID htxId, JoinRequestStatus status);
+    List<HtxJoinRequest> findByFarmerId(UUID farmerId);
+    boolean existsByHtxIdAndFarmerIdAndStatus(UUID htxId, UUID farmerId, JoinRequestStatus status);
+}

@@ -2,19 +2,19 @@ package com.capnong.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
-@Builder
-@AllArgsConstructor
+import java.util.UUID;
+
+@Getter @Setter @AllArgsConstructor @Builder
 public class AuthResponse {
-
-    private String token;
-
-    @Builder.Default
-    private String type = "Bearer";
-
-    private String username;
+    private String accessToken;
+    private String tokenType;
+    private UUID userId;
+    private String fullName;
+    private String phone;
     private String email;
     private String role;
+    private String shopSlug;
 }

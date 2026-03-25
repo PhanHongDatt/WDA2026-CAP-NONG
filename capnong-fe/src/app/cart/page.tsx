@@ -1,54 +1,106 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Trash2, Minus, Plus, ShoppingBag, ArrowLeft, ChevronRight } from "lucide-react";
+import { Trash2, Minus, Plus, ShoppingBag, ChevronRight, Check } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { MOCK_SEASONAL_PRODUCTS } from "@/lib/mock-data";
-
-// Mock cart from first 2 products
-const INITIAL_CART = [
-  { ...MOCK_SEASONAL_PRODUCTS[0], quantity: 2 },
-  { ...MOCK_SEASONAL_PRODUCTS[3], quantity: 1 },
-];
+import { cartService } from "@/services";
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState(INITIAL_CART);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const updateQuantity = (id: string, delta: number) => {
+  useEffect(() => {
+    async function load() {
+      try {
+        const items = await cartService.getCart();
+        setCartItems(items);
+        /* Mặc định chọn hết */
+        setSelectedIds(new Set(items.map((i: { id?: string; product_id?: string }) => i.id || i.product_id || "")));
+      } catch {
+        setCartItems([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const getItemId = (item: { id?: string; product_id?: string }) => item.id || item.product_id || "";
+
+  /* Checkbox logic */
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === cartItems.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(cartItems.map(getItemId)));
+    }
+  };
+
+  const allSelected = cartItems.length > 0 && selectedIds.size === cartItems.length;
+
+  const updateQuantity = async (id: string, delta: number) => {
+    const item = cartItems.find((i) => getItemId(i) === id);
+    if (!item) return;
+    const newQty = Math.max(1, (item.quantity || 1) + delta);
+    try { await cartService.updateItem(id, newQty); } catch { /* ignore */ }
     setCartItems((items) =>
-      items.map((item) =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
+      items.map((i) => getItemId(i) === id ? { ...i, quantity: newQty } : i)
     );
   };
 
-  const removeItem = (id: string) => {
-    setCartItems((items) => items.filter((item) => item.id !== id));
+  const removeItem = async (id: string) => {
+    try { await cartService.removeItem(id); } catch { /* ignore */ }
+    setCartItems((items) => items.filter((item) => getItemId(item) !== id));
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
   };
 
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price_per_unit * item.quantity,
-    0
-  );
-  const shippingFee = subtotal > 300000 ? 0 : 30000;
+  /* Tính subtotal chỉ cho items đã chọn */
+  const { subtotal, selectedCount } = useMemo(() => {
+    let sub = 0;
+    let count = 0;
+    for (const item of cartItems) {
+      if (selectedIds.has(getItemId(item))) {
+        sub += (item.price_per_unit || item.price || 0) * (item.quantity || 1);
+        count++;
+      }
+    }
+    return { subtotal: sub, selectedCount: count };
+  }, [cartItems, selectedIds]);
+
+  const shippingFee = subtotal > 300000 ? 0 : subtotal > 0 ? 30000 : 0;
   const total = subtotal + shippingFee;
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <div className="animate-pulse">
+          <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4" />
+          <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto" />
+        </div>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
         <h2 className="text-2xl font-bold mb-2">Giỏ hàng trống</h2>
-        <p className="text-foreground-muted mb-6">
-          Bạn chưa thêm sản phẩm nào vào giỏ hàng.
-        </p>
-        <Link
-          href="/catalog"
-          className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors"
-        >
+        <p className="text-foreground-muted mb-6">Bạn chưa thêm sản phẩm nào vào giỏ hàng.</p>
+        <Link href="/catalog" className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors">
           Khám phá nông sản
         </Link>
       </div>
@@ -59,123 +111,148 @@ export default function CartPage() {
     <div className="max-w-5xl mx-auto px-4 py-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-foreground-muted mb-6">
-        <Link href="/" className="hover:text-primary transition-colors">
-          Trang chủ
-        </Link>
+        <Link href="/" className="hover:text-primary transition-colors">Trang chủ</Link>
         <ChevronRight className="w-4 h-4" />
-        <span className="text-foreground font-medium">
-          Giỏ hàng ({cartItems.length})
-        </span>
+        <span className="text-foreground font-medium">Giỏ hàng ({cartItems.length})</span>
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
-          {cartItems.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white border border-border rounded-xl p-4 flex gap-4 shadow-sm"
+          {/* Select All */}
+          <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-surface border border-border rounded-xl">
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                allSelected
+                  ? "bg-primary border-primary text-white"
+                  : "border-gray-300 dark:border-gray-600 hover:border-primary"
+              }`}
             >
-              <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-50 shrink-0">
-                <Image
-                  src={item.images[0]}
-                  alt={item.name}
-                  width={96}
-                  height={96}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start mb-1">
-                  <div>
-                    <Link
-                      href={`/products/${item.slug}`}
-                      className="font-bold text-foreground hover:text-primary transition-colors truncate block"
+              {allSelected && <Check className="w-3 h-3" />}
+            </button>
+            <span className="text-sm font-medium text-foreground-muted">
+              Chọn tất cả ({cartItems.length} sản phẩm)
+            </span>
+          </div>
+
+          {cartItems.map((item) => {
+            const id = getItemId(item);
+            const isSelected = selectedIds.has(id);
+
+            return (
+              <div
+                key={id}
+                className={`bg-white dark:bg-surface rounded-xl p-4 flex gap-4 shadow-sm transition-all ${
+                  isSelected ? "border-2 border-primary/30" : "border border-border"
+                }`}
+              >
+                {/* Checkbox */}
+                <button
+                  type="button"
+                  onClick={() => toggleSelect(id)}
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0 mt-2 ${
+                    isSelected
+                      ? "bg-primary border-primary text-white"
+                      : "border-gray-300 dark:border-gray-600 hover:border-primary"
+                  }`}
+                >
+                  {isSelected && <Check className="w-3 h-3" />}
+                </button>
+
+                {/* Image */}
+                <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-50 shrink-0">
+                  {(item.images?.[0] || item.image_url) && (
+                    <Image
+                      src={item.images?.[0] || item.image_url}
+                      alt={item.name || item.product_name || ""}
+                      width={96}
+                      height={96}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start mb-1">
+                    <div>
+                      <Link
+                        href={`/products/${item.slug || item.id}`}
+                        className="font-bold text-foreground hover:text-primary transition-colors truncate block"
+                      >
+                        {item.name || item.product_name}
+                      </Link>
+                      <p className="text-xs text-foreground-muted">
+                        Nhà vườn: {item.shop?.name || item.shop_name || "—"}
+                      </p>
+                    </div>
+                    <button type="button"
+                      onClick={() => removeItem(id)}
+                      aria-label="Xóa sản phẩm"
+                      className="p-1.5 text-foreground-muted hover:text-accent rounded transition-colors"
                     >
-                      {item.name}
-                    </Link>
-                    <p className="text-xs text-foreground-muted">
-                      Nhà vườn: {item.shop.name}
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-end justify-between mt-4">
+                    <div className="flex items-center border border-border rounded-lg overflow-hidden">
+                      <button type="button" onClick={() => updateQuantity(id, -1)} aria-label="Giảm" className="p-1.5 hover:bg-gray-50 dark:hover:bg-surface-hover">
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="w-10 text-center text-sm font-bold">{item.quantity || 1}</span>
+                      <button type="button" onClick={() => updateQuantity(id, 1)} aria-label="Tăng" className="p-1.5 hover:bg-gray-50 dark:hover:bg-surface-hover">
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="font-bold text-primary text-lg">
+                      {formatCurrency((item.price_per_unit || item.price || 0) * (item.quantity || 1))}
                     </p>
                   </div>
-                  <button type="button"
-                    onClick={() => removeItem(item.id)}
-                    aria-label="Xóa sản phẩm"
-                    className="p-1.5 text-foreground-muted hover:text-accent rounded transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex items-end justify-between mt-4">
-                  <div className="flex items-center border border-border rounded-lg overflow-hidden">
-                    <button type="button"
-                      onClick={() => updateQuantity(item.id, -1)}
-                      aria-label="Giảm số lượng"
-                      className="p-1.5 hover:bg-gray-50"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-10 text-center text-sm font-bold">
-                      {item.quantity}
-                    </span>
-                    <button type="button"
-                      onClick={() => updateQuantity(item.id, 1)}
-                      aria-label="Tăng số lượng"
-                      className="p-1.5 hover:bg-gray-50"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <p className="font-bold text-primary text-lg">
-                    {formatCurrency(item.price_per_unit * item.quantity)}
-                  </p>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Order Summary */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-border rounded-xl p-6 sticky top-24 shadow-sm">
+          <div className="bg-white dark:bg-surface border border-border rounded-xl p-6 sticky top-24 shadow-sm">
             <h3 className="font-bold text-lg mb-4">Tóm tắt đơn hàng</h3>
             <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-foreground-muted">Đã chọn</span>
+                <span className="font-medium">{selectedCount}/{cartItems.length} sản phẩm</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-foreground-muted">Tạm tính</span>
                 <span className="font-medium">{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-foreground-muted">Phí giao hàng</span>
-                <span className={`font-medium ${shippingFee === 0 ? "text-success" : ""}`}>
-                  {shippingFee === 0 ? "Miễn phí" : formatCurrency(shippingFee)}
+                <span className={`font-medium ${shippingFee === 0 && subtotal > 0 ? "text-green-600" : ""}`}>
+                  {subtotal === 0 ? "—" : shippingFee === 0 ? "Miễn phí" : formatCurrency(shippingFee)}
                 </span>
               </div>
               {shippingFee > 0 && (
-                <p className="text-xs text-foreground-muted bg-primary-50 px-3 py-2 rounded-lg">
-                  💡 Mua thêm{" "}
-                  <span className="font-bold text-primary">
-                    {formatCurrency(300000 - subtotal)}
-                  </span>{" "}
-                  để được miễn phí giao hàng
+                <p className="text-xs text-foreground-muted bg-primary/5 dark:bg-primary/10 px-3 py-2 rounded-lg">
+                  💡 Mua thêm <span className="font-bold text-primary">{formatCurrency(300000 - subtotal)}</span> để được miễn phí giao hàng
                 </p>
               )}
               <div className="border-t border-border pt-3 flex justify-between">
                 <span className="font-bold text-base">Tổng cộng</span>
-                <span className="font-bold text-xl text-primary">
-                  {formatCurrency(total)}
-                </span>
+                <span className="font-bold text-xl text-primary">{formatCurrency(total)}</span>
               </div>
             </div>
-            <Link
-              href="/checkout"
-              className="mt-6 block text-center bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20"
+            <button
+              type="button"
+              disabled={selectedCount === 0}
+              className="mt-6 w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Tiến hành thanh toán
-            </Link>
-            <Link
-              href="/catalog"
-              className="mt-3 block text-center text-primary font-medium text-sm hover:underline"
-            >
+              Thanh toán ({selectedCount})
+            </button>
+            <Link href="/catalog" className="mt-3 block text-center text-primary font-medium text-sm hover:underline">
               ← Tiếp tục mua sắm
             </Link>
           </div>

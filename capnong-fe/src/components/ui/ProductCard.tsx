@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Minus, Plus, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { shimmer } from "@/lib/image-placeholder";
 import type { Product } from "@/types/product";
@@ -13,123 +14,123 @@ interface ProductCardProps {
 }
 
 /**
- * ProductCard — matching home.html template exactly
- * - seasonal: Discount badge, wishlist, unit text, price, badges, quantity +-
- * - latest: Image, name, unit, price, "Thêm vào giỏ" button
+ * ProductCard — Redesign theo feedback
+ * - Badge overlay trên hình
+ * - "Đã bán" cùng row với tên
+ * - Bỏ hover translate (lag ĐT), đổi sang border highlight
+ * - Nút ♥ tooltip + hover fill đỏ
+ * - Unified CTA: "Thêm vào giỏ"
+ * - Bỏ ĐVT row riêng
  */
 export default function ProductCard({
   product,
   variant = "seasonal",
 }: ProductCardProps) {
-  // originalPrice removed from Product type — discount chỉ dùng trong Flash Deal
-  const discountPercent = 0;
+  const [liked, setLiked] = useState(false);
+
+  /* Badges tự tính từ product data */
+  const badges: { label: string; color: string }[] = [];
+  if (product.pesticide_free) badges.push({ label: "Không BVTV", color: "bg-green-600" });
+  if (product.farming_method === "ORGANIC") badges.push({ label: "Hữu cơ", color: "bg-green-600" });
+  if (product.farming_method === "VIETGAP") badges.push({ label: "VietGAP", color: "bg-blue-600" });
+  if (product.farming_method === "GLOBALGAP") badges.push({ label: "GlobalGAP", color: "bg-blue-600" });
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // TODO: connect cartService.addItem
+    console.log("Add to cart:", product.slug);
+  };
+
+  const handleToggleLike = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLiked(!liked);
+    // TODO: connect wishlistService
+  };
 
   return (
-    <div className="product-card-shadow bg-white rounded-xl overflow-hidden relative border border-gray-100 p-4 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-      {/* Discount Badge (seasonal only) */}
-      {variant === "seasonal" && discountPercent > 0 && (
-        <div className="absolute top-2 left-2 z-10 bg-accent text-white text-xs font-bold px-2 py-1 rounded">
-          -{discountPercent}%
-        </div>
-      )}
-
-      {/* Wishlist Button (seasonal only) */}
-      {variant === "seasonal" && (
-        <button type="button" aria-label="Thêm vào yêu thích" className="absolute top-2 right-2 z-10 text-gray-400 hover:text-accent">
-          <Heart className="w-6 h-6" />
-        </button>
-      )}
-
-      {/* Image */}
-      <Link href={`/products/${product.slug}`}>
-        <div className="aspect-square bg-gray-50 rounded-lg mb-4 overflow-hidden">
+    <div className="group bg-white dark:bg-surface rounded-xl overflow-hidden relative border border-gray-100 dark:border-border hover:border-primary/50 hover:shadow-md transition-all duration-200">
+      {/* Image Container — badges & wishlist overlay */}
+      <Link href={`/product/${product.id}`} className="block relative">
+        <div className="aspect-square bg-gray-50 dark:bg-background-light overflow-hidden">
           <Image
             src={product.images[0]}
             alt={product.name}
             width={400}
             height={400}
-            className="w-full h-full object-cover rounded-lg"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             placeholder="blur"
             blurDataURL={shimmer(400, 400)}
           />
         </div>
-      </Link>
 
-      {/* Name */}
-      <Link href={`/products/${product.slug}`}>
-        <h3 className="font-bold text-gray-900 mb-1 leading-tight hover:text-primary transition-colors">
-          {product.name}
-        </h3>
-      </Link>
-
-      {/* Unit */}
-      <p className="text-xs text-gray-500 mb-2">ĐVT: {product.unit.symbol}</p>
-
-      {/* Price */}
-      <div className="mb-3">
-        <span className="text-lg font-bold text-primary">
-          {formatCurrency(product.price_per_unit)}
-        </span>
-        {variant === "seasonal" && (
-          <span className="text-xs text-gray-400 ml-1">/{product.unit.symbol}</span>
-        )}
-
-      </div>
-
-      {/* Sold Count — Shopee style */}
-      {product.sold_count > 0 && (
-        <p className="text-xs text-gray-400 mb-2">
-          Đã bán {product.sold_count > 999 ? `${(product.sold_count / 1000).toFixed(1)}k` : product.sold_count}
-        </p>
-      )}
-
-      {/* Badges (seasonal only — computed from farming_method/pesticide_free) */}
-      {variant === "seasonal" && (() => {
-        const computedBadges: { label: string; type: "organic" | "certification" }[] = [];
-        if (product.pesticide_free) computedBadges.push({ label: "Không BVTV", type: "organic" });
-        if (product.farming_method === "ORGANIC") computedBadges.push({ label: "Hữu cơ", type: "organic" });
-        if (product.farming_method === "VIETGAP") computedBadges.push({ label: "VietGAP", type: "certification" });
-        if (product.farming_method === "GLOBALGAP") computedBadges.push({ label: "GlobalGAP", type: "certification" });
-        return computedBadges.length > 0 ? (
-          <div className="space-y-1 mb-4">
-            {computedBadges.map((badge, i) => (
+        {/* Badges — overlay trên hình */}
+        {badges.length > 0 && (
+          <div className="absolute top-2 left-2 flex flex-wrap gap-1 z-10">
+            {badges.map((badge, i) => (
               <span
                 key={i}
-                className={
-                  badge.type === "organic"
-                    ? "inline-block text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-100 mr-1"
-                    : "inline-block text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 mr-1"
-                }
+                className={`${badge.color} text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm`}
               >
                 {badge.label}
               </span>
             ))}
           </div>
-        ) : null;
-      })()}
+        )}
 
-      {/* CTA */}
-      {variant === "latest" ? (
-        <button type="button" className="w-full py-2 bg-primary text-white rounded-lg font-bold hover:opacity-90 transition-opacity">
+        {/* Wishlist — tooltip + fill */}
+        <button
+          type="button"
+          onClick={handleToggleLike}
+          title="Thêm vào yêu thích"
+          aria-label="Thêm vào yêu thích"
+          className={`absolute top-2 right-2 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+            liked
+              ? "bg-red-500 text-white shadow-lg"
+              : "bg-white/80 dark:bg-surface/80 text-gray-400 hover:text-red-500 hover:bg-white shadow-sm backdrop-blur-sm"
+          }`}
+        >
+          <Heart className={`w-4 h-4 ${liked ? "fill-white" : ""}`} />
+        </button>
+      </Link>
+
+      {/* Content */}
+      <div className="p-3">
+        {/* Name + Sold Count — cùng khu vực */}
+        <Link href={`/products/${product.slug}`}>
+          <h3 className="font-bold text-sm text-gray-900 dark:text-foreground leading-tight line-clamp-2 hover:text-primary transition-colors mb-1">
+            {product.name}
+          </h3>
+        </Link>
+
+        {/* Sold count — cùng row sau tên */}
+        {product.sold_count > 0 && (
+          <p className="text-[11px] text-gray-400 dark:text-foreground-muted mb-2">
+            Đã bán {product.sold_count > 999 ? `${(product.sold_count / 1000).toFixed(1)}k` : product.sold_count}
+          </p>
+        )}
+
+        {/* Price */}
+        <div className="flex items-baseline justify-between mb-3">
+          <span className="text-lg font-black text-primary">
+            {formatCurrency(product.price_per_unit)}
+          </span>
+          <span className="text-[11px] text-gray-400 dark:text-foreground-muted">
+            /{product.unit.symbol}
+          </span>
+        </div>
+
+        {/* CTA — unified "Thêm vào giỏ" */}
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          className="w-full flex items-center justify-center gap-2 py-2 bg-primary text-white rounded-lg font-bold text-sm hover:bg-primary-light active:scale-[0.98] transition-all"
+        >
+          <ShoppingCart className="w-4 h-4" />
           Thêm vào giỏ
         </button>
-      ) : (
-        <div className="flex items-center border border-gray-200 rounded overflow-hidden">
-          <button type="button" aria-label="Giảm số lượng" className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-r border-gray-200 text-gray-600">
-            −
-          </button>
-          <input
-            aria-label="Số lượng"
-            className="w-full text-center border-none text-sm p-1 focus:ring-0 bg-transparent"
-            type="text"
-            defaultValue="1"
-            readOnly
-          />
-          <button type="button" aria-label="Tăng số lượng" className="px-3 py-1 bg-gray-50 hover:bg-gray-100 border-l border-gray-200 text-gray-600">
-            +
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

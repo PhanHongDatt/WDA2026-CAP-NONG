@@ -28,6 +28,14 @@ const nextConfig: NextConfig = {
         hostname: "lh3.googleusercontent.com",
         pathname: "/aida-public/**",
       },
+      {
+        protocol: "http",
+        hostname: "localhost",
+      },
+      {
+        protocol: "https",
+        hostname: "**",
+      },
     ],
   },
 

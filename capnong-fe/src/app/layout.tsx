@@ -81,6 +81,13 @@ export const metadata: Metadata = {
   // verification: {
   //   google: "YOUR_GOOGLE_VERIFICATION_CODE",
   // },
+
+  // Favicon + Icons
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export const viewport: Viewport = {
@@ -97,7 +104,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" suppressHydrationWarning>
-      <body className="antialiased min-h-screen flex flex-col">
+      <body className="antialiased min-h-screen flex flex-col" suppressHydrationWarning>
         <ClientProviders>
           <Header />
           <main className="flex-1">{children}</main>

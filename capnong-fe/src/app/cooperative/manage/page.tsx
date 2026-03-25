@@ -84,6 +84,7 @@ function CoopManageContent() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ManageTab>("overview");
   const [joinRequests, setJoinRequests] = useState(MOCK_JOIN_REQUESTS);
+  const [members, setMembers] = useState(MOCK_MEMBERS);
   const [bundles, setBundles] = useState(MOCK_BUNDLES);
   const [seasonalConfig, setSeasonalConfig] = useState(MOCK_SEASONAL);
   const [showNewBundle, setShowNewBundle] = useState(false);
@@ -107,6 +108,12 @@ function CoopManageContent() {
   const pendingJoin = joinRequests.filter((r) => r.status === "PENDING").length;
   const openBundles = bundles.filter((b) => b.status === "OPEN" || b.status === "FULL").length;
 
+  const handleKickMember = (id: string, name: string) => {
+    if (confirm(`Xác nhận xóa thành viên "${name}" khỏi HTX?`)) {
+      setMembers((prev) => prev.filter((m) => m.id !== id));
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       {/* Header */}
@@ -124,7 +131,7 @@ function CoopManageContent() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Thành viên", value: MOCK_MEMBERS.length, icon: Users, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
+          { label: "Thành viên", value: members.length, icon: Users, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
           { label: "Yêu cầu GN", value: pendingJoin, icon: UserPlus, color: "text-purple-600 bg-purple-50 dark:bg-purple-900/30" },
           { label: "Bundle đang mở", value: openBundles, icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
           { label: "Doanh thu tháng", value: formatCurrency(45600000), icon: TrendingUp, color: "text-success bg-green-50 dark:bg-green-900/30" },
@@ -177,16 +184,22 @@ function CoopManageContent() {
                   <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Sản phẩm</th>
                   <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">SL (kg)</th>
                   <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase">Tỷ lệ</th>
+                    <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase text-right">Hành động</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-border">
-                {MOCK_MEMBERS.map((m) => (
+                {members.map((m) => (
                   <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">
                     <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-foreground">{m.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-foreground-muted">{m.phone}</td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-foreground-muted">{m.product}</td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-foreground-muted">{m.qty}</td>
                     <td className="px-6 py-4 text-sm font-bold text-primary">{m.share}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button type="button" onClick={() => handleKickMember(m.id, m.name)} className="text-red-400 hover:text-red-600 text-xs font-medium transition-colors" title="Xóa thành viên">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

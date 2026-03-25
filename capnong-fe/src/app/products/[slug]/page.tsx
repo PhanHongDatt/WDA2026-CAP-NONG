@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   Share2,
@@ -18,17 +19,8 @@ import {
 } from "lucide-react";
 import ProductCard from "@/components/ui/ProductCard";
 import { formatCurrency } from "@/lib/utils";
-import { MOCK_SEASONAL_PRODUCTS } from "@/lib/mock-data";
-
-// Mock detail data based on product_detail.html
-const PRODUCT = MOCK_SEASONAL_PRODUCTS[3]; // Xoài Cát Hòa Lộc
-
-const THUMBNAILS = [
-  PRODUCT.images[0],
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuD_ifuZwEa_V1ZPpMZ4fY-f83tf96AmGtMWy9lA_KecQCG__S7lT5osNFFFfAFzW_2-5j6gYf70-EdPui-yoqo6_Aos4jryAIcJo3fDjrUAG96iRQ9cszvbNSkYpHebJQBd9v6V_R1jyyb_L-XorYE2jUaNkA4o3I7RgCi25AGuN35o9P4of2JKVIZsttAPN-ehN4OhU35Lub3ka84spx56TjJjZGX92fe5qzEGccuBti-bVIbY6-_egnilhw2zv_y5BIeMz391WKg",
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuBpIvQptkslQjTw-8wC20POyRjSUPDOBGbFSQXyMhs6WsjywRLQxIsuMj4B1MFSasG0RAXhz-UO6Mcdts_FHzCVG5ydvHV6CLf_ay8CVJrRO6SX_wWVfZEHdgHR0e1D1OVqH6UCUSGnZuyzj29lAKgViayfMTj8ES_wBk9EFzimik5c4E9fTNnJdxs_XF6rcKP-OnqXtPIK9ktnK8w-fBErkHNtKyEhHx_Cye4NpWZKZIvzgo3L1LP5xBD3Tu50nPgnhLNp6-lADpI",
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuC0RLfhncudtDDRAriqOoyZOQjhSy8AKiA64H-HtQE0cJy738Z34aMxIgeohCiteGGA3TuVpvJ_XTl7R0ltnQEUCnWFud7zu6VSzkooJlPON1zb9fXCKPhZfuelKY5w7XgrAuK-GFQDLpaFCsS7fZhUxv6JZUjsYMGy5FY826ZE5NzENijRK440CR1mns2rEwb438heneZGmQBkj-TBXCCpn85g5OiQjdzX67UeRByJGmIXm-4AZroT9m1IglfeE1BPMwL6wTCDt6U",
-];
+import { productService } from "@/services";
+import type { Product } from "@/types/product";
 
 const REVIEWS = [
   {
@@ -53,8 +45,59 @@ const REVIEWS = [
 ];
 
 export default function ProductDetailPage() {
+  const params = useParams();
+  const slug = params?.slug as string;
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const p = await productService.getBySlug(slug);
+        setProduct(p);
+        // Also fetch related
+        const seasonal = await productService.getSeasonalProducts();
+        setRelatedProducts(seasonal.filter(s => s.slug !== slug).slice(0, 4));
+      } catch {
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (slug) load();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-20 text-center">
+        <div className="animate-pulse">
+          <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4" />
+          <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-20 text-center">
+        <h2 className="text-2xl font-bold mb-2">Không tìm thấy sản phẩm</h2>
+        <p className="text-foreground-muted mb-6">Sản phẩm này không tồn tại hoặc đã bị xóa.</p>
+        <Link href="/catalog" className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold">
+          Xem danh mục
+        </Link>
+      </div>
+    );
+  }
+
+  const THUMBNAILS = [
+    product.images[0],
+    ...(product.images.slice(1) || []),
+  ].filter(Boolean);
 
   return (
     <>
@@ -87,8 +130,8 @@ export default function ProductDetailPage() {
           <div className="flex flex-col gap-4">
             <div className="relative aspect-square w-full bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
               <Image
-                src={THUMBNAILS[selectedImage]}
-                alt={PRODUCT.name}
+                src={THUMBNAILS[selectedImage] || "/placeholder.jpg"}
+                alt={product.name}
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -125,17 +168,17 @@ export default function ProductDetailPage() {
           {/* Right: Product Info */}
           <div className="flex flex-col">
             <h2 className="text-3xl font-black text-foreground mb-1">
-              {PRODUCT.name}
+              {product.name}
             </h2>
             <div className="flex items-center gap-2 mb-4">
               <span className="text-foreground-muted text-sm">
-                Đã bán {PRODUCT.sold_count}+
+                Đã bán {product.sold_count}+
               </span>
               <span className="text-gray-300">•</span>
               <div className="flex items-center gap-1 text-primary">
                 <Star className="w-4 h-4 fill-primary" />
                 <span className="text-sm font-bold">
-                  {PRODUCT.average_rating} ({PRODUCT.total_reviews} nhận xét)
+                  {product.average_rating} ({product.total_reviews} nhận xét)
                 </span>
               </div>
             </div>
@@ -143,9 +186,9 @@ export default function ProductDetailPage() {
             {/* Price */}
             <div className="mb-6">
               <p className="text-3xl font-black text-primary">
-                {formatCurrency(PRODUCT.price_per_unit)}{" "}
+                {formatCurrency(product.price_per_unit)}{" "}
                 <span className="text-lg font-medium text-foreground-muted">
-                  / {PRODUCT.unit.symbol}
+                  / {product.unit.symbol}
                 </span>
               </p>
             </div>
@@ -166,10 +209,10 @@ export default function ProductDetailPage() {
             <div className="bg-white border border-border rounded-xl p-4 mb-8 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 bg-gray-100">
-                  {PRODUCT.shop.avatar_url && (
+                  {product.shop.avatar_url && (
                     <Image
-                      src={PRODUCT.shop.avatar_url}
-                      alt={PRODUCT.shop.name}
+                      src={product.shop.avatar_url}
+                      alt={product.shop.name}
                       width={48}
                       height={48}
                       className="w-full h-full object-cover"
@@ -177,22 +220,22 @@ export default function ProductDetailPage() {
                   )}
                 </div>
                 <div>
-                  <p className="font-bold text-foreground">{PRODUCT.shop.name}</p>
+                  <p className="font-bold text-foreground">{product.shop.name}</p>
                   <div className="flex items-center gap-2 text-xs text-foreground-muted">
                     <span className="flex items-center gap-0.5 text-yellow-500">
                       <Star className="w-3 h-3 fill-yellow-400" />
-                      {PRODUCT.shop.average_rating}
+                      {product.shop.average_rating}
                     </span>
                     <span>•</span>
                     <span className="flex items-center gap-0.5">
                       <MapPin className="w-3 h-3" />
-                      {PRODUCT.shop.province}
+                      {product.shop.province}
                     </span>
                   </div>
                 </div>
               </div>
               <Link
-                href={`/shops/${PRODUCT.shop.slug}`}
+                href={`/shops/${product.shop.slug}`}
                 className="text-primary text-sm font-bold border border-primary px-4 py-2 rounded-lg hover:bg-primary/5 transition-colors"
               >
                 Xem gian hàng
@@ -226,7 +269,7 @@ export default function ProductDetailPage() {
                     </button>
                   </div>
                   <span className="text-sm text-foreground-muted">
-                    Còn {PRODUCT.available_quantity} {PRODUCT.unit.symbol}
+                    Còn {product.available_quantity} {product.unit.symbol}
                   </span>
                 </div>
               </div>
@@ -254,18 +297,7 @@ export default function ProductDetailPage() {
                 <ChevronDown className="w-5 h-5 text-foreground-muted" />
               </div>
               <div className="text-foreground-muted leading-relaxed space-y-3">
-                <p>
-                  Xoài cát Hòa Lộc là một trong những loại trái cây đặc sản nổi
-                  tiếng nhất của vùng đồng bằng sông Cửu Long. Quả có hình dáng
-                  thon dài, khi chín có màu vàng tươi đẹp mắt. Thịt xoài vàng
-                  đậm, thơm nồng, vị ngọt thanh đặc trưng không lẫn vào đâu
-                  được.
-                </p>
-                <p>
-                  Sản phẩm được canh tác theo hướng hữu cơ tại vùng đất Bến
-                  Tre, đảm bảo không sử dụng thuốc bảo vệ thực vật hóa học, an
-                  toàn tuyệt đối cho sức khỏe người tiêu dùng.
-                </p>
+                <p>{product.description || "Chưa có mô tả chi tiết."}</p>
               </div>
             </div>
 
@@ -274,16 +306,16 @@ export default function ProductDetailPage() {
               <h3 className="text-xl font-bold mb-6">Đánh giá sản phẩm</h3>
               <div className="flex flex-col md:flex-row gap-8 mb-8 border-b border-border pb-8">
                 <div className="flex flex-col items-center justify-center bg-primary/5 rounded-2xl p-6 min-w-[160px]">
-                  <p className="text-4xl font-black text-primary">4.9</p>
+                  <p className="text-4xl font-black text-primary">{product.average_rating}</p>
                   <div className="flex text-primary mb-1">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="w-5 h-5 fill-primary" />
                     ))}
                   </div>
-                  <p className="text-sm text-foreground-muted">42 đánh giá</p>
+                  <p className="text-sm text-foreground-muted">{product.total_reviews} đánh giá</p>
                 </div>
                 <div className="flex flex-wrap gap-2 content-center">
-                  {["Tất cả", "5 sao (40)", "4 sao (2)", "Có hình ảnh (15)"].map(
+                  {["Tất cả", `5 sao`, `4 sao`, "Có hình ảnh"].map(
                     (label, i) => (
                       <button type="button"
                         key={label}
@@ -362,12 +394,12 @@ export default function ProductDetailPage() {
               </div>
               <div className="flex flex-col gap-3">
                 {[
-                  { label: "Hợp tác xã", value: PRODUCT.shop.name },
-                  { label: "Vùng trồng", value: PRODUCT.location_detail },
-                  { label: "Ngày thu hoạch", value: PRODUCT.harvest_date || "Chưa xác định" },
+                  { label: "Hợp tác xã", value: product.shop.name },
+                  { label: "Vùng trồng", value: product.location_detail },
+                  { label: "Ngày thu hoạch", value: product.harvest_date || "Chưa xác định" },
                   {
                     label: "Phương pháp",
-                    value: PRODUCT.farming_method,
+                    value: product.farming_method,
                     verified: true,
                   },
                 ].map((item) => (
@@ -396,46 +428,24 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Related Products */}
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-black">Sản phẩm tương tự</h3>
-            <Link
-              href="/catalog"
-              className="text-primary font-bold text-sm hover:underline"
-            >
-              Xem tất cả
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {MOCK_SEASONAL_PRODUCTS.slice(0, 4).map((product) => (
-              <ProductCard key={product.id} product={product} variant="latest" />
-            ))}
-          </div>
-        </div>
-      </div>
-      {/* Rule-based recommendations */}
-      <div className="max-w-5xl mx-auto px-4 mt-12">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-2xl font-black">💡 Có thể bạn thích</h3>
-          <Link
-            href="/catalog"
-            className="text-primary font-bold text-sm hover:underline"
-          >
-            Khám phá thêm
-          </Link>
-        </div>
-        <p className="text-sm text-foreground-muted mb-4">
-          Gợi ý dựa trên sản phẩm cùng khu vực &amp; mùa vụ đang hoạt động
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {MOCK_SEASONAL_PRODUCTS.slice(4, 8).length > 0
-            ? MOCK_SEASONAL_PRODUCTS.slice(4, 8).map((product) => (
-                <ProductCard key={product.id} product={product} variant="latest" />
-              ))
-            : MOCK_SEASONAL_PRODUCTS.slice(0, 4).map((product) => (
-                <ProductCard key={product.id} product={product} variant="latest" />
+        {relatedProducts.length > 0 && (
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-black">Sản phẩm tương tự</h3>
+              <Link
+                href="/catalog"
+                className="text-primary font-bold text-sm hover:underline"
+              >
+                Xem tất cả
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {relatedProducts.map((p) => (
+                <ProductCard key={p.id} product={p} variant="latest" />
               ))}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border p-4 grid grid-cols-2 gap-3 z-50">

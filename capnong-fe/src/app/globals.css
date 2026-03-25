@@ -92,14 +92,9 @@ body {
 }
 
 
-/* === Product Card Shadow — matches home.html === */
+/* === Product Card Shadow === */
 .product-card-shadow {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease-in-out;
-}
-.product-card-shadow:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
 /* === Skeleton Loading === */
@@ -215,15 +210,34 @@ html.dark ::-webkit-scrollbar-thumb { background: #4a8550 !important; }
 html.dark ::-webkit-scrollbar-thumb:hover { background: #66bb6a !important; }
 
 /* ==========================================
-   FONT SIZE SCALING
+   FONT SIZE SCALING — chỉ scale text, không zoom layout
+   (Sử dụng CSS Variables của Tailwind v4 để giữ nguyên Specificity)
    ========================================== */
-html.font-small  { font-size: 14px; }
-html.font-medium { font-size: 16px; }
-html.font-large  { font-size: 20px; }
-
-html {
-  transition: font-size 0.2s ease;
+html.font-small {
+  --text-xs: 0.65rem;
+  --text-sm: 0.75rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.125rem;
+  --text-2xl: 1.25rem;
+  --text-3xl: 1.5rem;
+  --text-4xl: 1.875rem;
+  --text-5xl: 2.25rem;
 }
+
+html.font-large {
+  --text-xs: 0.85rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.875rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 2.75rem;
+  --text-5xl: 3.5rem;
+}
+
+/* font-medium = default, không cần override */
 html, html body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }

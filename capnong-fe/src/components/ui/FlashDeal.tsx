@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Zap, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { MOCK_FLASH_DEALS } from "@/lib/mock-data";
+import { productService } from "@/services";
+import type { Product } from "@/types/product";
 
 function useCountdown(hours: number) {
   const [seconds, setSeconds] = useState(hours * 3600);
@@ -31,6 +32,11 @@ function TimerBox({ value }: { value: number }) {
 
 export default function FlashDeal() {
   const { h, m, s } = useCountdown(3);
+  const [deals, setDeals] = useState<Product[]>([]);
+
+  useEffect(() => {
+    productService.getFlashDeals().then(setDeals);
+  }, []);
 
   return (
     <section className="mb-8">
@@ -65,7 +71,7 @@ export default function FlashDeal() {
 
           {/* Horizontal Product Scroll */}
           <div className="flex gap-0 overflow-x-auto px-1 py-4 scrollbar-hide">
-            {MOCK_FLASH_DEALS.map((deal) => {
+            {deals.map((deal) => {
               // Flash deals: giảm giá cứng 30% (mock)
               const discountPct = 30;
               const soldPct = Math.min(

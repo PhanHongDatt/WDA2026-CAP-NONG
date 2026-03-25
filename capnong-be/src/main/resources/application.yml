@@ -15,7 +15,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/capnong_dev}
     username: ${SPRING_DATASOURCE_USERNAME:capnong}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    password: ${SPRING_DATASOURCE_PASSWORD:capnong123}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -29,9 +29,16 @@ spring:
       ddl-auto: update
     show-sql: true
     open-in-view: false
+    defer-datasource-initialization: true
     properties:
       hibernate:
         format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # ─── Seed Data ───────────────────────────
+  sql:
+    init:
+      mode: always
 
   # ─── Redis ─────────────────────────────────
   data:
@@ -63,7 +70,13 @@ app:
     secret: ${JWT_SECRET:default-dev-secret-change-in-production}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
-# ─── Google Gemini AI ────────────────────────
+# ─── AI Provider (hiện dùng OpenAI/MegaLLM, sau chuyển Gemini) ──
+  ai:
+    api-key: ${AI_API_KEY:sk-mega-92eb00a3dda468dbd97bfe465583153ce53d993099baf62a76475bfa0fcefd1e}
+    model: ${AI_MODEL:openai-gpt-oss-20b}
+    base-url: ${AI_BASE_URL:https://api.mega-llm.com/v1}
+
+# ─── Google Gemini AI (dự phòng) ─────────────
   gemini:
     api-key: ${GEMINI_API_KEY:}
 

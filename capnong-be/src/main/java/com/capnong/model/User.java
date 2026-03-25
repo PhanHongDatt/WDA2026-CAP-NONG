@@ -6,12 +6,14 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "username"),
-        @UniqueConstraint(columnNames = "email")
+        @UniqueConstraint(columnNames = "phone"),
+        @UniqueConstraint(columnNames = "email"),
+        @UniqueConstraint(columnNames = "telegram_chat_id")
 })
 @Getter
 @Setter
@@ -21,38 +23,44 @@ import java.time.LocalDateTime;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    @Column(nullable = false, unique = true, length = 50)
-    private String username;
-
-    @Column(nullable = false, unique = true, length = 100)
-    private String email;
-
-    @Column(nullable = false)
-    private String password;
-
-    @Column(name = "full_name", length = 100)
+    @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
-    @Column(length = 15)
+    @Column(nullable = false, unique = true, length = 20)
     private String phone;
+
+    @Column(unique = true)
+    private String email;
+
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private Role role = Role.USER;
+    private Role role = Role.BUYER;
 
-    @Column(nullable = false)
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
+    private String avatarUrl;
+
+    @Column(name = "telegram_chat_id", unique = true, length = 100)
+    private String telegramChatId;
+
+    @Column(name = "htx_id")
+    private UUID htxId;
+
+    @Column(name = "is_banned", nullable = false)
     @Builder.Default
-    private Boolean active = true;
+    private Boolean isBanned = false;
 
     @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 }

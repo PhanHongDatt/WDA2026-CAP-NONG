@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Star, MapPin } from "lucide-react";
@@ -10,41 +11,76 @@ interface FarmCardProps {
 }
 
 /**
- * FarmCard — matching home.html template exactly (lines 316-330)
+ * FarmCard — hover thay đổi ảnh nền (slideshow effect)
+ * Hiện avatar mặc định, hover → hiện gallery ảnh vườn
  */
 export default function FarmCard({ shop }: FarmCardProps) {
+  const [hovered, setHovered] = useState(false);
+  const [imgIdx, setImgIdx] = useState(0);
+
+  /* Dùng gallery nếu có, fallback avatar */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const shopAny = shop as any;
+  const gallery: string[] = shopAny.gallery_urls?.length
+    ? shopAny.gallery_urls
+    : [shop.avatar_url || ""];
+
+  const handleMouseEnter = () => {
+    setHovered(true);
+    /* Auto-cycle ảnh khi hover */
+    if (gallery.length > 1) {
+      const next = (imgIdx + 1) % gallery.length;
+      setImgIdx(next);
+    }
+  };
+
   return (
     <Link
-      href={`/shops/${shop.slug}`}
-      className="bg-white border border-gray-100 p-6 rounded-xl flex items-center gap-4 hover:border-primary transition-colors cursor-pointer shadow-sm"
+      href={`/shop/${shop.slug}`}
+      className="group bg-white dark:bg-surface border border-gray-100 dark:border-border rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-md transition-all duration-200 block"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setHovered(false)}
     >
-      {/* Avatar */}
-      <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden shrink-0">
+      {/* Top: Banner/Avatar area — hover slideshow */}
+      <div className="relative h-28 bg-gradient-to-br from-primary/10 to-primary/5 overflow-hidden">
         <Image
-          src={shop.avatar_url || ""}
+          src={hovered && gallery.length > 1 ? gallery[imgIdx] : (shop.avatar_url || "")}
           alt={shop.name}
-          width={64}
-          height={64}
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover transition-all duration-500 group-hover:scale-110"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+        {/* Rating badge */}
+        <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/90 dark:bg-surface/90 backdrop-blur-sm rounded-full px-2 py-0.5 text-xs font-bold shadow-sm">
+          <Star className="w-3 h-3 text-yellow-500 fill-yellow-400" />
+          {shop.average_rating}
+        </div>
+
+        {/* Avatar overlay */}
+        <div className="absolute -bottom-5 left-4 w-12 h-12 rounded-full border-2 border-white dark:border-surface overflow-hidden bg-white shadow-md">
+          <Image
+            src={shop.avatar_url || ""}
+            alt={shop.name}
+            width={48}
+            height={48}
+            className="w-full h-full object-cover"
+          />
+        </div>
       </div>
 
-      {/* Info */}
-      <div>
-        <h3 className="font-bold text-gray-900">{shop.name}</h3>
-        <p className="text-xs text-gray-500">
-          {shop.province} •{" "}
-          <span className="text-yellow-500">★ {shop.average_rating}</span>
-        </p>
-        <p className="text-xs font-medium text-primary mt-1">
-          {shop.years_experience} năm kinh nghiệm
-        </p>
+      {/* Bottom: Info */}
+      <div className="pt-7 px-4 pb-4">
+        <h3 className="font-bold text-gray-900 dark:text-foreground text-sm leading-tight group-hover:text-primary transition-colors">
+          {shop.name}
+        </h3>
+        <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-foreground-muted mt-1">
+          <MapPin className="w-3 h-3" />
+          {shop.province}
+          <span className="mx-1">•</span>
+          {shop.years_experience} năm
+        </div>
       </div>
-
-      {/* CTA */}
-      <button type="button" className="ml-auto text-primary text-sm font-bold border border-primary px-3 py-1 rounded-md hover:bg-green-50 transition-colors shrink-0">
-        Ghé thăm
-      </button>
     </Link>
   );
 }

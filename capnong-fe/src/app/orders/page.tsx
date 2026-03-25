@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -18,6 +19,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import EmojiPicker from "@/components/ui/EmojiPicker";
 
 type OrderStatus = "PENDING" | "CONFIRMED" | "PREPARING" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
@@ -34,8 +36,9 @@ const STATUS_ORDER: OrderStatus[] = ["PENDING", "CONFIRMED", "PREPARING", "SHIPP
 const MOCK_BUYER_ORDERS: {
   id: string; status: OrderStatus; date: string; total: number;
   seller_name: string; seller_phone: string;
-  items: { name: string; qty: number; price: number }[];
+  items: { name: string; qty: number; price: number; image_url?: string }[];
   shipping_address: string;
+  cancel_reason?: string;
 }[] = [
   {
     id: "#CN-0042",
@@ -45,8 +48,8 @@ const MOCK_BUYER_ORDERS: {
     seller_name: "Vườn Xoài Bác Ba",
     seller_phone: "0912***678",
     items: [
-      { name: "Xoài Cát Hòa Lộc", qty: 2, price: 95000 },
-      { name: "Cam Sành Hà Giang", qty: 3, price: 45000 },
+      { name: "Xoài Cát Hòa Lộc", qty: 2, price: 95000, image_url: "/images/products/xoai.jpg" },
+      { name: "Cam Sành Hà Giang", qty: 3, price: 45000, image_url: "/images/products/cam.jpg" },
     ],
     shipping_address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
   },
@@ -58,7 +61,7 @@ const MOCK_BUYER_ORDERS: {
     seller_name: "HTX Cam Sành Hà Giang",
     seller_phone: "0934***654",
     items: [
-      { name: "Cam Sành Hà Giang", qty: 10, price: 45000 },
+      { name: "Cam Sành Hà Giang", qty: 10, price: 45000, image_url: "/images/products/cam.jpg" },
     ],
     shipping_address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
   },
@@ -70,9 +73,10 @@ const MOCK_BUYER_ORDERS: {
     seller_name: "Vườn Xoài Bác Ba",
     seller_phone: "0912***678",
     items: [
-      { name: "Xoài Cát Hòa Lộc", qty: 1, price: 95000 },
+      { name: "Xoài Cát Hòa Lộc", qty: 1, price: 95000, image_url: "/images/products/xoai.jpg" },
     ],
     shipping_address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    cancel_reason: "Người mua yêu cầu hủy — đặt nhầm sản phẩm",
   },
 ];
 
@@ -85,6 +89,8 @@ function BuyerOrderContent() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewedOrders, setReviewedOrders] = useState<Set<string>>(new Set());
+  const [reviewImages, setReviewImages] = useState<string[]>([]);
+  const reviewFileRef = useRef<HTMLInputElement>(null);
 
   const handleSubmitReview = (orderId: string) => {
     if (reviewRating === 0 || reviewComment.length < 10) return;
@@ -199,9 +205,16 @@ function BuyerOrderContent() {
                   )}
 
                   {isCancelled && (
-                    <div className="flex items-center gap-3 p-3 bg-red-50/50 dark:bg-red-900/10 rounded-lg">
-                      <XCircle className="w-5 h-5 text-red-500" />
-                      <p className="text-sm text-red-600 dark:text-red-400">Đơn hàng này đã bị hủy</p>
+                    <div className="flex items-start gap-3 p-3 bg-red-50/50 dark:bg-red-900/10 rounded-lg">
+                      <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-red-600 dark:text-red-400">Đơn hàng này đã bị hủy</p>
+                        {order.cancel_reason && (
+                          <p className="text-xs text-red-500/80 dark:text-red-300/70 mt-1">
+                            Lý do: {order.cancel_reason}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -210,9 +223,16 @@ function BuyerOrderContent() {
                     <h4 className="text-xs font-medium text-gray-500 dark:text-foreground-muted uppercase mb-2">Sản phẩm</h4>
                     <div className="space-y-2">
                       {order.items.map((item, i) => (
-                        <div key={i} className="flex justify-between text-sm">
-                          <span className="text-gray-700 dark:text-foreground">{item.name} × {item.qty}</span>
-                          <span className="font-medium text-gray-900 dark:text-foreground">{formatCurrency(item.price * item.qty)}</span>
+                        <div key={i} className="flex items-center gap-3">
+                          {item.image_url && (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-50 shrink-0">
+                              <Image src={item.image_url} alt={item.name} width={40} height={40} className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          <div className="flex justify-between flex-1 text-sm">
+                            <span className="text-gray-700 dark:text-foreground">{item.name} × {item.qty}</span>
+                            <span className="font-medium text-gray-900 dark:text-foreground">{formatCurrency(item.price * item.qty)}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -282,6 +302,30 @@ function BuyerOrderContent() {
                             />
                             {reviewComment.length > 0 && reviewComment.length < 10 && (
                               <p className="text-[11px] text-accent mt-1">Cần tối thiểu 10 ký tự ({reviewComment.length}/10)</p>
+                            )}
+                          </div>
+                          {/* Media upload */}
+                          <div>
+                            <input ref={reviewFileRef} type="file" accept="image/*" multiple className="hidden" aria-label="Upload ảnh đánh giá" onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              files.forEach(f => {
+                                const reader = new FileReader();
+                                reader.onload = () => setReviewImages(prev => [...prev, reader.result as string]);
+                                reader.readAsDataURL(f);
+                              });
+                            }} />
+                            <button type="button" onClick={() => reviewFileRef.current?.click()} className="text-xs text-primary font-medium hover:underline">
+                              📷 Thêm ảnh/video
+                            </button>
+                            <EmojiPicker onSelect={(emoji) => setReviewComment(prev => prev + emoji)} />
+                            {reviewImages.length > 0 && (
+                              <div className="flex gap-2 mt-2">
+                                {reviewImages.map((img, i) => (
+                                  <div key={i} className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50">
+                                    <Image src={img} alt={`Review ${i+1}`} width={64} height={64} className="w-full h-full object-cover" />
+                                  </div>
+                                ))}
+                              </div>
                             )}
                           </div>
                           <div className="flex gap-2">

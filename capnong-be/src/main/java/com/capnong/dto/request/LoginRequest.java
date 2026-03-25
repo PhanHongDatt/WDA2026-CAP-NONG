@@ -1,16 +1,17 @@
 package com.capnong.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class LoginRequest {
 
-    @NotBlank(message = "Username is required")
-    private String username;
+    @NotBlank(message = "Số điện thoại không được để trống")
+    private String phone;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @NotBlank(message = "Mật khẩu không được để trống")
     private String password;
 }

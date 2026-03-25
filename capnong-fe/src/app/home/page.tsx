@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Home, Leaf, Banknote, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import ProductCard from "@/components/ui/ProductCard";
 import FarmCard from "@/components/ui/FarmCard";
-import CoopPoolCard from "@/components/ui/CoopPoolCard";
+import CoopPoolSection from "@/components/ui/CoopPoolSection";
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryGrid from "@/components/ui/CategoryGrid";
 import FlashDeal from "@/components/ui/FlashDeal";
-import {
-  MOCK_SEASONAL_PRODUCTS,
-  MOCK_NEW_PRODUCTS,
-  MOCK_SHOPS,
-  MOCK_COOP_POOL,
-} from "@/lib/mock-data";
+import { productService, shopService } from "@/services";
+import { MOCK_COOP_POOL } from "@/lib/mock-data";
 
 export const metadata: Metadata = {
   title: "Trang Chủ",
@@ -60,7 +56,16 @@ const jsonLd = {
   ],
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [seasonalProducts, newProducts, shops] = await Promise.all([
+    productService.getSeasonalProducts(),
+    productService.getNewProducts(),
+    shopService.getBySlug("nong-trai-xanh-da-lat").then(async () => {
+      // Lấy danh sách shops từ mock hoặc API
+      const { MOCK_SHOPS } = await import("@/lib/mock-data");
+      return MOCK_SHOPS; // TODO: shopService.list() khi BE có endpoint
+    }),
+  ]);
   return (
     <>
       {/* JSON-LD Structured Data */}
@@ -69,23 +74,22 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Promo Banner — trust badges */}
-      <section className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-around items-center">
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <Home className="w-5 h-5" />
-            <span>Từ nông trại đến bàn ăn</span>
-          </div>
-          <div className="h-4 w-px bg-gray-300" />
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <Leaf className="w-5 h-5" />
-            <span>Nông sản hữu cơ</span>
-          </div>
-          <div className="h-4 w-px bg-gray-300" />
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <Banknote className="w-5 h-5" />
-            <span>Siêu tiết kiệm</span>
-          </div>
+      {/* Trust Badges — redesigned */}
+      <section className="bg-gradient-to-r from-primary/5 via-white to-primary/5 dark:from-primary/10 dark:via-background dark:to-primary/10 border-b border-gray-100 dark:border-border">
+        <div className="max-w-7xl mx-auto px-4 py-5 grid grid-cols-3 gap-4">
+          {[
+            { icon: "🌾", title: "Từ nông trại đến bàn ăn", desc: "Trực tiếp, không qua trung gian" },
+            { icon: "🌿", title: "100% hữu cơ", desc: "Đạt chuẩn VietGAP / GlobalGAP" },
+            { icon: "💰", title: "Gom đơn tiết kiệm", desc: "Giảm 20-40% nhờ mua chung" },
+          ].map((item) => (
+            <div key={item.title} className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border shadow-sm">
+              <span className="text-2xl">{item.icon}</span>
+              <div>
+                <p className="font-bold text-sm text-foreground">{item.title}</p>
+                <p className="text-[11px] text-foreground-muted">{item.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -133,19 +137,15 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-4 gap-6">
-            {MOCK_SEASONAL_PRODUCTS.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                variant="seasonal"
-              />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {seasonalProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         </section>
 
-        {/* SECTION: Cooperative Pool */}
-        <CoopPoolCard pool={MOCK_COOP_POOL} />
+        {/* SECTION: Cooperative Pool — chỉ hiện cho HTX members/managers */}
+        <CoopPoolSection pool={MOCK_COOP_POOL} />
 
         {/* SECTION: Featured Farms */}
         <section className="mb-12">
@@ -160,8 +160,8 @@ export default function HomePage() {
               Xem tất cả <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-3 gap-6">
-            {MOCK_SHOPS.map((shop) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {shops.map((shop) => (
               <FarmCard key={shop.id} shop={shop} />
             ))}
           </div>
@@ -175,13 +175,9 @@ export default function HomePage() {
             </h2>
             <div className="w-20 h-0.5 bg-primary mx-auto mt-2" />
           </div>
-          <div className="grid grid-cols-6 gap-4">
-            {[...MOCK_SEASONAL_PRODUCTS, ...MOCK_NEW_PRODUCTS].map((product) => (
-              <ProductCard
-                key={`suggest-${product.id}`}
-                product={product}
-                variant="latest"
-              />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {[...seasonalProducts, ...newProducts].map((product) => (
+              <ProductCard key={`suggest-${product.id}`} product={product} />
             ))}
           </div>
         </section>

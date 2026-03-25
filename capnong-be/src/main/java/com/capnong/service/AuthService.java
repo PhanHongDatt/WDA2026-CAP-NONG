@@ -6,6 +6,7 @@ import com.capnong.dto.response.AuthResponse;
 import com.capnong.exception.AppException;
 import com.capnong.model.User;
 import com.capnong.model.enums.Role;
+import com.capnong.repository.ShopRepository;
 import com.capnong.repository.UserRepository;
 import com.capnong.security.JwtUtils;
 import com.capnong.security.UserDetailsImpl;
@@ -22,67 +23,90 @@ public class AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
+    private final ShopRepository shopRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
+                       ShopRepository shopRepository,
                        PasswordEncoder passwordEncoder,
                        JwtUtils jwtUtils) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
+        this.shopRepository = shopRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
     }
 
     /**
-     * Authenticate user and return JWT token.
+     * Đăng nhập bằng SĐT + mật khẩu → JWT.
      */
     public AuthResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(), request.getPassword()));
+                        request.getPhone(), request.getPassword()));
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         String token = jwtUtils.generateToken(userDetails);
 
-        User user = userRepository.findByUsername(userDetails.getUsername())
+        User user = userRepository.findByPhone(userDetails.getPhone())
                 .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
 
+        // Lấy shop_slug nếu có
+        String shopSlug = shopRepository.findByOwnerId(user.getId())
+                .map(shop -> shop.getSlug())
+                .orElse(null);
+
         return AuthResponse.builder()
-                .token(token)
-                .username(user.getUsername())
+                .accessToken(token)
+                .tokenType("Bearer")
+                .userId(user.getId())
+                .fullName(user.getFullName())
+                .phone(user.getPhone())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .shopSlug(shopSlug)
                 .build();
     }
 
     /**
-     * Register a new user.
+     * Đăng ký tài khoản mới (FARMER hoặc BUYER).
      */
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new AppException("Username is already taken", HttpStatus.CONFLICT);
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new AppException("Số điện thoại đã được sử dụng", HttpStatus.CONFLICT);
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AppException("Email is already in use", HttpStatus.CONFLICT);
+        if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail())) {
+            throw new AppException("Email đã được sử dụng", HttpStatus.CONFLICT);
         }
+
+        Role role = Role.valueOf(request.getRole());
 
         User user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .role(Role.USER)
+                .phone(request.getPhone())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(role)
                 .build();
 
-        userRepository.save(user);
+        User saved = userRepository.save(user);
 
-        // Auto-login after registration
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setUsername(request.getUsername());
-        loginRequest.setPassword(request.getPassword());
-        return login(loginRequest);
+        // Tạo token trực tiếp (không gọi login vì transaction chưa commit)
+        UserDetailsImpl userDetails = UserDetailsImpl.build(saved);
+        String token = jwtUtils.generateToken(userDetails);
+
+        return AuthResponse.builder()
+                .accessToken(token)
+                .tokenType("Bearer")
+                .userId(saved.getId())
+                .fullName(saved.getFullName())
+                .phone(saved.getPhone())
+                .email(saved.getEmail())
+                .role(saved.getRole().name())
+                .shopSlug(null)
+                .build();
     }
 }

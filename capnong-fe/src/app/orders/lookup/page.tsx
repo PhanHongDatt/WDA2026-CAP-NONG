@@ -193,10 +193,12 @@ export default function OrderLookupPage() {
       )}
 
       {/* Hint */}
+      {process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" && (
       <p className="text-center text-xs text-foreground-muted">
         Demo: SĐT <code className="bg-gray-100 dark:bg-surface px-1.5 py-0.5 rounded text-primary font-mono">0901234567</code>, mã
         <code className="bg-gray-100 dark:bg-surface px-1.5 py-0.5 rounded text-primary font-mono ml-1">CN-0042</code>
       </p>
+      )}
     </div>
   );
 }

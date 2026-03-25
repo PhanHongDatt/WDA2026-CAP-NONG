@@ -1,26 +1,30 @@
 package com.capnong.dto.request;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class RegisterRequest {
 
-    @NotBlank(message = "Username is required")
-    @Size(min = 3, max = 50, message = "Username must be 3-50 characters")
-    private String username;
+    @NotBlank(message = "Họ tên không được để trống")
+    private String fullName;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @NotBlank(message = "Số điện thoại không được để trống")
+    @Pattern(regexp = "^(0|\\+84)[3-9]\\d{8}$", message = "Số điện thoại không hợp lệ")
+    private String phone;
+
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, max = 100, message = "Password must be 6-100 characters")
+    @NotBlank(message = "Mật khẩu không được để trống")
+    @Size(min = 6, message = "Mật khẩu phải có ít nhất 6 ký tự")
     private String password;
 
-    @NotBlank(message = "Full name is required")
-    @Size(max = 100)
-    private String fullName;
+    @NotBlank(message = "Role không được để trống")
+    @Pattern(regexp = "^(FARMER|BUYER)$", message = "Role phải là FARMER hoặc BUYER")
+    private String role;
 }

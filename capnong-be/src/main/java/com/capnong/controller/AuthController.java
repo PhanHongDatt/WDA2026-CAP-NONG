@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthService authService;
@@ -28,7 +28,7 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request) {
         AuthResponse authResponse = authService.login(request);
         return ResponseEntity.ok(
-                ApiResponse.success("Login successful", authResponse));
+                ApiResponse.success("Đăng nhập thành công", authResponse));
     }
 
     @PostMapping("/register")
@@ -37,6 +37,6 @@ public class AuthController {
         AuthResponse authResponse = authService.register(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Registration successful", authResponse));
+                .body(ApiResponse.success("Đăng ký thành công", authResponse));
     }
 }
