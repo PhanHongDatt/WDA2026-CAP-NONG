@@ -65,8 +65,11 @@ public class AuthService {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new AppException("Username is already taken", HttpStatus.CONFLICT);
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AppException("Email is already in use", HttpStatus.CONFLICT);
+
+        // Ánh xạ role từ request, mặc định là BUYER. Khóa chỉ cho phép chọn BUYER/FARMER.
+        Role assignedRole = Role.BUYER;
+        if (request.getRole() != null && request.getRole().equalsIgnoreCase("FARMER")) {
+            assignedRole = Role.FARMER;
         }
 
         User user = User.builder()
@@ -74,15 +77,11 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .role(Role.USER)
+                .role(assignedRole)
                 .build();
 
         userRepository.save(user);
 
-        // Auto-login after registration
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setUsername(request.getUsername());
-        loginRequest.setPassword(request.getPassword());
-        return login(loginRequest);
+        return login(new LoginRequest(request.getUsername(), request.getPassword()));
     }
 }
