@@ -45,7 +45,7 @@ spring:
   cache:
     type: redis
     redis:
-      time-to-live: 600000        # 10 minutes in milliseconds
+      time-to-live: 600000 # 10 minutes in milliseconds
       cache-null-values: false
       use-key-prefix: true
       key-prefix: "capnong:"
@@ -63,11 +63,11 @@ app:
     secret: ${JWT_SECRET:default-dev-secret-change-in-production}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
-# ─── Google Gemini AI ────────────────────────
+  # ─── Google Gemini AI ────────────────────────
   gemini:
     api-key: ${GEMINI_API_KEY:}
 
-# ─── Telegram Bot ────────────────────────────
+  # ─── Telegram Bot ────────────────────────────
   telegram:
     bot-token: ${TELEGRAM_BOT_TOKEN:}
     bot-username: ${TELEGRAM_BOT_USERNAME:}
@@ -79,3 +79,8 @@ logging:
     com.capnong: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+ai:
+  service:
+    base-url: http://localhost:8001
+    timeout: 15000
