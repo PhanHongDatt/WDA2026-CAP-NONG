@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Service for sending messages via Telegram Bot API.
@@ -58,7 +59,7 @@ public class TelegramBotService {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
             ResponseEntity<String> response = restTemplate.exchange(
-                    url, HttpMethod.POST, entity, String.class);
+                    url, Objects.requireNonNull(HttpMethod.POST), entity, String.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 logger.info("Telegram message sent to chat: {}", chatId);

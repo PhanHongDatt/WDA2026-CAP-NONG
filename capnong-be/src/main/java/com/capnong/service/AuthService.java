@@ -26,9 +26,9 @@ public class AuthService {
     private final JwtUtils jwtUtils;
 
     public AuthService(AuthenticationManager authenticationManager,
-                       UserRepository userRepository,
-                       PasswordEncoder passwordEncoder,
-                       JwtUtils jwtUtils) {
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtUtils jwtUtils) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -60,13 +60,15 @@ public class AuthService {
     /**
      * Register a new user.
      */
+    @SuppressWarnings("null")
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new AppException("Username is already taken", HttpStatus.CONFLICT);
         }
 
-        // Ánh xạ role từ request, mặc định là BUYER. Khóa chỉ cho phép chọn BUYER/FARMER.
+        // Ánh xạ role từ request, mặc định là BUYER. Khóa chỉ cho phép chọn
+        // BUYER/FARMER.
         Role assignedRole = Role.BUYER;
         if (request.getRole() != null && request.getRole().equalsIgnoreCase("FARMER")) {
             assignedRole = Role.FARMER;

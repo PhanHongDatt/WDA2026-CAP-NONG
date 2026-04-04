@@ -19,6 +19,7 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
+import java.util.Objects;
 
 /**
  * Redis configuration for caching and RedisTemplate.
@@ -39,7 +40,7 @@ public class RedisConfig {
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
+        template.setConnectionFactory(Objects.requireNonNull(connectionFactory));
 
         // Key serializer: plain string
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
@@ -47,7 +48,7 @@ public class RedisConfig {
         template.setHashKeySerializer(stringSerializer);
 
         // Value serializer: Jackson JSON
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper());
+        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(Objects.requireNonNull(redisObjectMapper()));
         template.setValueSerializer(jsonSerializer);
         template.setHashValueSerializer(jsonSerializer);
 
@@ -62,17 +63,17 @@ public class RedisConfig {
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         GenericJackson2JsonRedisSerializer jsonSerializer =
-                new GenericJackson2JsonRedisSerializer(redisObjectMapper());
+                new GenericJackson2JsonRedisSerializer(Objects.requireNonNull(redisObjectMapper()));
 
         RedisCacheConfiguration cacheConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(10))
-                .serializeKeysWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
+                .entryTtl(Objects.requireNonNull(Duration.ofMinutes(10)))
+                .serializeKeysWith(Objects.requireNonNull(
+                        RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer())))
+                .serializeValuesWith(Objects.requireNonNull(
+                        RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer)))
                 .disableCachingNullValues();
 
-        return RedisCacheManager.builder(connectionFactory)
+        return RedisCacheManager.builder(Objects.requireNonNull(connectionFactory))
                 .cacheDefaults(cacheConfig)
                 .transactionAware()
                 .build();

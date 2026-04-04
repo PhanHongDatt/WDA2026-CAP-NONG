@@ -11,6 +11,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Service for interacting with Google Gemini API.
@@ -62,10 +63,11 @@ public class GeminiService {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
             ResponseEntity<String> response = restTemplate.exchange(
-                    url, HttpMethod.POST, entity, String.class);
+                    url, Objects.requireNonNull(HttpMethod.POST), entity, String.class);
 
             // Parse response to extract generated text
-            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode root = objectMapper.readTree(
+                    Objects.requireNonNull(response.getBody(), "Gemini API returned empty body"));
             return root.path("candidates")
                     .path(0)
                     .path("content")

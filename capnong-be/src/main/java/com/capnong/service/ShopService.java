@@ -22,6 +22,7 @@ public class ShopService {
         this.userRepository = userRepository;
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public Shop createShop(ShopCreateRequest request, String username) {
         User owner = userRepository.findByUsername(username)

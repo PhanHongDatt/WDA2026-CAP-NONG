@@ -1,6 +1,5 @@
 package com.capnong.dto.request;
 
-import com.capnong.model.enums.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -25,10 +26,12 @@ public class ProductService {
         this.shopRepository = shopRepository;
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public Product createProduct(ProductCreateRequest request, String username) {
         Shop shop = shopRepository.findByOwnerUsername(username)
-                .orElseThrow(() -> new AppException("Bạn chưa có gian hàng. Vui lòng tạo gian hàng trước.", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new AppException("Bạn chưa có gian hàng. Vui lòng tạo gian hàng trước.",
+                        HttpStatus.BAD_REQUEST));
 
         Product product = Product.builder()
                 .shop(shop)
@@ -42,7 +45,7 @@ public class ProductService {
                 .status("UPCOMING") // Default status theo doc
                 .build();
 
-        return productRepository.save(product);
+        return Objects.requireNonNull(productRepository.save(product));
     }
 
     @Transactional(readOnly = true)
@@ -51,6 +54,7 @@ public class ProductService {
         return productRepository.findByShopSlugAndStatusNot(slug, "HIDDEN");
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public void softDeleteProduct(UUID productId, String username) {
         Product product = productRepository.findById(productId)
