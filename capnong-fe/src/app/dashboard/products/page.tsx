@@ -1,0 +1,189 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Plus,
+  Pencil,
+  Eye,
+  EyeOff,
+  Trash2,
+  Search,
+  Package,
+} from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+
+type ProductStatus = "IN_SEASON" | "UPCOMING" | "OFF_SEASON" | "OUT_OF_STOCK" | "HIDDEN";
+
+function statusBadge(s: ProductStatus) {
+  switch (s) {
+    case "IN_SEASON": return { label: "🟢 Đang mùa", cls: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300" };
+    case "UPCOMING": return { label: "🟡 Sắp thu hoạch", cls: "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" };
+    case "OFF_SEASON": return { label: "⚪ Ngoài mùa", cls: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" };
+    case "OUT_OF_STOCK": return { label: "🔴 Hết hàng", cls: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
+    case "HIDDEN": return { label: "👁 Đã ẩn", cls: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" };
+  }
+}
+
+const INITIAL_PRODUCTS: {
+  id: string; name: string; category: string; price: number;
+  quantity: number; status: ProductStatus; image: string; sold: number;
+}[] = [
+  { id: "p-001", name: "Xoài Cát Hòa Lộc", category: "Trái cây", price: 95000, quantity: 50, status: "IN_SEASON", image: "🥭", sold: 120 },
+  { id: "p-002", name: "Cam Sành Hà Giang", category: "Trái cây", price: 45000, quantity: 200, status: "IN_SEASON", image: "🍊", sold: 350 },
+  { id: "p-003", name: "Bưởi Da Xanh Bến Tre", category: "Trái cây", price: 68000, quantity: 80, status: "UPCOMING", image: "🍈", sold: 90 },
+  { id: "p-004", name: "Rau Muống Hữu Cơ", category: "Rau củ", price: 15000, quantity: 0, status: "OUT_OF_STOCK", image: "🥬", sold: 500 },
+  { id: "p-005", name: "Sầu Riêng Ri6", category: "Trái cây", price: 125000, quantity: 30, status: "OFF_SEASON", image: "🍈", sold: 45 },
+  { id: "p-006", name: "Khoai Lang Nhật", category: "Củ", price: 35000, quantity: 100, status: "HIDDEN", image: "🍠", sold: 200 },
+];
+
+/**
+ * /dashboard/products — UC-13: Chỉnh sửa / Ẩn / Xóa sản phẩm
+ */
+export default function ProductListPage() {
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState("");
+  const [editQty, setEditQty] = useState("");
+
+  const filtered = products.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleToggleHide = (id: string) => {
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+        return { ...p, status: p.status === "HIDDEN" ? "IN_SEASON" as ProductStatus : "HIDDEN" as ProductStatus };
+      })
+    );
+  };
+
+  const handleDelete = (id: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleStartEdit = (p: typeof INITIAL_PRODUCTS[0]) => {
+    setEditingId(p.id);
+    setEditPrice(String(p.price));
+    setEditQty(String(p.quantity));
+  };
+
+  const handleSaveEdit = (id: string) => {
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, price: Number(editPrice), quantity: Number(editQty) } : p
+      )
+    );
+    setEditingId(null);
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className="p-2 hover:bg-gray-100 dark:hover:bg-surface-hover rounded-full transition-colors" aria-label="Quay lại dashboard">
+            <ArrowLeft className="w-5 h-5 text-foreground-muted" />
+          </Link>
+          <h1 className="text-2xl font-black text-foreground">Sản phẩm của tôi</h1>
+        </div>
+        <Link href="/dashboard/products/new" className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity">
+          <Plus className="w-4 h-4" /> Thêm SP
+        </Link>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Tìm sản phẩm..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </div>
+
+      {/* Product Cards */}
+      <div className="space-y-3">
+        {filtered.map((p) => {
+          const badge = statusBadge(p.status);
+          const isEditing = editingId === p.id;
+          return (
+            <div key={p.id} className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-5 hover:shadow-sm transition-shadow">
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Image placeholder */}
+                <div className="w-16 h-16 bg-gray-100 dark:bg-background-light rounded-xl flex items-center justify-center text-3xl shrink-0">
+                  {p.image}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="font-bold text-gray-900 dark:text-foreground">{p.name}</h3>
+                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${badge.cls}`}>
+                      {badge.label}
+                    </span>
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                      {p.category}
+                    </span>
+                  </div>
+
+                  {isEditing ? (
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <label htmlFor={`edit-price-${p.id}`} className="text-[10px] text-gray-400">Giá/đv</label>
+                        <input id={`edit-price-${p.id}`} type="number" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} className="w-28 px-2 py-1 border border-gray-200 dark:border-border rounded text-sm bg-white dark:bg-background focus:outline-none focus:ring-1 focus:ring-primary" />
+                      </div>
+                      <div>
+                        <label htmlFor={`edit-qty-${p.id}`} className="text-[10px] text-gray-400">Số lượng</label>
+                        <input id={`edit-qty-${p.id}`} type="number" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="w-24 px-2 py-1 border border-gray-200 dark:border-border rounded text-sm bg-white dark:bg-background focus:outline-none focus:ring-1 focus:ring-primary" />
+                      </div>
+                      <button type="button" onClick={() => handleSaveEdit(p.id)} className="bg-primary text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:opacity-90 mt-3">Lưu</button>
+                      <button type="button" onClick={() => setEditingId(null)} className="text-gray-500 text-sm font-medium hover:underline mt-3">Hủy</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-foreground-muted">
+                      <span className="font-bold text-primary">{formatCurrency(p.price)}</span>
+                      <span>Tồn: {p.quantity}</span>
+                      <span>Đã bán: {p.sold}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                {!isEditing && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button type="button" onClick={() => handleStartEdit(p)} className="p-2 hover:bg-gray-100 dark:hover:bg-surface-hover rounded-lg transition-colors" aria-label="Sửa sản phẩm">
+                      <Pencil className="w-4 h-4 text-gray-500" />
+                    </button>
+                    <button type="button" onClick={() => handleToggleHide(p.id)} className="p-2 hover:bg-gray-100 dark:hover:bg-surface-hover rounded-lg transition-colors" aria-label={p.status === "HIDDEN" ? "Hiện sản phẩm" : "Ẩn sản phẩm"}>
+                      {p.status === "HIDDEN" ? <Eye className="w-4 h-4 text-gray-500" /> : <EyeOff className="w-4 h-4 text-gray-500" />}
+                    </button>
+                    <button type="button" onClick={() => handleDelete(p.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" aria-label="Xóa sản phẩm">
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="text-center py-12 text-foreground-muted">
+          <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p>Không tìm thấy sản phẩm nào</p>
+        </div>
+      )}
+
+      <p className="text-sm text-foreground-muted text-center">
+        {filtered.length} sản phẩm
+      </p>
+    </div>
+  );
+}
