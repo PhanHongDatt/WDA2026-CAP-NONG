@@ -24,15 +24,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final OrderService orderService;
 
     public AuthService(AuthenticationManager authenticationManager,
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            JwtUtils jwtUtils) {
+            JwtUtils jwtUtils,
+            OrderService orderService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
+        this.orderService = orderService;
     }
 
     /**
@@ -83,6 +86,10 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+
+        // Merge any existing guest orders for this user based on their email or phone
+        // Since RegisterRequest only has email, we use email
+        orderService.mergeGuestOrdersToUser(null, user.getEmail(), user.getId());
 
         return login(new LoginRequest(request.getUsername(), request.getPassword()));
     }

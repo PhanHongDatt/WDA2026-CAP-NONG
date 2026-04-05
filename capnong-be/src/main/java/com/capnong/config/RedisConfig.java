@@ -17,6 +17,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.lang.NonNull;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -48,7 +49,7 @@ public class RedisConfig {
         template.setHashKeySerializer(stringSerializer);
 
         // Value serializer: Jackson JSON
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(Objects.requireNonNull(redisObjectMapper()));
+        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper());
         template.setValueSerializer(jsonSerializer);
         template.setHashValueSerializer(jsonSerializer);
 
@@ -63,7 +64,7 @@ public class RedisConfig {
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         GenericJackson2JsonRedisSerializer jsonSerializer =
-                new GenericJackson2JsonRedisSerializer(Objects.requireNonNull(redisObjectMapper()));
+                new GenericJackson2JsonRedisSerializer(redisObjectMapper());
 
         RedisCacheConfiguration cacheConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Objects.requireNonNull(Duration.ofMinutes(10)))
@@ -85,6 +86,7 @@ public class RedisConfig {
      * - Includes type information for polymorphic deserialization
      * - Accesses all fields regardless of visibility
      */
+    @NonNull
     private ObjectMapper redisObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
