@@ -24,15 +24,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final OrderService orderService;
 
     public AuthService(AuthenticationManager authenticationManager,
-                       UserRepository userRepository,
-                       PasswordEncoder passwordEncoder,
-                       JwtUtils jwtUtils) {
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtUtils jwtUtils,
+            OrderService orderService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
+        this.orderService = orderService;
     }
 
     /**
@@ -60,13 +63,18 @@ public class AuthService {
     /**
      * Register a new user.
      */
+    @SuppressWarnings("null")
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new AppException("Username is already taken", HttpStatus.CONFLICT);
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AppException("Email is already in use", HttpStatus.CONFLICT);
+
+        // Ánh xạ role từ request, mặc định là BUYER. Khóa chỉ cho phép chọn
+        // BUYER/FARMER.
+        Role assignedRole = Role.BUYER;
+        if (request.getRole() != null && request.getRole().equalsIgnoreCase("FARMER")) {
+            assignedRole = Role.FARMER;
         }
 
         User user = User.builder()
@@ -74,15 +82,15 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .role(Role.USER)
+                .role(assignedRole)
                 .build();
 
         userRepository.save(user);
 
-        // Auto-login after registration
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setUsername(request.getUsername());
-        loginRequest.setPassword(request.getPassword());
-        return login(loginRequest);
+        // Merge any existing guest orders for this user based on their email or phone
+        // Since RegisterRequest only has email, we use email
+        orderService.mergeGuestOrdersToUser(null, user.getEmail(), user.getId());
+
+        return login(new LoginRequest(request.getUsername(), request.getPassword()));
     }
 }

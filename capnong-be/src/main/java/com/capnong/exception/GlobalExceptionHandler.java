@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -23,7 +24,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException ex) {
         return ResponseEntity
-                .status(ex.getStatus())
+                .status(Objects.requireNonNull(ex.getStatus()))
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
@@ -40,7 +41,7 @@ public class GlobalExceptionHandler {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
+            String errorMessage = Objects.requireNonNullElse(error.getDefaultMessage(), "Invalid value");
             errors.put(fieldName, errorMessage);
         });
         return ResponseEntity

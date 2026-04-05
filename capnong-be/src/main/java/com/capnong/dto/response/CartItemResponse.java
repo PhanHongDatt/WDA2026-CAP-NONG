@@ -1,0 +1,19 @@
+package com.capnong.dto.response;
+
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+@Getter
+@Setter
+@Builder
+public class CartItemResponse {
+    private Long id;
+    private UUID productId;
+    private String productName;
+    private BigDecimal quantity;
+    private BigDecimal pricePerUnit;
+}

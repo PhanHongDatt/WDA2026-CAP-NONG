@@ -45,6 +45,9 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/cart/add").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/cart").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/orders/checkout").permitAll()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
