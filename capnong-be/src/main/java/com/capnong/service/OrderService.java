@@ -35,12 +35,12 @@ public class OrderService {
     private final AddressService addressService;
 
     @Transactional
-    public OrderResponse checkout(String guestSessionId, Long userId, CheckoutRequest checkoutRequest) {
+    public OrderResponse checkout(String guestSessionId, UUID userId, CheckoutRequest checkoutRequest) {
         Cart cart;
         User user = null;
 
         if (userId != null) {
-            cart = cartRepository.findByUserId(userId)
+            cart = cartRepository.findByUser_Id(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
             user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -117,14 +117,14 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
         orderRepository.save(order);
 
-        // Clear cart after successful checkout (userId go first according to getCart)
+        // Clear cart after successful checkout
         cartService.clearCart(guestSessionId, userId);
 
         return mapToOrderResponse(order);
     }
 
     @Transactional
-    public void mergeGuestOrdersToUser(String phone, String email, Long userId) {
+    public void mergeGuestOrdersToUser(String phone, String email, UUID userId) {
         if (userId == null)
             return;
 
@@ -143,8 +143,8 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getMyOrders(Long userId) {
-        return orderRepository.findByUserId(userId).stream()
+    public List<OrderResponse> getMyOrders(UUID userId) {
+        return orderRepository.findByUser_Id(userId).stream()
                 .map(this::mapToOrderResponse)
                 .collect(Collectors.toList());
     }

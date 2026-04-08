@@ -1,5 +1,7 @@
 package com.capnong.dto.response;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,7 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class UserResponse {
 
-    private Long id;
+    private UUID id;
     private String username;
     private String phone;
     private String email;

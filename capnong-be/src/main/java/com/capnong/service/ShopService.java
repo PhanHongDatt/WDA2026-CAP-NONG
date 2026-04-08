@@ -28,7 +28,7 @@ public class ShopService {
         User owner = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-        if (shopRepository.existsByOwnerId(owner.getId())) {
+        if (shopRepository.existsByOwner_Id(owner.getId())) {
             throw new AppException("Người dùng này đã có gian hàng", HttpStatus.CONFLICT);
         }
         if (shopRepository.existsBySlug(request.getSlug())) {
@@ -74,5 +74,24 @@ public class ShopService {
         shop.setBio(request.getBio());
 
         return shopRepository.save(shop);
+    }
+
+    @Transactional(readOnly = true)
+    public Shop getMyShop(String username) {
+        return shopRepository.findByOwnerUsername(username)
+                .orElseThrow(() -> new AppException("Bạn chưa có gian hàng", HttpStatus.NOT_FOUND));
+    }
+
+    @Transactional
+    public void softDeleteShop(String slug, String username) {
+        Shop shop = shopRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop", "slug", slug));
+
+        if (!shop.getOwner().getUsername().equals(username)) {
+            throw new AppException("Bạn không có quyền xóa gian hàng này", HttpStatus.FORBIDDEN);
+        }
+
+        shop.softDelete(username);
+        shopRepository.save(shop);
     }
 }

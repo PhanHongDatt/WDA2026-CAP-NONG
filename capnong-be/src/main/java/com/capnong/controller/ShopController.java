@@ -60,4 +60,22 @@ public class ShopController {
         var products = productService.getProductsByShopSlug(slug);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", products));
     }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Xem gian hàng của tôi", description = "Lấy thông tin gian hàng của user đang đăng nhập.")
+    public ResponseEntity<ApiResponse<Object>> getMyShop(Authentication authentication) {
+        var shop = shopService.getMyShop(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin gian hàng thành công", shop));
+    }
+
+    @DeleteMapping("/{slug}")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Xóa gian hàng (soft delete)", description = "Xóa mềm gian hàng. Yêu cầu user là chủ sở hữu.")
+    public ResponseEntity<ApiResponse<Void>> deleteShop(
+            @PathVariable String slug,
+            Authentication authentication) {
+        shopService.softDeleteShop(slug, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Xóa gian hàng thành công"));
+    }
 }

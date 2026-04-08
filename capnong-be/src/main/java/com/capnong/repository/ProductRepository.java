@@ -16,6 +16,8 @@ import java.util.UUID;
 public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<Product> findByShopSlugAndStatusNot(String shopSlug, String status);
 
+    List<Product> findByStatusNot(String status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdWithLock(@Param("id") UUID id);

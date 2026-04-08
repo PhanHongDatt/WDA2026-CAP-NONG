@@ -50,8 +50,39 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<Product> getProductsByShopSlug(String slug) {
-        // Không trả về các sản phẩm đã bị ẩn (HIDDEN)
         return productRepository.findByShopSlugAndStatusNot(slug, "HIDDEN");
+    }
+
+    @Transactional(readOnly = true)
+    public Product getProductById(UUID productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Product> getAllPublicProducts() {
+        return productRepository.findByStatusNot("HIDDEN");
+    }
+
+    @SuppressWarnings("null")
+    @Transactional
+    public Product updateProduct(UUID productId, ProductCreateRequest request, String username) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
+
+        if (!product.getShop().getOwner().getUsername().equals(username)) {
+            throw new AppException("Bạn không có quyền chỉnh sửa sản phẩm này", HttpStatus.FORBIDDEN);
+        }
+
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setCategory(request.getCategory());
+        product.setUnitCode(request.getUnitCode());
+        product.setPricePerUnit(request.getPricePerUnit());
+        product.setAvailableQuantity(request.getAvailableQuantity());
+        product.setLocationDetail(request.getLocationDetail());
+
+        return productRepository.save(product);
     }
 
     @SuppressWarnings("null")
@@ -60,13 +91,11 @@ public class ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
 
-        // RBAC: Verify ownership
         if (!product.getShop().getOwner().getUsername().equals(username)) {
             throw new AppException("Bạn không có quyền xóa sản phẩm này", HttpStatus.FORBIDDEN);
         }
 
-        // Soft delete bằng cách chuyển trạng thái
-        product.setStatus("HIDDEN");
+        product.softDelete(username);
         productRepository.save(product);
     }
 }

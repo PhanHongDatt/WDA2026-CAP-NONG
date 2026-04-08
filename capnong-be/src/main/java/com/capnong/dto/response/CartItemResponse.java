@@ -1,5 +1,7 @@
 package com.capnong.dto.response;
 
+import java.util.UUID;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,7 +13,7 @@ import java.util.UUID;
 @Setter
 @Builder
 public class CartItemResponse {
-    private Long id;
+    private UUID id;
     private UUID productId;
     private String productName;
     private BigDecimal quantity;

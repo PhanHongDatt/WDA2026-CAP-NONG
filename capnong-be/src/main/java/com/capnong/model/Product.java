@@ -2,21 +2,19 @@ package com.capnong.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.experimental.SuperBuilder;
+
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "products")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class Product {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private java.util.UUID id;
+@SQLRestriction("deleted = false")
+public class Product extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shop_id", nullable = false)
@@ -29,7 +27,7 @@ public class Product {
     private String description;
 
     @Column(nullable = false)
-    private String category; // ENUM: FRUIT, VEGETABLE... in DB as String
+    private String category;
 
     @Column(nullable = false)
     private String unitCode;
@@ -45,11 +43,5 @@ public class Product {
 
     @Column(nullable = false)
     @Builder.Default
-    private String status = "UPCOMING"; // IN_SEASON, UPCOMING, HIDDEN...
-
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    private String status = "UPCOMING";
 }

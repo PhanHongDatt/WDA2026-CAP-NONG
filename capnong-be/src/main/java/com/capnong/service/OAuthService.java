@@ -1,5 +1,7 @@
 package com.capnong.service;
 
+import java.util.UUID;
+
 import com.capnong.dto.response.AuthResponse;
 import com.capnong.dto.response.OAuthCheckResponse;
 import com.capnong.exception.AppException;
@@ -181,7 +183,7 @@ public class OAuthService {
      * Liên kết Google vào tài khoản đã đăng nhập.
      */
     @Transactional
-    public void linkGoogleAccount(Long userId, String supabaseToken) {
+    public void linkGoogleAccount(UUID userId, String supabaseToken) {
         Map<String, String> googleInfo = parseSupabaseToken(supabaseToken);
         String googleId = googleInfo.get("sub");
         String googleEmail = googleInfo.get("email");

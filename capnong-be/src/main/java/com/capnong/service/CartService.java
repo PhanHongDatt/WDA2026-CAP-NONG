@@ -1,5 +1,7 @@
 package com.capnong.service;
 
+import java.util.UUID;
+
 import com.capnong.dto.request.AddToCartRequest;
 import com.capnong.dto.response.CartItemResponse;
 import com.capnong.dto.response.CartResponse;
@@ -28,7 +30,7 @@ public class CartService {
     private final UserRepository userRepository;
 
     @Transactional
-    public CartResponse addToCart(String guestSessionId, Long userId, AddToCartRequest request) {
+    public CartResponse addToCart(String guestSessionId, UUID userId, AddToCartRequest request) {
         Cart cart = getOrCreateCart(guestSessionId, userId);
 
         Product product = productRepository.findById(java.util.Objects.requireNonNull(request.getProductId()))
@@ -55,10 +57,10 @@ public class CartService {
     }
 
     @Transactional
-    public CartResponse getCart(String guestSessionId, Long userId) {
+    public CartResponse getCart(String guestSessionId, UUID userId) {
         Cart cart;
         if (userId != null) {
-            cart = cartRepository.findByUserId(userId).orElse(null);
+            cart = cartRepository.findByUser_Id(userId).orElse(null);
         } else {
             cart = cartRepository.findByGuestSessionId(guestSessionId).orElse(null);
         }
@@ -75,14 +77,14 @@ public class CartService {
     }
 
     @Transactional
-    public void mergeGuestCartToUser(String guestSessionId, Long userId) {
+    public void mergeGuestCartToUser(String guestSessionId, UUID userId) {
         if (guestSessionId == null || userId == null) return;
 
         Optional<Cart> guestCartOpt = cartRepository.findByGuestSessionId(guestSessionId);
         if (guestCartOpt.isEmpty()) return;
 
         Cart guestCart = guestCartOpt.get();
-        Optional<Cart> userCartOpt = cartRepository.findByUserId(userId);
+        Optional<Cart> userCartOpt = cartRepository.findByUser_Id(userId);
 
         if (userCartOpt.isPresent()) {
             Cart userCart = userCartOpt.get();
@@ -114,10 +116,10 @@ public class CartService {
     }
 
     @Transactional
-    public void clearCart(String guestSessionId, Long userId) {
+    public void clearCart(String guestSessionId, UUID userId) {
         Cart cart;
         if (userId != null) {
-            cart = cartRepository.findByUserId(userId).orElse(null);
+            cart = cartRepository.findByUser_Id(userId).orElse(null);
         } else {
             cart = cartRepository.findByGuestSessionId(guestSessionId).orElse(null);
         }
@@ -128,9 +130,9 @@ public class CartService {
         }
     }
 
-    private Cart getOrCreateCart(String guestSessionId, Long userId) {
+    private Cart getOrCreateCart(String guestSessionId, UUID userId) {
         if (userId != null) {
-            return cartRepository.findByUserId(userId).orElseGet(() -> {
+            return cartRepository.findByUser_Id(userId).orElseGet(() -> {
                 User user = userRepository.findById(userId)
                         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
                 return cartRepository.save(java.util.Objects.requireNonNull(Cart.builder().user(user).build()));

@@ -1,5 +1,7 @@
 package com.capnong.controller;
 
+import java.util.UUID;
+
 import com.capnong.dto.request.ChangeRoleRequest;
 import com.capnong.dto.response.ApiResponse;
 import com.capnong.dto.response.UserResponse;
@@ -35,7 +37,7 @@ public class AdminController {
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Xem chi tiết user")
-    public ResponseEntity<ApiResponse<UserResponse>> getUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponse>> getUser(@PathVariable UUID id) {
         UserResponse user = adminService.getUserDetails(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin thành công", user));
     }
@@ -43,7 +45,7 @@ public class AdminController {
     @PatchMapping("/{id}/ban")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Khóa tài khoản (Ban)")
-    public ResponseEntity<ApiResponse<UserResponse>> banUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponse>> banUser(@PathVariable UUID id) {
         UserResponse user = adminService.banUser(id);
         return ResponseEntity.ok(ApiResponse.success("Đã khóa tài khoản", user));
     }
@@ -51,7 +53,7 @@ public class AdminController {
     @PatchMapping("/{id}/unban")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Mở khóa tài khoản (Unban)")
-    public ResponseEntity<ApiResponse<UserResponse>> unbanUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponse>> unbanUser(@PathVariable UUID id) {
         UserResponse user = adminService.unbanUser(id);
         return ResponseEntity.ok(ApiResponse.success("Đã mở khóa tài khoản", user));
     }
@@ -60,7 +62,7 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Thay đổi Role của user")
     public ResponseEntity<ApiResponse<UserResponse>> changeRole(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody ChangeRoleRequest request) {
         UserResponse user = adminService.changeUserRole(id, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật quyền thành công", user));

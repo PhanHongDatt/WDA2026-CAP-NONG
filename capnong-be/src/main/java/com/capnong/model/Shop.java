@@ -2,19 +2,17 @@ package com.capnong.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import java.time.LocalDateTime;
+import lombok.experimental.SuperBuilder;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "shops")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class Shop {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private java.util.UUID id;
+@SQLRestriction("deleted = false")
+public class Shop extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false, unique = true)
@@ -38,7 +36,4 @@ public class Shop {
     private Integer yearsExperience;
     private Integer farmAreaM2;
     private String avatarUrl;
-
-    @CreationTimestamp
-    private LocalDateTime createdAt;
 }

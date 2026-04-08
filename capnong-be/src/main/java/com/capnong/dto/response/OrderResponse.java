@@ -1,5 +1,7 @@
 package com.capnong.dto.response;
 
+import java.util.UUID;
+
 import com.capnong.model.enums.OrderStatus;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +17,7 @@ public class OrderResponse {
 
     private UUID id;
     private String orderNumber;
-    private Long userId;
+    private UUID userId;
     private String guestEmail;
     private String guestPhone;
     private String guestName;

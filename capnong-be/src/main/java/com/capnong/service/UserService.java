@@ -1,5 +1,7 @@
 package com.capnong.service;
 
+import java.util.UUID;
+
 import com.capnong.dto.request.UpdateProfileRequest;
 import com.capnong.dto.response.UserResponse;
 import com.capnong.exception.AppException;
@@ -25,7 +27,7 @@ public class UserService {
      * Lấy thông tin profile của user hiện tại.
      */
     @Transactional(readOnly = true)
-    public UserResponse getProfile(Long userId) {
+    public UserResponse getProfile(UUID userId) {
         User user = findUserById(userId);
         return mapToUserResponse(user);
     }
@@ -34,7 +36,7 @@ public class UserService {
      * Cập nhật thông tin profile (fullName, email, phone).
      */
     @Transactional
-    public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
+    public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = findUserById(userId);
 
         if (request.getFullName() != null) {
@@ -105,7 +107,7 @@ public class UserService {
      * Upload avatar lên Cloudinary và lưu URL vào user.
      */
     @Transactional
-    public UserResponse uploadAvatar(Long userId, MultipartFile file) {
+    public UserResponse uploadAvatar(UUID userId, MultipartFile file) {
         User user = findUserById(userId);
 
         // Validate file
@@ -130,7 +132,7 @@ public class UserService {
      * Thay đổi mật khẩu khi đã đăng nhập
      */
     @Transactional
-    public void changePassword(Long userId, String oldPassword, String newPassword) {
+    public void changePassword(UUID userId, String oldPassword, String newPassword) {
         User user = findUserById(userId);
 
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
@@ -147,7 +149,7 @@ public class UserService {
 
     // ─── Helpers ─────────────────────────────────
 
-    private User findUserById(Long userId) {
+    private User findUserById(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new AppException("Không tìm thấy user", HttpStatus.NOT_FOUND));
     }

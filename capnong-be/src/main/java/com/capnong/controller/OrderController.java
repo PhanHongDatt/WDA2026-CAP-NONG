@@ -1,5 +1,7 @@
 package com.capnong.controller;
 
+import java.util.UUID;
+
 import com.capnong.dto.request.CheckoutRequest;
 import com.capnong.dto.response.OrderResponse;
 import com.capnong.security.UserDetailsImpl;
@@ -26,7 +28,7 @@ public class OrderController {
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @Valid @RequestBody CheckoutRequest request) {
 
-        Long userId = userDetails != null ? userDetails.getId() : null;
+        UUID userId = userDetails != null ? userDetails.getId() : null;
         if (userId == null && guestSessionId == null) {
             throw new IllegalArgumentException("Either User ID or Guest-Session-Id must be provided for checkout");
         }

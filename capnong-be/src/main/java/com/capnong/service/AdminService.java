@@ -1,5 +1,7 @@
 package com.capnong.service;
 
+import java.util.UUID;
+
 import com.capnong.dto.request.ChangeRoleRequest;
 import com.capnong.dto.response.UserResponse;
 import com.capnong.exception.AppException;
@@ -28,13 +30,13 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserDetails(Long id) {
+    public UserResponse getUserDetails(UUID id) {
         User user = findUserById(id);
         return userService.mapToUserResponse(user);
     }
 
     @Transactional
-    public UserResponse banUser(Long id) {
+    public UserResponse banUser(UUID id) {
         User user = findUserById(id);
         if (user.getRole() == Role.ADMIN) {
             throw new AppException("Cannot ban an ADMIN account", HttpStatus.FORBIDDEN);
@@ -50,7 +52,7 @@ public class AdminService {
     }
 
     @Transactional
-    public UserResponse unbanUser(Long id) {
+    public UserResponse unbanUser(UUID id) {
         User user = findUserById(id);
         user.setActive(true);
         userRepository.save(user);
@@ -58,7 +60,7 @@ public class AdminService {
     }
 
     @Transactional
-    public UserResponse changeUserRole(Long id, ChangeRoleRequest request) {
+    public UserResponse changeUserRole(UUID id, ChangeRoleRequest request) {
         User user = findUserById(id);
         
         try {
@@ -75,7 +77,7 @@ public class AdminService {
         }
     }
 
-    private User findUserById(Long id) {
+    private User findUserById(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
     }
