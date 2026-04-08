@@ -4,14 +4,14 @@
 # ============================================
 
 server:
-  port: 8080
+  port: 9999
 
 # ─── Spring Core ───────────────────────────────
 spring:
   application:
     name: capnong-be
 
-  # ─── PostgreSQL DataSource ─────────────────
+  # ─── PostgreSQL Supabase DataSource ─────────────────
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/capnong_dev}
     username: ${SPRING_DATASOURCE_USERNAME:capnong}
@@ -61,7 +61,12 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET:default-dev-secret-change-in-production}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}              # Access token: 1h
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}  # Refresh token: 7 ngày
+
+  # ─── Supabase OAuth ───────────────────────────
+  supabase:
+    jwt-secret: ${SUPABASE_JWT_SECRET:}
 
   # ─── Google Gemini AI ────────────────────────
   gemini:

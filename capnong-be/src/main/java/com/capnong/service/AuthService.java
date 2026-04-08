@@ -27,27 +27,30 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final OrderService orderService;
     private final RefreshTokenService refreshTokenService;
+    private final OtpService otpService;
 
     public AuthService(AuthenticationManager authenticationManager,
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtUtils jwtUtils,
             OrderService orderService,
-            RefreshTokenService refreshTokenService) {
+            RefreshTokenService refreshTokenService,
+            OtpService otpService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
         this.orderService = orderService;
         this.refreshTokenService = refreshTokenService;
+        this.otpService = otpService;
     }
 
     /**
      * Authenticate user bằng username HOẶC SĐT + password → trả JWT + refresh token.
      */
     public AuthResponse login(LoginRequest request) {
-        // Resolve identifier: tìm user bằng username hoặc phone
-        User user = userRepository.findByUsernameOrPhone(request.getIdentifier(), request.getIdentifier())
+        // Resolve identifier: tìm user bằng username, phone hoặc email
+        User user = userRepository.findByUsernameOrPhoneOrEmail(request.getIdentifier(), request.getIdentifier(), request.getIdentifier())
                 .orElseThrow(() -> new AppException("Tài khoản không tồn tại", HttpStatus.NOT_FOUND));
 
         // Authenticate bằng username thực (Spring Security loadUserByUsername)
@@ -73,20 +76,34 @@ public class AuthService {
     }
 
     /**
-     * Register a new user. Validate uniqueness, lock role to BUYER/FARMER only.
+     * Register a new user. 
      */
-    @SuppressWarnings("null")
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Validate uniqueness
+        String identifier = request.getIdentifier();
+        
+        // 1. Validate OTP
+        otpService.verifyOtp(identifier, request.getOtp());
+
+        // 2. Identify type and check uniqueness
+        String phone = null;
+        String email = null;
+        
+        if (identifier.contains("@")) {
+            email = identifier;
+            if (userRepository.existsByEmail(email)) {
+                throw new AppException("Email đã được sử dụng", HttpStatus.CONFLICT);
+            }
+        } else {
+            phone = identifier;
+            if (userRepository.existsByPhone(phone)) {
+                throw new AppException("Số điện thoại đã được sử dụng", HttpStatus.CONFLICT);
+            }
+        }
+
+        // Check explicit username uniqueness
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new AppException("Username đã được sử dụng", HttpStatus.CONFLICT);
-        }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AppException("Email đã được sử dụng", HttpStatus.CONFLICT);
-        }
-        if (userRepository.existsByPhone(request.getPhone())) {
-            throw new AppException("Số điện thoại đã được sử dụng", HttpStatus.CONFLICT);
+            throw new AppException("Tên tài khoản (username) đã được sử dụng", HttpStatus.CONFLICT);
         }
 
         // Lock role: chỉ cho phép BUYER hoặc FARMER khi đăng ký
@@ -97,8 +114,8 @@ public class AuthService {
 
         User user = User.builder()
                 .username(request.getUsername())
-                .phone(request.getPhone())
-                .email(request.getEmail())
+                .phone(phone)
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
                 .role(assignedRole)
@@ -106,11 +123,16 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // Merge guest orders dùng cả phone và email
-        orderService.mergeGuestOrdersToUser(request.getPhone(), request.getEmail(), user.getId());
+        // Merge guest orders
+        if (phone != null) {
+            orderService.mergeGuestOrdersToUser(phone, null, user.getId());
+        }
+        if (email != null) {
+            orderService.mergeGuestOrdersToUser(null, email, user.getId());
+        }
 
         // Auto-login sau khi đăng ký
-        return login(new LoginRequest(user.getUsername(), request.getPassword()));
+        return login(new LoginRequest(request.getUsername(), request.getPassword()));
     }
 
     /**
@@ -142,5 +164,47 @@ public class AuthService {
     public void logout(String refreshTokenStr) {
         RefreshToken refreshToken = refreshTokenService.verifyRefreshToken(refreshTokenStr);
         refreshTokenService.revokeAllUserTokens(refreshToken.getUser());
+    }
+
+    /**
+     * Quên mật khẩu: Gửi OTP đến SĐT hoặc Email
+     */
+    @Transactional
+    public void forgotPassword(String identifier) {
+        if (!userRepository.existsByPhone(identifier) && 
+            !userRepository.existsByEmail(identifier)) {
+            throw new AppException("Không tìm thấy tài khoản với SĐT/Email này", HttpStatus.NOT_FOUND);
+        }
+        otpService.sendOtp(identifier);
+    }
+
+    /**
+     * Đặt lại mật khẩu: Xác nhận OTP và lưu mật khẩu mới
+     */
+    @Transactional
+    public void resetPassword(String identifier, String otp, String newPassword) {
+        User user = userRepository.findByUsernameOrPhoneOrEmail(identifier, identifier, identifier)
+                .orElseThrow(() -> new AppException("Không tìm thấy tài khoản", HttpStatus.NOT_FOUND));
+
+        otpService.verifyOtp(identifier, otp);
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Revoke all existing sessions
+        refreshTokenService.revokeAllUserTokens(user);
+    }
+
+    /**
+     * Gửi OTP để đăng ký tài khoản (qua SĐT/Email)
+     */
+    @Transactional
+    public void sendRegisterOtp(String identifier) {
+        if (identifier.contains("@") && userRepository.existsByEmail(identifier)) {
+            throw new AppException("Email này đã được sử dụng", HttpStatus.CONFLICT);
+        }
+        if (!identifier.contains("@") && userRepository.existsByPhone(identifier)) {
+            throw new AppException("Số điện thoại này đã được sử dụng", HttpStatus.CONFLICT);
+        }
+        otpService.sendOtp(identifier);
     }
 }

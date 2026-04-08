@@ -21,30 +21,32 @@ public class MockOtpServiceImpl implements OtpService {
 
     private static final Logger logger = LoggerFactory.getLogger(MockOtpServiceImpl.class);
 
-    // In-memory mock storage: phone -> otp_code. Use Redis in production.
+    // In-memory mock storage: identifier -> otp_code. Use Redis in production.
     private final Map<String, String> mockOtpStorage = new ConcurrentHashMap<>();
 
     @Override
-    public void sendOtp(String phone) {
+    public void sendOtp(String identifier) {
         // Generate a standard test OTP "123456" for dev. 
         // In reality, random 6 digits: String.format("%06d", new Random().nextInt(999999))
         String code = "123456";
         
-        mockOtpStorage.put(phone, code);
+        mockOtpStorage.put(identifier, code);
         
-        // Log to console instead of sending SMS
+        String type = identifier.contains("@") ? "EMAIL" : "SMS";
+        
+        // Log to console instead of sending SMS/Email
         logger.info("========================================");
-        logger.info("MOCK SMS: Gửi mã OTP [{}] đến số SĐT {}", code, phone);
+        logger.info("MOCK {}: Gửi mã OTP [{}] đến {}", type, code, identifier);
         logger.info("========================================");
     }
 
     @Override
-    public void verifyOtp(String phone, String code) {
-        if (phone == null || code == null) {
-            throw new AppException("Số điện thoại và mã OTP là bắt buộc", HttpStatus.BAD_REQUEST);
+    public void verifyOtp(String identifier, String code) {
+        if (identifier == null || code == null) {
+            throw new AppException("Thông tin định danh và mã OTP là bắt buộc", HttpStatus.BAD_REQUEST);
         }
 
-        String storedCode = mockOtpStorage.get(phone);
+        String storedCode = mockOtpStorage.get(identifier);
         
         if (storedCode == null) {
             throw new AppException("Mã OTP đã hết hạn hoặc chưa được gửi", HttpStatus.BAD_REQUEST);
@@ -55,7 +57,8 @@ public class MockOtpServiceImpl implements OtpService {
         }
 
         // OTP verified successfully, clear it
-        mockOtpStorage.remove(phone);
-        logger.info("MOCK SMS: Xác minh OTP thành công cho số {}", phone);
+        mockOtpStorage.remove(identifier);
+        String type = identifier.contains("@") ? "EMAIL" : "SMS";
+        logger.info("MOCK {}: Xác minh OTP thành công cho {}", type, identifier);
     }
 }

@@ -48,7 +48,12 @@ public class AddressService {
      */
     private void loadProvinces() {
         try {
-            WebClient client = webClientBuilder.baseUrl(PROVINCES_API).build();
+            WebClient client = webClientBuilder
+                    .baseUrl(PROVINCES_API)
+                    .codecs(configurer -> configurer
+                            .defaultCodecs()
+                            .maxInMemorySize(10 * 1024 * 1024)) // 10MB buffer cho dữ liệu tỉnh/xã
+                    .build();
             String json = client.get()
                     .uri("?depth=2")
                     .retrieve()

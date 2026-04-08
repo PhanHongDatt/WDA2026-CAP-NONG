@@ -2,7 +2,8 @@ package com.capnong.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
 
@@ -12,12 +13,9 @@ import java.time.Instant;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class RefreshToken {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@SuperBuilder
+@SQLRestriction("deleted = false")
+public class RefreshToken extends BaseEntity {
 
     @Column(nullable = false, unique = true)
     private String token;
@@ -32,8 +30,4 @@ public class RefreshToken {
     @Column(nullable = false)
     @Builder.Default
     private Boolean revoked = false;
-
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private Instant createdAt;
 }

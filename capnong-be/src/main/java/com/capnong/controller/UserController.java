@@ -23,9 +23,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class UserController {
 
     private final UserService userService;
+    private final com.capnong.service.OAuthService oAuthService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, com.capnong.service.OAuthService oAuthService) {
         this.userService = userService;
+        this.oAuthService = oAuthService;
     }
 
     @GetMapping("/me")
@@ -56,5 +58,34 @@ public class UserController {
             @RequestParam("file") MultipartFile file) {
         UserResponse response = userService.uploadAvatar(userDetails.getId(), file);
         return ResponseEntity.ok(ApiResponse.success("Upload avatar thành công", response));
+    }
+
+    @PostMapping("/me/send-update-otp")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Gửi OTP xác nhận", description = "Gửi mã OTP về SĐT hoặc Email mới trước khi cập nhật account.")
+    public ResponseEntity<ApiResponse<Void>> sendUpdateOtp(
+            @Valid @RequestBody com.capnong.dto.request.SendOtpRequest request) {
+        userService.sendUpdateOtp(request.getIdentifier());
+        return ResponseEntity.ok(
+                ApiResponse.success("Mã OTP đã được gửi đến " + request.getIdentifier()));
+    }
+    @PutMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Đổi mật khẩu", description = "Đổi mật khẩu cho người dùng đang đăng nhập.")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @Valid @RequestBody com.capnong.dto.request.ChangePasswordRequest request) {
+        userService.changePassword(userDetails.getId(), request.getOldPassword(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công"));
+    }
+
+    @PostMapping("/me/link-google")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Liên kết tài khoản Google", description = "Gửi Supabase token để liên kết Google vào tài khoản hiện tại. Sau khi liên kết, có thể đăng nhập bằng Google.")
+    public ResponseEntity<ApiResponse<Void>> linkGoogle(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @Valid @RequestBody com.capnong.dto.request.OAuthLoginRequest request) {
+        oAuthService.linkGoogleAccount(userDetails.getId(), request.getSupabaseToken());
+        return ResponseEntity.ok(ApiResponse.success("Liên kết tài khoản Google thành công"));
     }
 }
