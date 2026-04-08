@@ -10,6 +10,8 @@ server:
 spring:
   application:
     name: capnong-be
+  profiles:
+    active: dev
 
   # ─── PostgreSQL Supabase DataSource ─────────────────
   datasource:
