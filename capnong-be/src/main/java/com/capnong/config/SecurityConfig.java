@@ -48,6 +48,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/cart/add").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cart").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/orders/checkout").permitAll()
+                        .requestMatchers("/api/otp/**").permitAll()
+                        .requestMatchers("/api/address/**").permitAll()
+                        // Admin endpoints
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )

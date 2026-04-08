@@ -13,7 +13,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @Entity
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(columnNames = "username"),
-        @UniqueConstraint(columnNames = "email")
+        @UniqueConstraint(columnNames = "email"),
+        @UniqueConstraint(columnNames = "phone")
 })
 @Getter
 @Setter
@@ -39,8 +40,11 @@ public class User {
     @Column(name = "full_name", length = 100)
     private String fullName;
 
-    @Column(length = 15)
+    @Column(nullable = false, unique = true, length = 15)
     private String phone;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

@@ -17,12 +17,20 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Load user by username OR phone number (Spring Security gọi method này).
+     * Identifier có thể là username hoặc SĐT.
+     */
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
+    public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+        User user = userRepository.findByUsernameOrPhone(identifier, identifier)
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "User not found with username: " + username));
+                        "Không tìm thấy tài khoản với username/SĐT: " + identifier));
+
+        if (!user.getActive()) {
+            throw new UsernameNotFoundException("Tài khoản đã bị khóa (banned)");
+        }
 
         return UserDetailsImpl.build(user);
     }

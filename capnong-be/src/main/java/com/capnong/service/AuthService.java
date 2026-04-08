@@ -4,6 +4,7 @@ import com.capnong.dto.request.LoginRequest;
 import com.capnong.dto.request.RegisterRequest;
 import com.capnong.dto.response.AuthResponse;
 import com.capnong.exception.AppException;
+import com.capnong.model.RefreshToken;
 import com.capnong.model.User;
 import com.capnong.model.enums.Role;
 import com.capnong.repository.UserRepository;
@@ -25,53 +26,70 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final OrderService orderService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(AuthenticationManager authenticationManager,
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtUtils jwtUtils,
-            OrderService orderService) {
+            OrderService orderService,
+            RefreshTokenService refreshTokenService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
         this.orderService = orderService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     /**
-     * Authenticate user and return JWT token.
+     * Authenticate user bằng username HOẶC SĐT + password → trả JWT + refresh token.
      */
     public AuthResponse login(LoginRequest request) {
+        // Resolve identifier: tìm user bằng username hoặc phone
+        User user = userRepository.findByUsernameOrPhone(request.getIdentifier(), request.getIdentifier())
+                .orElseThrow(() -> new AppException("Tài khoản không tồn tại", HttpStatus.NOT_FOUND));
+
+        // Authenticate bằng username thực (Spring Security loadUserByUsername)
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(), request.getPassword()));
+                        user.getUsername(), request.getPassword()));
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        String token = jwtUtils.generateToken(userDetails);
+        String accessToken = jwtUtils.generateToken(userDetails);
 
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+        // Tạo refresh token
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
         return AuthResponse.builder()
-                .token(token)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .expiresIn(jwtUtils.getExpirationMs())
                 .username(user.getUsername())
+                .phone(user.getPhone())
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .build();
     }
 
     /**
-     * Register a new user.
+     * Register a new user. Validate uniqueness, lock role to BUYER/FARMER only.
      */
     @SuppressWarnings("null")
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        // Validate uniqueness
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new AppException("Username is already taken", HttpStatus.CONFLICT);
+            throw new AppException("Username đã được sử dụng", HttpStatus.CONFLICT);
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new AppException("Email đã được sử dụng", HttpStatus.CONFLICT);
+        }
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new AppException("Số điện thoại đã được sử dụng", HttpStatus.CONFLICT);
         }
 
-        // Ánh xạ role từ request, mặc định là BUYER. Khóa chỉ cho phép chọn
-        // BUYER/FARMER.
+        // Lock role: chỉ cho phép BUYER hoặc FARMER khi đăng ký
         Role assignedRole = Role.BUYER;
         if (request.getRole() != null && request.getRole().equalsIgnoreCase("FARMER")) {
             assignedRole = Role.FARMER;
@@ -79,6 +97,7 @@ public class AuthService {
 
         User user = User.builder()
                 .username(request.getUsername())
+                .phone(request.getPhone())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
@@ -87,10 +106,41 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // Merge any existing guest orders for this user based on their email or phone
-        // Since RegisterRequest only has email, we use email
-        orderService.mergeGuestOrdersToUser(null, user.getEmail(), user.getId());
+        // Merge guest orders dùng cả phone và email
+        orderService.mergeGuestOrdersToUser(request.getPhone(), request.getEmail(), user.getId());
 
-        return login(new LoginRequest(request.getUsername(), request.getPassword()));
+        // Auto-login sau khi đăng ký
+        return login(new LoginRequest(user.getUsername(), request.getPassword()));
+    }
+
+    /**
+     * Refresh access token bằng refresh token.
+     */
+    @Transactional
+    public AuthResponse refreshAccessToken(String refreshTokenStr) {
+        RefreshToken refreshToken = refreshTokenService.verifyRefreshToken(refreshTokenStr);
+        User user = refreshToken.getUser();
+
+        UserDetailsImpl userDetails = UserDetailsImpl.build(user);
+        String newAccessToken = jwtUtils.generateToken(userDetails);
+
+        return AuthResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(refreshToken.getToken())
+                .expiresIn(jwtUtils.getExpirationMs())
+                .username(user.getUsername())
+                .phone(user.getPhone())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .build();
+    }
+
+    /**
+     * Logout: revoke tất cả refresh tokens của user.
+     */
+    @Transactional
+    public void logout(String refreshTokenStr) {
+        RefreshToken refreshToken = refreshTokenService.verifyRefreshToken(refreshTokenStr);
+        refreshTokenService.revokeAllUserTokens(refreshToken.getUser());
     }
 }

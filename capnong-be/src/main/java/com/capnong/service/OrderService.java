@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,6 +31,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final CartService cartService;
+    private final OtpService otpService;
+    private final AddressService addressService;
 
     @Transactional
     public OrderResponse checkout(String guestSessionId, Long userId, CheckoutRequest checkoutRequest) {
@@ -43,6 +45,17 @@ public class OrderService {
             user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         } else {
+            // Guest checkout: requires OTP verification
+            if (checkoutRequest.getGuestPhone() == null || checkoutRequest.getOtpCode() == null) {
+                throw new IllegalArgumentException("Khách vãng lai cần nhập số điện thoại và mã OTP");
+            }
+            if (checkoutRequest.getGuestName() == null || checkoutRequest.getStreetAddress() == null
+                    || checkoutRequest.getProvinceCode() == null) {
+                throw new IllegalArgumentException("Khách vãng lai cần nhập họ tên, địa chỉ và tỉnh/thành phố");
+            }
+
+            otpService.verifyOtp(checkoutRequest.getGuestPhone(), checkoutRequest.getOtpCode());
+
             cart = cartRepository.findByGuestSessionId(guestSessionId)
                     .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
         }
@@ -51,11 +64,22 @@ public class OrderService {
             throw new IllegalArgumentException("Cart is empty");
         }
 
+        // Resolve province and ward names from codes
+        String provinceName = addressService.getProvinceName(checkoutRequest.getProvinceCode());
+        String wardName = addressService.getWardName(checkoutRequest.getWardCode());
+
         Order order = Order.builder()
                 .orderNumber(UUID.randomUUID().toString())
                 .user(user)
                 .guestEmail(checkoutRequest.getGuestEmail())
                 .guestPhone(checkoutRequest.getGuestPhone())
+                .guestName(checkoutRequest.getGuestName())
+                .streetAddress(checkoutRequest.getStreetAddress())
+                .wardCode(checkoutRequest.getWardCode())
+                .wardName(wardName)
+                .provinceCode(checkoutRequest.getProvinceCode())
+                .provinceName(provinceName)
+                .orderNotes(checkoutRequest.getOrderNotes())
                 .status(OrderStatus.PENDING)
                 .isMerged(false)
                 .items(new ArrayList<>())
@@ -66,7 +90,8 @@ public class OrderService {
         for (CartItem cartItem : cart.getItems()) {
             // Locking the product to prevent Race Condition
             Product product = productRepository.findByIdWithLock(cartItem.getProduct().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + cartItem.getProduct().getId()));
+                    .orElseThrow(
+                            () -> new ResourceNotFoundException("Product not found: " + cartItem.getProduct().getId()));
 
             if (product.getAvailableQuantity().compareTo(cartItem.getQuantity()) < 0) {
                 throw new InsufficientStockException("Not enough stock for product: " + product.getName() +
@@ -92,7 +117,7 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
         orderRepository.save(order);
 
-        // Clear cart after successful checkout
+        // Clear cart after successful checkout (userId go first according to getCart)
         cartService.clearCart(guestSessionId, userId);
 
         return mapToOrderResponse(order);
@@ -100,10 +125,12 @@ public class OrderService {
 
     @Transactional
     public void mergeGuestOrdersToUser(String phone, String email, Long userId) {
-        if (userId == null) return;
-        
+        if (userId == null)
+            return;
+
         List<Order> unmergedOrders = orderRepository.findUnmergedGuestOrders(phone, email);
-        if (unmergedOrders.isEmpty()) return;
+        if (unmergedOrders.isEmpty())
+            return;
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -123,25 +150,39 @@ public class OrderService {
     }
 
     private OrderResponse mapToOrderResponse(Order order) {
+        List<OrderItemResponse> itemResponses;
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            itemResponses = Collections.emptyList();
+        } else {
+            itemResponses = order.getItems().stream()
+                    .map(item -> OrderItemResponse.builder()
+                            .id(item.getId())
+                            .productId(item.getProduct().getId())
+                            .productName(item.getProduct().getName())
+                            .quantity(item.getQuantity())
+                            .pricePerUnit(item.getPricePerUnit())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
         return OrderResponse.builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
                 .userId(order.getUser() != null ? order.getUser().getId() : null)
                 .guestEmail(order.getGuestEmail())
                 .guestPhone(order.getGuestPhone())
+                .guestName(order.getGuestName())
+                .streetAddress(order.getStreetAddress())
+                .wardCode(order.getWardCode())
+                .wardName(order.getWardName())
+                .provinceCode(order.getProvinceCode())
+                .provinceName(order.getProvinceName())
+                .orderNotes(order.getOrderNotes())
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus())
                 .isMerged(order.getIsMerged())
                 .createdAt(order.getCreatedAt())
-                .items(order.getItems() == null ? new ArrayList<>() : order.getItems().stream()
-                        .map(item -> OrderItemResponse.builder()
-                                .id(item.getId())
-                                .productId(item.getProduct().getId())
-                                .productName(item.getProduct().getName())
-                                .quantity(item.getQuantity())
-                                .pricePerUnit(item.getPricePerUnit())
-                                .build())
-                        .collect(Collectors.toList()))
+                .items(itemResponses)
                 .build();
     }
 }

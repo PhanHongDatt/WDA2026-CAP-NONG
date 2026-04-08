@@ -38,6 +38,27 @@ public class Order {
     @Column(name = "guest_phone")
     private String guestPhone;
 
+    @Column(name = "guest_name")
+    private String guestName;
+
+    @Column(name = "street_address", length = 255)
+    private String streetAddress;
+
+    @Column(name = "ward_code", length = 10)
+    private String wardCode;
+
+    @Column(name = "ward_name", length = 100)
+    private String wardName;
+
+    @Column(name = "province_code", length = 5)
+    private String provinceCode;
+
+    @Column(name = "province_name", length = 100)
+    private String provinceName;
+
+    @Column(name = "order_notes", columnDefinition = "TEXT")
+    private String orderNotes;
+
     @Column(name = "total_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal totalAmount;
 

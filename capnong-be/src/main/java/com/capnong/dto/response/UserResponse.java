@@ -4,22 +4,20 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @AllArgsConstructor
-public class AuthResponse {
+public class UserResponse {
 
-    private String accessToken;
-
-    private String refreshToken;
-
-    @Builder.Default
-    private String type = "Bearer";
-
-    private long expiresIn;
-
+    private Long id;
     private String username;
     private String phone;
     private String email;
+    private String fullName;
+    private String avatarUrl;
     private String role;
+    private Boolean active;
+    private LocalDateTime createdAt;
 }

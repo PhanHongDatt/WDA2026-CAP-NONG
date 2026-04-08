@@ -1,6 +1,7 @@
 package com.capnong.controller;
 
 import com.capnong.dto.request.LoginRequest;
+import com.capnong.dto.request.RefreshTokenRequest;
 import com.capnong.dto.request.RegisterRequest;
 import com.capnong.dto.response.ApiResponse;
 import com.capnong.dto.response.AuthResponse;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Authentication")
+@Tag(name = "Authentication", description = "Đăng ký, đăng nhập, refresh token, đăng xuất")
 public class AuthController {
 
     private final AuthService authService;
@@ -27,7 +28,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Đăng nhập hệ thống", description = "Xác thực bằng username/password và trả về JWT token.")
+    @Operation(summary = "Đăng nhập", description = "Xác thực bằng username hoặc SĐT + mật khẩu. Trả về access token (1h) + refresh token (7 ngày).")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest request) {
         AuthResponse authResponse = authService.login(request);
@@ -36,12 +37,30 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    @Operation(summary = "Đăng ký tài khoản mới", description = "Tạo tài khoản mới. Mặc định role là BUYER, có thể truyền FARMER để đăng ký bán hàng.")
+    @Operation(summary = "Đăng ký tài khoản", description = "Tạo tài khoản mới. Role chỉ cho phép BUYER hoặc FARMER. Tự động merge đơn hàng guest nếu có.")
     public ResponseEntity<ApiResponse<AuthResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
         AuthResponse authResponse = authService.register(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Đăng ký tài khoản thành công", authResponse));
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Làm mới access token", description = "Gửi refresh token để nhận access token mới mà không cần đăng nhập lại.")
+    public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request) {
+        AuthResponse authResponse = authService.refreshAccessToken(request.getRefreshToken());
+        return ResponseEntity.ok(
+                ApiResponse.success("Refresh token thành công", authResponse));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Đăng xuất", description = "Thu hồi tất cả refresh token của user hiện tại.")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request.getRefreshToken());
+        return ResponseEntity.ok(
+                ApiResponse.success("Đăng xuất thành công"));
     }
 }
