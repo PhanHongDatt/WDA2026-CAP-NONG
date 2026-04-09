@@ -28,6 +28,7 @@ public class AuthService {
     private final OrderService orderService;
     private final RefreshTokenService refreshTokenService;
     private final OtpService otpService;
+    private final ShopService shopService;
 
     public AuthService(AuthenticationManager authenticationManager,
             UserRepository userRepository,
@@ -35,7 +36,8 @@ public class AuthService {
             JwtUtils jwtUtils,
             OrderService orderService,
             RefreshTokenService refreshTokenService,
-            OtpService otpService) {
+            OtpService otpService,
+            ShopService shopService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -43,6 +45,7 @@ public class AuthService {
         this.orderService = orderService;
         this.refreshTokenService = refreshTokenService;
         this.otpService = otpService;
+        this.shopService = shopService;
     }
 
     /**
@@ -59,7 +62,11 @@ public class AuthService {
                         user.getUsername(), request.getPassword()));
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        String accessToken = jwtUtils.generateToken(userDetails);
+
+        // Lấy shop_slug nếu user đã có shop
+        String shopSlug = shopService.getShopSlugByUsername(user.getUsername());
+
+        String accessToken = jwtUtils.generateToken(userDetails, shopSlug);
 
         // Tạo refresh token
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
@@ -72,6 +79,7 @@ public class AuthService {
                 .phone(user.getPhone())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .shopSlug(shopSlug)
                 .build();
     }
 
@@ -144,7 +152,11 @@ public class AuthService {
         User user = refreshToken.getUser();
 
         UserDetailsImpl userDetails = UserDetailsImpl.build(user);
-        String newAccessToken = jwtUtils.generateToken(userDetails);
+
+        // Lấy shop_slug nếu user đã có shop
+        String shopSlug = shopService.getShopSlugByUsername(user.getUsername());
+
+        String newAccessToken = jwtUtils.generateToken(userDetails, shopSlug);
 
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
@@ -154,6 +166,7 @@ public class AuthService {
                 .phone(user.getPhone())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .shopSlug(shopSlug)
                 .build();
     }
 

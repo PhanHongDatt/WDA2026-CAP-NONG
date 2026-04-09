@@ -1,7 +1,7 @@
-// src/main/java/com/capnong/service/ShopService.java
 package com.capnong.service;
 
 import com.capnong.dto.request.ShopCreateRequest;
+import com.capnong.dto.response.ShopResponse;
 import com.capnong.exception.AppException;
 import com.capnong.exception.ResourceNotFoundException;
 import com.capnong.model.Shop;
@@ -24,7 +24,7 @@ public class ShopService {
 
     @SuppressWarnings("null")
     @Transactional
-    public Shop createShop(ShopCreateRequest request, String username) {
+    public ShopResponse createShop(ShopCreateRequest request, String username) {
         User owner = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
@@ -42,18 +42,25 @@ public class ShopService {
                 .province(request.getProvince())
                 .district(request.getDistrict())
                 .bio(request.getBio())
+                .yearsExperience(request.getYearsExperience())
+                .farmAreaM2(request.getFarmAreaM2())
+                .avatarUrl(request.getAvatarUrl())
+                .coverUrl(request.getCoverUrl())
                 .build();
-        return shopRepository.save(shop);
+
+        Shop saved = shopRepository.save(shop);
+        return mapToShopResponse(saved);
     }
 
     @Transactional(readOnly = true)
-    public Shop getShopBySlug(String slug) {
-        return shopRepository.findBySlug(slug)
+    public ShopResponse getShopBySlug(String slug) {
+        Shop shop = shopRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Shop", "slug", slug));
+        return mapToShopResponse(shop);
     }
 
     @Transactional
-    public Shop updateShop(String slug, ShopCreateRequest request, String username) {
+    public ShopResponse updateShop(String slug, ShopCreateRequest request, String username) {
         Shop shop = shopRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Shop", "slug", slug));
 
@@ -72,14 +79,20 @@ public class ShopService {
         shop.setProvince(request.getProvince());
         shop.setDistrict(request.getDistrict());
         shop.setBio(request.getBio());
+        shop.setYearsExperience(request.getYearsExperience());
+        shop.setFarmAreaM2(request.getFarmAreaM2());
+        shop.setAvatarUrl(request.getAvatarUrl());
+        shop.setCoverUrl(request.getCoverUrl());
 
-        return shopRepository.save(shop);
+        Shop saved = shopRepository.save(shop);
+        return mapToShopResponse(saved);
     }
 
     @Transactional(readOnly = true)
-    public Shop getMyShop(String username) {
-        return shopRepository.findByOwnerUsername(username)
+    public ShopResponse getMyShop(String username) {
+        Shop shop = shopRepository.findByOwnerUsername(username)
                 .orElseThrow(() -> new AppException("Bạn chưa có gian hàng", HttpStatus.NOT_FOUND));
+        return mapToShopResponse(shop);
     }
 
     @Transactional
@@ -93,5 +106,39 @@ public class ShopService {
 
         shop.softDelete(username);
         shopRepository.save(shop);
+    }
+
+    /**
+     * Lấy shop_slug theo username (dùng cho JWT claim).
+     * Trả về null nếu user chưa có shop.
+     */
+    @Transactional(readOnly = true)
+    public String getShopSlugByUsername(String username) {
+        return shopRepository.findByOwnerUsername(username)
+                .map(Shop::getSlug)
+                .orElse(null);
+    }
+
+    private ShopResponse mapToShopResponse(Shop shop) {
+        User owner = shop.getOwner();
+        return ShopResponse.builder()
+                .id(shop.getId())
+                .slug(shop.getSlug())
+                .name(shop.getName())
+                .province(shop.getProvince())
+                .district(shop.getDistrict())
+                .bio(shop.getBio())
+                .yearsExperience(shop.getYearsExperience())
+                .farmAreaM2(shop.getFarmAreaM2())
+                .avatarUrl(shop.getAvatarUrl())
+                .coverUrl(shop.getCoverUrl())
+                .averageRating(shop.getAverageRating())
+                .totalReviews(shop.getTotalReviews())
+                .createdAt(shop.getCreatedAt())
+                .ownerId(owner.getId())
+                .ownerUsername(owner.getUsername())
+                .ownerFullName(owner.getFullName())
+                .ownerAvatarUrl(owner.getAvatarUrl())
+                .build();
     }
 }

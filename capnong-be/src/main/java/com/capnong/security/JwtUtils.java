@@ -29,17 +29,29 @@ public class JwtUtils {
      * Generate JWT token from UserDetails with role claim.
      */
     public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails, null);
+    }
+
+    /**
+     * Generate JWT token with role + optional shop_slug claim.
+     */
+    public String generateToken(UserDetails userDetails, String shopSlug) {
         String roles = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(userDetails.getUsername())
                 .claim("roles", roles)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-                .signWith(getSigningKey())
-                .compact();
+                .signWith(getSigningKey());
+
+        if (shopSlug != null) {
+            builder.claim("shop_slug", shopSlug);
+        }
+
+        return builder.compact();
     }
 
     /**

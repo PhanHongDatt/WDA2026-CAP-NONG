@@ -7,6 +7,8 @@ import lombok.experimental.SuperBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "shops")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
@@ -24,16 +26,32 @@ public class Shop extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String province;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String district;
 
     @Column(columnDefinition = "TEXT")
     private String bio;
 
-    private Integer yearsExperience;
+    @Column(name = "years_experience")
+    private Short yearsExperience;
+
+    @Column(name = "farm_area_m2")
     private Integer farmAreaM2;
+
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
+
+    @Column(name = "cover_url", columnDefinition = "TEXT")
+    private String coverUrl;
+
+    @Column(name = "average_rating", precision = 3, scale = 2)
+    @Builder.Default
+    private BigDecimal averageRating = BigDecimal.ZERO;
+
+    @Column(name = "total_reviews")
+    @Builder.Default
+    private Integer totalReviews = 0;
 }

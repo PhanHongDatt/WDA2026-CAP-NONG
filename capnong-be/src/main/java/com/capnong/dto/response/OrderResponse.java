@@ -1,7 +1,5 @@
 package com.capnong.dto.response;
 
-import java.util.UUID;
-
 import com.capnong.model.enums.OrderStatus;
 import lombok.Builder;
 import lombok.Data;
