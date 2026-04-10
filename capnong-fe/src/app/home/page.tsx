@@ -60,10 +60,13 @@ export default async function HomePage() {
   const [seasonalProducts, newProducts, shops] = await Promise.all([
     productService.getSeasonalProducts(),
     productService.getNewProducts(),
-    shopService.getBySlug("nong-trai-xanh-da-lat").then(async () => {
-      // Lấy danh sách shops từ mock hoặc API
+    shopService.getFeaturedShops().then(async (result) => {
+      if (result && result.length > 0) return result;
       const { MOCK_SHOPS } = await import("@/lib/mock-data");
-      return MOCK_SHOPS; // TODO: shopService.list() khi BE có endpoint
+      return MOCK_SHOPS;
+    }).catch(async () => {
+      const { MOCK_SHOPS } = await import("@/lib/mock-data");
+      return MOCK_SHOPS;
     }),
   ]);
   return (
@@ -74,22 +77,29 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Trust Badges — redesigned */}
-      <section className="bg-gradient-to-r from-primary/5 via-white to-primary/5 dark:from-primary/10 dark:via-background dark:to-primary/10 border-b border-gray-100 dark:border-border">
-        <div className="max-w-7xl mx-auto px-4 py-5 grid grid-cols-3 gap-4">
-          {[
-            { icon: "🌾", title: "Từ nông trại đến bàn ăn", desc: "Trực tiếp, không qua trung gian" },
-            { icon: "🌿", title: "100% hữu cơ", desc: "Đạt chuẩn VietGAP / GlobalGAP" },
-            { icon: "💰", title: "Gom đơn tiết kiệm", desc: "Giảm 20-40% nhờ mua chung" },
-          ].map((item) => (
-            <div key={item.title} className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border shadow-sm">
-              <span className="text-2xl">{item.icon}</span>
-              <div>
-                <p className="font-bold text-sm text-foreground">{item.title}</p>
-                <p className="text-[11px] text-foreground-muted">{item.desc}</p>
+      {/* Feature Cards — gradient + icon overflow (tham khảo Hình 6-8) */}
+      <section className="py-6">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            {[
+              { gradient: "card-gradient-organic", icon: "🌿", title: "Hữu cơ", desc: "VietGAP / GlobalGAP" },
+              { gradient: "card-gradient-delivery", icon: "🚛", title: "Giao tận nhà", desc: "Tươi ngon mỗi ngày" },
+              { gradient: "card-gradient-trace", icon: "🔍", title: "Truy xuất", desc: "Nguồn gốc minh bạch" },
+              { gradient: "card-gradient-coop", icon: "🤝", title: "Gom đơn", desc: "Tiết kiệm 20-40%" },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className={`${item.gradient} relative overflow-visible rounded-2xl p-5 pt-10 text-center shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-300`}
+              >
+                {/* Icon — nhô lên trên viền card */}
+                <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-4xl drop-shadow-lg bg-white/20 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center">
+                  {item.icon}
+                </span>
+                <p className="font-extrabold text-white text-base leading-tight">{item.title}</p>
+                <p className="text-white/80 text-xs mt-1">{item.desc}</p>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
@@ -106,21 +116,21 @@ export default async function HomePage() {
 
       <main className="max-w-7xl mx-auto px-4 py-2">
         {/* SECTION: Seasonal Products */}
-        <section className="mb-12">
-          <div className="flex justify-between items-end mb-6">
+        <section className="mb-12 -mx-4 px-4 py-8 bg-gradient-to-b from-green-50/50 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
                 Nông sản đang mùa tại Cạp Nông
               </h2>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 {["Tất cả", "Trái cây", "Rau củ", "Thủy hải sản"].map(
                   (cat, i) => (
                     <button type="button"
                       key={cat}
                       className={
                         i === 0
-                          ? "px-5 py-1.5 rounded-full bg-primary text-white text-sm font-medium"
-                          : "px-5 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200"
+                          ? "px-4 sm:px-5 py-1.5 rounded-full bg-primary text-white text-xs sm:text-sm font-medium"
+                          : "px-4 sm:px-5 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs sm:text-sm font-medium hover:bg-gray-200"
                       }
                     >
                       {cat}
@@ -131,7 +141,7 @@ export default async function HomePage() {
             </div>
             <Link
               href="/catalog"
-              className="text-sm text-primary font-semibold flex items-center gap-1 hover:underline"
+              className="text-sm text-primary font-semibold flex items-center gap-1 hover:underline shrink-0"
             >
               Xem tất cả <ChevronRight className="w-4 h-4" />
             </Link>
@@ -147,28 +157,39 @@ export default async function HomePage() {
         {/* SECTION: Cooperative Pool — chỉ hiện cho HTX members/managers */}
         <CoopPoolSection pool={MOCK_COOP_POOL} />
 
-        {/* SECTION: Featured Farms */}
-        <section className="mb-12">
-          <div className="flex justify-between items-end mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
-              Nhà vườn nổi bật
+        {/* SECTION: Featured Farms — giống hình tham khảo carousel */}
+        <section className="mb-12 relative">
+          {/* Scalloped decorative border — sóng xanh giống hình */}
+          <div
+            className="h-4 w-full mb-4"
+            style={{
+              background: 'radial-gradient(circle 8px at 16px 0, transparent 8px, var(--color-primary, #2E7D32) 8.5px)',
+              backgroundSize: '32px 16px',
+              backgroundPosition: 'top center',
+              backgroundRepeat: 'repeat-x',
+              borderRadius: '0 0 4px 4px',
+              opacity: 0.15,
+            }}
+          />
+          <div className="text-center mb-6">
+            <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-foreground">
+              Khám phá <span className="text-primary">nhà cung cấp</span> dành riêng cho bạn!
             </h2>
-            <Link
-              href="/shops"
-              className="text-sm text-primary font-semibold flex items-center gap-1 hover:underline"
-            >
-              Xem tất cả <ChevronRight className="w-4 h-4" />
-            </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {shops.map((shop) => (
-              <FarmCard key={shop.id} shop={shop} />
-            ))}
+          {/* Horizontal scroll carousel */}
+          <div className="relative group/carousel">
+            <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory px-1">
+              {shops.map((shop) => (
+                <div key={shop.id} className="min-w-[280px] md:min-w-[320px] snap-start flex-shrink-0">
+                  <FarmCard shop={shop} />
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* SECTION: "Gợi ý cho bạn" — Shopee-style product grid */}
-        <section className="mb-12">
+        <section className="mb-12 -mx-4 px-4 py-8 bg-gradient-to-b from-primary-50/40 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-primary uppercase tracking-widest">
               Gợi ý cho bạn

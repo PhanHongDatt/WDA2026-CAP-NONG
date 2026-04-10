@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
@@ -14,6 +14,10 @@ import {
   UserPlus,
   Calendar,
   Trash2,
+  ChevronDown,
+  ChevronRight,
+  User,
+  AlertCircle,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import ProgressBar from "@/components/ui/ProgressBar";
@@ -38,13 +42,72 @@ const MOCK_JOIN_REQUESTS: {
 ];
 
 type BundleStatus = "OPEN" | "FULL" | "CONFIRMED" | "EXPIRED" | "CANCELLED";
-const MOCK_BUNDLES: {
-  id: string; product_name: string; target_kg: number; current_kg: number;
-  price_per_kg: number; deadline: string; status: BundleStatus; pledges_count: number;
-}[] = [
-  { id: "b-001", product_name: "Cam Sành Hà Giang", target_kg: 500, current_kg: 350, price_per_kg: 35000, deadline: "2026-04-01", status: "OPEN", pledges_count: 3 },
-  { id: "b-002", product_name: "Bưởi Da Xanh Bến Tre", target_kg: 300, current_kg: 300, price_per_kg: 55000, deadline: "2026-03-25", status: "FULL", pledges_count: 4 },
-  { id: "b-003", product_name: "Xoài Cát Hòa Lộc", target_kg: 1000, current_kg: 200, price_per_kg: 45000, deadline: "2026-03-15", status: "EXPIRED", pledges_count: 2 },
+type PledgeStatus = "COMMITTED" | "DELIVERED" | "PARTIAL";
+
+interface Pledge {
+  id: string;
+  farmer_name: string;
+  farmer_phone: string;
+  quantity_kg: number;
+  status: PledgeStatus;
+  note?: string;
+  created_at: string;
+}
+
+interface Bundle {
+  id: string;
+  product_name: string;
+  target_kg: number;
+  current_kg: number;
+  price_per_kg: number;
+  deadline: string;
+  status: BundleStatus;
+  pledges: Pledge[];
+}
+
+const MOCK_BUNDLES: Bundle[] = [
+  {
+    id: "b-001",
+    product_name: "Cam Sành Hà Giang",
+    target_kg: 500,
+    current_kg: 350,
+    price_per_kg: 35000,
+    deadline: "2026-04-01",
+    status: "OPEN",
+    pledges: [
+      { id: "p-001", farmer_name: "Bác Ba Nhà Vườn", farmer_phone: "0902222222", quantity_kg: 150, status: "COMMITTED", created_at: "2026-03-20" },
+      { id: "p-002", farmer_name: "Cô Năm Vĩnh Long", farmer_phone: "0907777777", quantity_kg: 100, status: "DELIVERED", note: "Đã giao kho trung tâm", created_at: "2026-03-21" },
+      { id: "p-003", farmer_name: "Anh Sáu Cần Thơ", farmer_phone: "0908888888", quantity_kg: 100, status: "PARTIAL", note: "Mới giao 60kg, còn 40kg", created_at: "2026-03-22" },
+    ],
+  },
+  {
+    id: "b-002",
+    product_name: "Bưởi Da Xanh Bến Tre",
+    target_kg: 300,
+    current_kg: 300,
+    price_per_kg: 55000,
+    deadline: "2026-03-25",
+    status: "FULL",
+    pledges: [
+      { id: "p-004", farmer_name: "Chú Tư Bến Tre", farmer_phone: "0903333333", quantity_kg: 200, status: "DELIVERED", created_at: "2026-03-18" },
+      { id: "p-005", farmer_name: "Bác Ba Nhà Vườn", farmer_phone: "0902222222", quantity_kg: 50, status: "COMMITTED", created_at: "2026-03-19" },
+      { id: "p-006", farmer_name: "Cô Năm Vĩnh Long", farmer_phone: "0907777777", quantity_kg: 30, status: "COMMITTED", created_at: "2026-03-20" },
+      { id: "p-007", farmer_name: "Anh Sáu Cần Thơ", farmer_phone: "0908888888", quantity_kg: 20, status: "DELIVERED", created_at: "2026-03-21" },
+    ],
+  },
+  {
+    id: "b-003",
+    product_name: "Xoài Cát Hòa Lộc",
+    target_kg: 1000,
+    current_kg: 200,
+    price_per_kg: 45000,
+    deadline: "2026-03-15",
+    status: "EXPIRED",
+    pledges: [
+      { id: "p-008", farmer_name: "Anh Sáu Cần Thơ", farmer_phone: "0908888888", quantity_kg: 120, status: "PARTIAL", note: "Mất mùa, chỉ thu hoạch được 80kg", created_at: "2026-03-10" },
+      { id: "p-009", farmer_name: "Bác Ba Nhà Vườn", farmer_phone: "0902222222", quantity_kg: 80, status: "COMMITTED", note: "Chưa tới vụ thu hoạch", created_at: "2026-03-12" },
+    ],
+  },
 ];
 
 const MOCK_SEASONAL = [
@@ -78,6 +141,13 @@ function statusLabel(status: BundleStatus) {
     case "CANCELLED": return "❌ Đã hủy";
   }
 }
+function pledgeStatusBadge(status: PledgeStatus) {
+  switch (status) {
+    case "COMMITTED": return { class: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300", label: "📋 Cam kết" };
+    case "DELIVERED": return { class: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300", label: "✅ Đã giao" };
+    case "PARTIAL": return { class: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", label: "⚠️ Giao một phần" };
+  }
+}
 
 /* ═════════════════════════════════════════ */
 function CoopManageContent() {
@@ -85,24 +155,91 @@ function CoopManageContent() {
   const [activeTab, setActiveTab] = useState<ManageTab>("overview");
   const [joinRequests, setJoinRequests] = useState(MOCK_JOIN_REQUESTS);
   const [members, setMembers] = useState(MOCK_MEMBERS);
-  const [bundles, setBundles] = useState(MOCK_BUNDLES);
+  const [bundles, setBundles] = useState<Bundle[]>(MOCK_BUNDLES);
   const [seasonalConfig, setSeasonalConfig] = useState(MOCK_SEASONAL);
   const [showNewBundle, setShowNewBundle] = useState(false);
+  const [expandedBundle, setExpandedBundle] = useState<string | null>(null);
 
-  /* join request actions */
-  const handleApproveJoin = (id: string) => {
+  /* ─── API Fetch (fallback to mock) ─── */
+  const fetchData = useCallback(async () => {
+    try {
+      const htxApi = await import("@/services/api/htx");
+      const [apiBundles, apiJoinReqs] = await Promise.all([
+        htxApi.getOpenBundles(),
+        htxApi.getPendingJoinRequests(),
+      ]);
+      if (Array.isArray(apiBundles) && apiBundles.length > 0) {
+        setBundles(apiBundles as unknown as Bundle[]);
+      }
+      if (Array.isArray(apiJoinReqs) && apiJoinReqs.length > 0) {
+        setJoinRequests(apiJoinReqs as typeof MOCK_JOIN_REQUESTS);
+      }
+    } catch {
+      // API unavailable → keep mock data
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // New bundle form
+  const [newProduct, setNewProduct] = useState("");
+  const [newTarget, setNewTarget] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [newDeadline, setNewDeadline] = useState("");
+
+  /* join request actions → API + optimistic */
+  const handleApproveJoin = async (id: string) => {
     setJoinRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "APPROVED" as JoinStatus } : r));
+    try {
+      const htxApi = await import("@/services/api/htx");
+      await htxApi.approveJoinRequest(id);
+    } catch { /* optimistic */ }
   };
-  const handleRejectJoin = (id: string) => {
+  const handleRejectJoin = async (id: string) => {
     setJoinRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "REJECTED" as JoinStatus } : r));
+    try {
+      const htxApi = await import("@/services/api/htx");
+      await htxApi.rejectJoinRequest(id);
+    } catch { /* optimistic */ }
   };
 
-  /* bundle actions */
-  const handleConfirmBundle = (id: string) => {
+  /* bundle actions → API + optimistic */
+  const handleConfirmBundle = async (id: string) => {
     setBundles((prev) => prev.map((b) => b.id === id ? { ...b, status: "CONFIRMED" as BundleStatus } : b));
+    try {
+      const htxApi = await import("@/services/api/htx");
+      await htxApi.confirmBundle(id);
+    } catch { /* optimistic */ }
   };
-  const handleCancelBundle = (id: string) => {
+  const handleCancelBundle = async (id: string) => {
     setBundles((prev) => prev.map((b) => b.id === id ? { ...b, status: "CANCELLED" as BundleStatus } : b));
+    try {
+      const htxApi = await import("@/services/api/htx");
+      await htxApi.cancelBundle(id);
+    } catch { /* optimistic */ }
+  };
+  const handleCreateBundle = () => {
+    if (!newProduct.trim() || !newTarget || !newPrice) return;
+    const newBundle: Bundle = {
+      id: `b-${Date.now()}`,
+      product_name: newProduct,
+      target_kg: parseInt(newTarget),
+      current_kg: 0,
+      price_per_kg: parseInt(newPrice),
+      deadline: newDeadline || new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
+      status: "OPEN",
+      pledges: [],
+    };
+    setBundles((prev) => [newBundle, ...prev]);
+    setShowNewBundle(false);
+    setNewProduct(""); setNewTarget(""); setNewPrice(""); setNewDeadline("");
+    // Fire-and-forget API call
+    (async () => {
+      try {
+        const htxApi = await import("@/services/api/htx");
+        await htxApi.createBundle({ productCategory: "OTHER", productName: newProduct, unitCode: "KG", targetQuantity: parseInt(newTarget), pricePerUnit: parseInt(newPrice), deadline: newDeadline || new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0] });
+      } catch { /* optimistic already added */ }
+    })();
   };
 
   const pendingJoin = joinRequests.filter((r) => r.status === "PENDING").length;
@@ -163,6 +300,9 @@ function CoopManageContent() {
               {tab.label}
               {tab.key === "members" && pendingJoin > 0 && (
                 <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingJoin}</span>
+              )}
+              {tab.key === "bundles" && openBundles > 0 && (
+                <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{openBundles}</span>
               )}
             </button>
           ))}
@@ -271,26 +411,26 @@ function CoopManageContent() {
           {showNewBundle && (
             <div className="bg-white dark:bg-surface rounded-xl border-2 border-primary/20 p-6 space-y-4">
               <h3 className="font-bold text-sm text-gray-900 dark:text-foreground">🆕 Tạo Bundle gom đơn mới</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label htmlFor="bundle-product" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Loại nông sản</label>
-                  <input id="bundle-product" type="text" placeholder="VD: Cam Sành Hà Giang" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <label htmlFor="bundle-product" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Loại nông sản *</label>
+                  <input id="bundle-product" type="text" value={newProduct} onChange={(e) => setNewProduct(e.target.value)} placeholder="VD: Cam Sành Hà Giang" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div>
-                  <label htmlFor="bundle-target" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Sản lượng mục tiêu (kg)</label>
-                  <input id="bundle-target" type="number" placeholder="500" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <label htmlFor="bundle-target" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Mục tiêu (kg) *</label>
+                  <input id="bundle-target" type="number" value={newTarget} onChange={(e) => setNewTarget(e.target.value)} placeholder="500" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div>
-                  <label htmlFor="bundle-price" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Giá/kg (VNĐ)</label>
-                  <input id="bundle-price" type="number" placeholder="35000" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <label htmlFor="bundle-price" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Giá/kg (VNĐ) *</label>
+                  <input id="bundle-price" type="number" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} placeholder="35000" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div>
                   <label htmlFor="bundle-deadline" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Deadline gom</label>
-                  <input id="bundle-deadline" type="date" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <input id="bundle-deadline" type="date" value={newDeadline} onChange={(e) => setNewDeadline(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
               </div>
               <div className="flex gap-2">
-                <button type="button" className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">Tạo Bundle</button>
+                <button type="button" onClick={handleCreateBundle} disabled={!newProduct.trim() || !newTarget || !newPrice} className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">Tạo Bundle</button>
                 <button type="button" onClick={() => setShowNewBundle(false)} className="border border-gray-200 dark:border-border px-6 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-foreground-muted hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">Hủy</button>
               </div>
             </div>
@@ -299,53 +439,133 @@ function CoopManageContent() {
           {/* Bundle Cards */}
           {bundles.map((bundle) => {
             const pct = Math.min(100, Math.round((bundle.current_kg / bundle.target_kg) * 100));
-            return (
-              <div key={bundle.id} className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-5">
-                <div className="flex flex-col sm:flex-row justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-bold text-gray-900 dark:text-foreground">{bundle.product_name}</h3>
-                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadge(bundle.status)}`}>
-                        {statusLabel(bundle.status)}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 dark:text-foreground-muted">
-                      <span>🎯 {bundle.current_kg}/{bundle.target_kg} kg</span>
-                      <span>💰 {formatCurrency(bundle.price_per_kg)}/kg</span>
-                      <span>👥 {bundle.pledges_count} farmer</span>
-                      <span>📅 Deadline: {new Date(bundle.deadline).toLocaleDateString("vi-VN")}</span>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                      <ProgressBar
-                        value={pct}
-                        className={`h-full rounded-full transition-all duration-700 ${
-                          pct >= 100 ? "bg-success" : "bg-gradient-to-r from-primary to-primary-light"
-                        }`}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-400">
-                      Tổng giá trị: {formatCurrency(bundle.current_kg * bundle.price_per_kg)} / {formatCurrency(bundle.target_kg * bundle.price_per_kg)}
-                    </p>
-                  </div>
+            const isExpanded = expandedBundle === bundle.id;
+            const deliveredKg = bundle.pledges.filter(p => p.status === "DELIVERED").reduce((s, p) => s + p.quantity_kg, 0);
+            const committedKg = bundle.pledges.filter(p => p.status === "COMMITTED").reduce((s, p) => s + p.quantity_kg, 0);
+            const partialKg = bundle.pledges.filter(p => p.status === "PARTIAL").reduce((s, p) => s + p.quantity_kg, 0);
 
-                  {/* Actions */}
-                  <div className="flex items-start gap-2 shrink-0">
-                    {bundle.status === "FULL" && (
-                      <button type="button" onClick={() => handleConfirmBundle(bundle.id)} className="flex items-center gap-1.5 bg-success text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
-                        <CheckCircle2 className="w-4 h-4" /> Xác nhận
-                      </button>
-                    )}
-                    {(bundle.status === "OPEN" || bundle.status === "FULL") && (
-                      <button type="button" onClick={() => handleCancelBundle(bundle.id)} className="flex items-center gap-1.5 text-red-500 border border-red-200 dark:border-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                        <XCircle className="w-4 h-4" /> Hủy
-                      </button>
-                    )}
+            return (
+              <div key={bundle.id} className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border overflow-hidden">
+                {/* Bundle header */}
+                <div className="p-5">
+                  <div className="flex flex-col sm:flex-row justify-between gap-4">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-bold text-gray-900 dark:text-foreground">{bundle.product_name}</h3>
+                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadge(bundle.status)}`}>
+                          {statusLabel(bundle.status)}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 dark:text-foreground-muted">
+                        <span>🎯 {bundle.current_kg}/{bundle.target_kg} kg</span>
+                        <span>💰 {formatCurrency(bundle.price_per_kg)}/kg</span>
+                        <span>👥 {bundle.pledges.length} farmer</span>
+                        <span>📅 Deadline: {new Date(bundle.deadline).toLocaleDateString("vi-VN")}</span>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                        <ProgressBar
+                          value={pct}
+                          className={`h-full rounded-full transition-all duration-700 ${
+                            pct >= 100 ? "bg-success" : "bg-gradient-to-r from-primary to-primary-light"
+                          }`}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-400">
+                          Tổng giá trị: {formatCurrency(bundle.current_kg * bundle.price_per_kg)} / {formatCurrency(bundle.target_kg * bundle.price_per_kg)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedBundle(isExpanded ? null : bundle.id)}
+                          className="flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+                        >
+                          {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                          {isExpanded ? "Ẩn chi tiết" : `Xem ${bundle.pledges.length} cam kết`}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-start gap-2 shrink-0">
+                      {bundle.status === "FULL" && (
+                        <button type="button" onClick={() => handleConfirmBundle(bundle.id)} className="flex items-center gap-1.5 bg-success text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+                          <CheckCircle2 className="w-4 h-4" /> Xác nhận
+                        </button>
+                      )}
+                      {(bundle.status === "OPEN" || bundle.status === "FULL") && (
+                        <button type="button" onClick={() => handleCancelBundle(bundle.id)} className="flex items-center gap-1.5 text-red-500 border border-red-200 dark:border-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                          <XCircle className="w-4 h-4" /> Hủy
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Pledge detail panel */}
+                {isExpanded && (
+                  <div className="border-t border-gray-100 dark:border-border bg-gray-50/50 dark:bg-background-light/50">
+                    {/* Summary bar */}
+                    <div className="px-5 py-3 flex flex-wrap gap-4 text-xs border-b border-gray-100 dark:border-border">
+                      <span className="text-green-700 dark:text-green-300 font-medium">✅ Đã giao: {deliveredKg} kg</span>
+                      <span className="text-blue-700 dark:text-blue-300 font-medium">📋 Cam kết: {committedKg} kg</span>
+                      {partialKg > 0 && <span className="text-amber-700 dark:text-amber-300 font-medium">⚠️ Giao một phần: {partialKg} kg</span>}
+                      <span className="text-gray-500 font-medium">
+                        Còn thiếu: {Math.max(0, bundle.target_kg - bundle.current_kg)} kg
+                      </span>
+                    </div>
+
+                    {/* Pledge list */}
+                    <div className="divide-y divide-gray-100 dark:divide-border">
+                      {bundle.pledges.map((pledge) => {
+                        const ps = pledgeStatusBadge(pledge.status);
+                        return (
+                          <div key={pledge.id} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                <User className="w-4 h-4 text-primary" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-gray-900 dark:text-foreground truncate">{pledge.farmer_name}</p>
+                                <p className="text-[11px] text-gray-400">{pledge.farmer_phone} • {new Date(pledge.created_at).toLocaleDateString("vi-VN")}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 sm:gap-4">
+                              <span className="text-sm font-bold text-gray-900 dark:text-foreground whitespace-nowrap">
+                                {pledge.quantity_kg} kg
+                              </span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${ps.class}`}>
+                                {ps.label}
+                              </span>
+                            </div>
+                            {pledge.note && (
+                              <p className="text-[11px] text-gray-500 dark:text-foreground-muted italic flex items-start gap-1 sm:max-w-[200px]">
+                                <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                                {pledge.note}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {bundle.pledges.length === 0 && (
+                      <div className="text-center py-6 text-gray-400 text-sm">
+                        Chưa có farmer nào cam kết cho bundle này
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
+
+          {bundles.length === 0 && (
+            <div className="text-center py-12 text-foreground-muted">
+              <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>Chưa có bundle nào. Tạo bundle mới để bắt đầu gom đơn!</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -404,6 +624,7 @@ function CoopManageContent() {
  * UC-07: Tạo HTX (implicit — đã tạo)
  * UC-09: Duyệt/Từ chối thành viên HTX
  * UC-29: Tạo Bundle gom đơn
+ * UC-30: Farmer cam kết (pledge) vào Bundle
  * UC-34: Confirm Bundle
  * UC-36: Config mùa vụ vùng HTX
  */

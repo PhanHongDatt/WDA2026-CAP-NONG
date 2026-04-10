@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -55,17 +55,68 @@ export default function SellerOrderDetailPage() {
   const orderId = params.id as string;
   const [order, setOrder] = useState(MOCK_ORDER);
   const [sellerNote, setSellerNote] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchOrder() {
+      try {
+        const { orderService } = await import("@/services");
+        const orders = await orderService.getMyOrders();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const found = (orders as any[]).find((o: any) => {
+          const code = String(o.orderCode || o.id || "").replace(/[#\s]/g, "");
+          return code === orderId.replace(/[#\s]/g, "");
+        });
+        if (found) {
+          setOrder({
+            id: `#${found.orderCode || found.id}`,
+            status: (found.status || "PENDING") as OrderStatus,
+            date: found.createdAt ? new Date(found.createdAt).toLocaleString("vi-VN") : MOCK_ORDER.date,
+            buyer: {
+              name: found.buyerName || found.guestName || "Khách hàng",
+              phone: found.buyerPhone || found.guestPhone || "",
+              address: found.shippingAddress || found.streetAddress || "",
+            },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            items: (found.items || []).map((i: any) => ({
+              name: i.productName || "SP",
+              qty: i.quantity || 1,
+              price: i.pricePerUnit || 0,
+              image: i.productImage || "/images/products/xoai.jpg",
+            })),
+            shipping_fee: found.shippingFee || 25000,
+            note: found.orderNotes || "",
+          });
+        }
+      } catch { /* keep mock */ }
+      setLoading(false);
+    }
+    fetchOrder();
+  }, [orderId]);
 
   const subtotal = order.items.reduce((s, i) => s + i.price * i.qty, 0);
   const total = subtotal + order.shipping_fee;
   const currentStepIdx = STATUS_ORDER.indexOf(order.status);
   const ns = NEXT_STATUS[order.status];
 
-  const handleAdvance = () => {
-    if (ns) {
-      setOrder((prev) => ({ ...prev, status: ns.next }));
-    }
+  const handleAdvance = async () => {
+    if (!ns) return;
+    // Optimistic
+    setOrder((prev) => ({ ...prev, status: ns.next }));
+    try {
+      // If BE has status update endpoint — call it
+      const api = (await import("@/services/api")).default;
+      await api.patch(`/api/orders/${orderId.replace(/#/g, "")}/status`, { status: ns.next });
+    } catch { /* optimistic UI already updated */ }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">

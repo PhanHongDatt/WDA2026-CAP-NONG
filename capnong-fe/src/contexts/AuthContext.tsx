@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { User, UserRole } from "@/types/user";
-import { authService } from "@/services";
+import { authService, userService } from "@/services";
 
 /* ─── Sell / Buy Mode (Baseline §1: client-side, không ảnh hưởng JWT) ─── */
 type ViewMode = "BUY" | "SELL";
@@ -26,15 +26,17 @@ interface AuthContextType {
   toggleViewMode: () => void;
   // Actions
   login: (phone: string, password: string) => Promise<void>;
-  register: (data: { full_name: string; phone: string; password: string; role: string; email?: string }) => Promise<void>;
+  register: (data: { full_name: string; phone: string; password: string; role: string; email?: string; username?: string; otp?: string }) => Promise<void>;
   loginAs: (role: string) => void;
   logout: () => void;
   loginError: string | null;
+  // Profile refresh
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/* ─── Quick mock users cho loginAs (demo switching) ─── */
+/* ─── Quick mock users cho loginAs (demo switching — chỉ dùng khi USE_MOCK=true) ─── */
 const QUICK_USERS: Record<string, User> = {
   buyer: {
     id: "a1b2c3d4-1111-4aaa-bbbb-000000000001",
@@ -72,18 +74,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [viewMode, setViewMode] = useState<ViewMode>("BUY");
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Load from localStorage on mount
+  /**
+   * Init: Restore session on mount
+   * - Nếu có token → gọi /users/me để verify + lấy profile mới nhất
+   * - Nếu token hết hạn → auto-refresh (do Axios interceptor xử lý)
+   * - Nếu fail hoàn toàn → clear session
+   */
   useEffect(() => {
-    const stored = localStorage.getItem("capnong-user");
-    if (stored) {
-      try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
-    }
+    const restoreSession = async () => {
+      const token = authService.getToken();
+      if (!token) {
+        // Fallback: load từ localStorage (cho mock mode hoặc offline)
+        const stored = localStorage.getItem("capnong-user");
+        if (stored) {
+          try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Gọi API thật để verify token + lấy profile mới nhất
+        const profile = await userService.getProfile();
+        setUser(profile);
+      } catch {
+        // Token invalid + refresh failed → clear everything
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("capnong-user");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    restoreSession();
+
+    // Restore view mode
     const mode = localStorage.getItem("capnong-view-mode");
     if (mode === "SELL" || mode === "BUY") setViewMode(mode);
-    setIsLoading(false);
   }, []);
 
-  // Persist user
+  // Persist user to localStorage
   useEffect(() => {
     if (user) {
       localStorage.setItem("capnong-user", JSON.stringify(user));
@@ -112,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setViewMode((prev) => (prev === "BUY" ? "SELL" : "BUY"));
   }, []);
 
-  /* ─── Login — gọi service layer (mock hoặc API) ─── */
+  /* ─── Login — gọi BE thật ─── */
   const login = useCallback(async (phone: string, password: string) => {
     setLoginError(null);
     setIsLoading(true);
@@ -121,15 +152,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(result.user);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Đăng nhập thất bại";
-      setLoginError(msg);
+      // Axios error message
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const axiosMsg = (err as any)?.response?.data?.message;
+      setLoginError(axiosMsg || msg);
       throw err;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  /* ─── Register — gọi service layer ─── */
-  const register = useCallback(async (data: { full_name: string; phone: string; password: string; role: string; email?: string }) => {
+  /* ─── Register — gọi BE thật ─── */
+  const register = useCallback(async (data: { full_name: string; phone: string; password: string; role: string; email?: string; username?: string; otp?: string }) => {
     setLoginError(null);
     setIsLoading(true);
     try {
@@ -137,14 +171,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(result.user);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Đăng ký thất bại";
-      setLoginError(msg);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const axiosMsg = (err as any)?.response?.data?.message;
+      setLoginError(axiosMsg || msg);
       throw err;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  /* ─── loginAs (demo/dev) ─── */
+  /* ─── loginAs (demo/dev — chỉ cho mock mode) ─── */
   const loginAs = useCallback((role: string) => {
     const mockUser = QUICK_USERS[role];
     if (mockUser) setUser(mockUser);
@@ -157,6 +193,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setViewMode("BUY");
   }, []);
 
+  /* ─── Refresh profile (sau khi update avatar, etc.) ─── */
+  const refreshProfile = useCallback(async () => {
+    try {
+      const profile = await userService.getProfile();
+      setUser(profile);
+    } catch {
+      // Silently fail — user vẫn dùng data cũ
+    }
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user, isLoading, loginError,
@@ -164,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canAccessDashboard, canManageHtx,
       viewMode, isSellMode, toggleViewMode,
       login, register, loginAs, logout,
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>

@@ -47,19 +47,47 @@ export default function OrderLookupPage() {
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setLoading(true);
     setNotFound(false);
     setResult(null);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const { orderService } = await import("@/services");
+      const orders = await orderService.getMyOrders();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const match = (orders as any[]).find((o: any) => {
+        const code = (o.orderCode || o.id || "").replace(/[#\s]/g, "").toUpperCase();
+        return code === orderId.replace(/[#\s]/g, "").toUpperCase();
+      });
+      if (match) {
+        setResult({
+          id: match.orderCode || match.id,
+          status: (match.status || "PENDING") as OrderStatus,
+          date: match.createdAt ? new Date(match.createdAt).toLocaleDateString("vi-VN") : "—",
+          total: match.totalAmount || 0,
+          seller_name: match.items?.[0]?.shopName || match.sellerName || "Nhà vườn",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          items: (match.items || []).map((i: any) => ({ name: i.productName || "SP", qty: i.quantity || 1, price: i.pricePerUnit || 0 })),
+          shipping_address: match.shippingAddress || match.streetAddress || "—",
+        });
+      } else {
+        // Fallback to mock for demo
+        if (phone.replace(/\s/g, "") === "0901234567" && orderId.replace(/[#\s]/g, "").toUpperCase() === "CN-0042") {
+          setResult(MOCK_RESULT);
+        } else {
+          setNotFound(true);
+        }
+      }
+    } catch {
+      // API fail → fallback mock
       if (phone.replace(/\s/g, "") === "0901234567" && orderId.replace(/[#\s]/g, "").toUpperCase() === "CN-0042") {
         setResult(MOCK_RESULT);
       } else {
         setNotFound(true);
       }
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   const currentStepIdx = result ? STATUS_ORDER.indexOf(result.status) : -1;

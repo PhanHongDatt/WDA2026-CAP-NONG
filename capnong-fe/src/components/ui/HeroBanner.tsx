@@ -57,7 +57,7 @@ export default function HeroBanner() {
   return (
     <section className="mb-6">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex gap-3 h-[280px]">
+        <div className="flex gap-3 h-[200px] md:h-[280px]">
           {/* Main Carousel */}
           <div className="flex-1 relative rounded-xl overflow-hidden group">
             {BANNERS.map((b, i) => (
@@ -112,7 +112,7 @@ export default function HeroBanner() {
           </div>
 
           {/* Side Banners — stacked */}
-          <div className="w-[280px] flex flex-col gap-3 shrink-0">
+          <div className="w-[280px] hidden lg:flex flex-col gap-3 shrink-0">
             {SIDE_BANNERS.map((b, i) => (
               <Link
                 key={i}

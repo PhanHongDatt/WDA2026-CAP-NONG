@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -35,9 +35,34 @@ const MOCK_DRAFTS = [
 export default function ProductDraftsPage() {
   const [drafts, setDrafts] = useState(MOCK_DRAFTS);
 
+  // Load real drafts from localStorage (saved by "Lưu nháp" in new product page)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("capnong-product-draft");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const localDraft = {
+          id: "local-draft",
+          name: parsed.name || "Bản nháp chưa đặt tên",
+          price: Number(parsed.price) || 0,
+          image: "",
+          updated_at: new Date().toLocaleString("vi-VN"),
+        };
+        setDrafts((prev) => {
+          // Add local draft at top if not already there
+          if (prev.some((d) => d.id === "local-draft")) return prev;
+          return [localDraft, ...prev];
+        });
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   const handleDelete = (id: string) => {
     if (confirm("Xóa bản nháp này?")) {
       setDrafts((prev) => prev.filter((d) => d.id !== id));
+      if (id === "local-draft") {
+        try { localStorage.removeItem("capnong-product-draft"); } catch { /* ignore */ }
+      }
     }
   };
 

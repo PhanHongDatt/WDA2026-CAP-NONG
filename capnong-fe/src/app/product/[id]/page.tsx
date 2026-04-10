@@ -15,11 +15,14 @@ import {
   Minus,
   Plus,
   Share2,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
-import { productService } from "@/services";
+import { productService, cartService } from "@/services";
 import { formatCurrency } from "@/lib/utils";
 import type { Product } from "@/types/product";
 import ProductCard from "@/components/ui/ProductCard";
+import { useWishlist } from "@/hooks/useWishlist";
 
 const FARMING_METHOD_LABEL: Record<string, string> = {
   ORGANIC: "🌿 Hữu cơ",
@@ -31,13 +34,16 @@ const FARMING_METHOD_LABEL: Record<string, string> = {
 export default function ProductDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const { isWishlisted, toggle: toggleWishlist } = useWishlist();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [wishlisted, setWishlisted] = useState(false);
+  const wishlisted = isWishlisted(id);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -188,13 +194,39 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="flex gap-3">
-              <button type="button" className="flex-1 flex items-center justify-center gap-2 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20">
-                <ShoppingCart className="w-5 h-5" />
-                Thêm vào giỏ hàng
+              <button
+                type="button"
+                disabled={addingToCart || addedToCart}
+                onClick={async () => {
+                  if (!product) return;
+                  setAddingToCart(true);
+                  try {
+                    await cartService.addItem(product.id, quantity);
+                    setAddedToCart(true);
+                    setTimeout(() => setAddedToCart(false), 2500);
+                  } catch {
+                    /* API fail — silent, cart page sẽ hiện lỗi */
+                  } finally {
+                    setAddingToCart(false);
+                  }
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-colors shadow-md shadow-primary/20 ${
+                  addedToCart
+                    ? "bg-green-600 text-white"
+                    : "bg-primary text-white hover:bg-primary-light"
+                } disabled:opacity-70`}
+              >
+                {addingToCart ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Đang thêm...</>
+                ) : addedToCart ? (
+                  <><CheckCircle2 className="w-5 h-5" /> Đã thêm ✓</>
+                ) : (
+                  <><ShoppingCart className="w-5 h-5" /> Thêm vào giỏ hàng</>
+                )}
               </button>
               <button
                 type="button"
-                onClick={() => setWishlisted(!wishlisted)}
+                onClick={() => toggleWishlist(id)}
                 aria-label="Thêm vào yêu thích"
                 title="Thêm vào yêu thích"
                 className={`p-3 rounded-xl border transition-colors ${wishlisted ? "bg-red-50 border-red-200 text-red-500" : "border-border text-foreground-muted hover:border-primary"}`}

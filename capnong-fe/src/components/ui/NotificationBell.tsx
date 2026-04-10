@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Bell, Package, Users, ShoppingCart, Star, MessageSquare, CheckCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import * as notificationApi from "@/services/api/notification";
 
-/* ─── Mock Notifications ─── */
+/* ─── Notification Interface ─── */
 interface Notification {
   id: string;
   type: string;
@@ -14,55 +15,21 @@ interface Notification {
   is_read: boolean;
 }
 
+/* ─── Mock fallback (khi BE chưa có data) ─── */
 const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n-001",
-    type: "ORDER_NEW",
-    title: "Đơn hàng mới",
-    message: "Nguyễn Thu Hà vừa đặt 2kg Xoài Cát Hòa Lộc",
-    created_at: "2026-03-20T15:30:00Z",
-    is_read: false,
-  },
-  {
-    id: "n-002",
-    type: "ORDER_STATUS",
-    title: "Cập nhật đơn hàng",
-    message: "Đơn #CN-0042 đã chuyển sang trạng thái Đang giao",
-    created_at: "2026-03-20T14:00:00Z",
-    is_read: false,
-  },
-  {
-    id: "n-003",
-    type: "BUNDLE_THRESHOLD",
-    title: "Bundle đạt ngưỡng",
-    message: "Bundle Cam Sành đã gom đủ 500kg — chờ xác nhận",
-    created_at: "2026-03-20T10:00:00Z",
-    is_read: false,
-  },
-  {
-    id: "n-004",
-    type: "HTX_JOIN_REQUEST",
-    title: "Yêu cầu gia nhập HTX",
-    message: "Trần Văn Minh muốn gia nhập HTX Trái Cây Bến Tre",
-    created_at: "2026-03-19T16:00:00Z",
-    is_read: true,
-  },
-  {
-    id: "n-005",
-    type: "REVIEW_NEW",
-    title: "Đánh giá mới",
-    message: "⭐⭐⭐⭐⭐ — \"Xoài rất ngon, sẽ mua lại!\"",
-    created_at: "2026-03-19T09:00:00Z",
-    is_read: true,
-  },
+  { id: "n-001", type: "ORDER_NEW", title: "Đơn hàng mới", message: "Nguyễn Thu Hà vừa đặt 2kg Xoài Cát Hòa Lộc", created_at: "2026-03-20T15:30:00Z", is_read: false },
+  { id: "n-002", type: "ORDER_STATUS", title: "Cập nhật đơn hàng", message: "Đơn #CN-0042 đã chuyển sang trạng thái Đang giao", created_at: "2026-03-20T14:00:00Z", is_read: false },
+  { id: "n-003", type: "BUNDLE_THRESHOLD", title: "Bundle đạt ngưỡng", message: "Bundle Cam Sành đã gom đủ 500kg — chờ xác nhận", created_at: "2026-03-20T10:00:00Z", is_read: false },
+  { id: "n-004", type: "HTX_JOIN_REQUEST", title: "Yêu cầu gia nhập HTX", message: "Trần Văn Minh muốn gia nhập HTX Trái Cây Bến Tre", created_at: "2026-03-19T16:00:00Z", is_read: true },
+  { id: "n-005", type: "REVIEW_NEW", title: "Đánh giá mới", message: "⭐⭐⭐⭐⭐ — \"Xoài rất ngon, sẽ mua lại!\"", created_at: "2026-03-19T09:00:00Z", is_read: true },
 ];
 
 function notificationIcon(type: string) {
   switch (type) {
-    case "ORDER_NEW": return <ShoppingCart className="w-4 h-4 text-primary" />;
-    case "ORDER_STATUS": return <Package className="w-4 h-4 text-info" />;
-    case "BUNDLE_THRESHOLD": return <Users className="w-4 h-4 text-amber-500" />;
-    case "HTX_JOIN_REQUEST": return <Users className="w-4 h-4 text-purple-500" />;
+    case "ORDER_NEW": case "NEW_ORDER": return <ShoppingCart className="w-4 h-4 text-primary" />;
+    case "ORDER_STATUS": case "ORDER_STATUS_UPDATE": return <Package className="w-4 h-4 text-info" />;
+    case "BUNDLE_THRESHOLD": case "BUNDLE_FULL": case "BUNDLE_CONFIRMED": return <Users className="w-4 h-4 text-amber-500" />;
+    case "HTX_JOIN_REQUEST": case "HTX_APPROVED": return <Users className="w-4 h-4 text-purple-500" />;
     case "REVIEW_NEW": return <Star className="w-4 h-4 text-warning" />;
     default: return <MessageSquare className="w-4 h-4 text-gray-400" />;
   }
@@ -81,14 +48,63 @@ function timeAgo(dateStr: string) {
 /**
  * NotificationBell — Bell icon với badge + dropdown danh sách thông báo
  * UC-38: Nhận & đọc thông báo in-app
+ * Gọi API thật → fallback mock nếu BE chưa lên
  */
 export default function NotificationBell() {
   const { isLoggedIn } = useAuth();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  /* Fetch notifications from API on mount or when dropdown opens */
+  const fetchNotifications = useCallback(async () => {
+    if (!isLoggedIn) return;
+
+    try {
+      const result = await notificationApi.getNotifications(0, 20);
+      const mapped: Notification[] = result.notifications.map((n) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.body,
+        created_at: n.createdAt,
+        is_read: n.isRead,
+      }));
+      setNotifications(mapped.length > 0 ? mapped : MOCK_NOTIFICATIONS);
+      setUnreadCount(result.unreadCount || mapped.filter((n) => !n.is_read).length);
+      setLoaded(true);
+    } catch {
+      // API unavailable → use mock
+      if (!loaded) {
+        setNotifications(MOCK_NOTIFICATIONS);
+        setUnreadCount(MOCK_NOTIFICATIONS.filter((n) => !n.is_read).length);
+        setLoaded(true);
+      }
+    }
+  }, [isLoggedIn, loaded]);
+
+  /* Fetch on mount + poll unread count */
+  useEffect(() => {
+    fetchNotifications();
+
+    // Poll unread count every 30s
+    const interval = setInterval(async () => {
+      if (!isLoggedIn) return;
+      try {
+        const count = await notificationApi.getUnreadCount();
+        setUnreadCount(count);
+      } catch { /* silent */ }
+    }, 30_000);
+
+    return () => clearInterval(interval);
+  }, [fetchNotifications, isLoggedIn]);
+
+  /* Refresh when dropdown opens */
+  useEffect(() => {
+    if (open) fetchNotifications();
+  }, [open, fetchNotifications]);
 
   // Close on outside click
   useEffect(() => {
@@ -101,14 +117,22 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    try {
+      await notificationApi.markAllAsRead();
+    } catch { /* silent fallback */ }
   };
 
-  const markRead = (id: string) => {
+  const markRead = async (id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
+    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      await notificationApi.markAsRead(id);
+    } catch { /* silent fallback */ }
   };
 
   if (!isLoggedIn) return null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -81,8 +81,49 @@ const MOCK_BUYER_ORDERS: {
 ];
 
 function BuyerOrderContent() {
-  const [expandedId, setExpandedId] = useState<string | null>(MOCK_BUYER_ORDERS[0]?.id || null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
+  const [orders, setOrders] = useState(MOCK_BUYER_ORDERS);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+
+  /* Fetch real orders from API, fallback to mock */
+  const fetchOrders = useCallback(async () => {
+    setLoadingOrders(true);
+    try {
+      const { orderService } = await import("@/services");
+      const apiOrders = await orderService.getMyOrders();
+      if (Array.isArray(apiOrders) && apiOrders.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped = apiOrders.map((o: any) => ({
+          id: o.orderCode || o.id || "#???",
+          status: (o.status || "PENDING") as OrderStatus,
+          date: o.createdAt ? new Date(o.createdAt).toLocaleDateString("vi-VN") : "—",
+          total: o.totalAmount || 0,
+          seller_name: o.items?.[0]?.shopName || o.sellerName || "Nhà vườn",
+          seller_phone: o.sellerPhone || "—",
+          items: (o.items || []).map((item: any) => ({
+            name: item.productName || item.name || "Sản phẩm",
+            qty: item.quantity || 1,
+            price: item.pricePerUnit || item.price || 0,
+            image_url: item.imageUrl || item.image_url,
+          })),
+          shipping_address: o.shippingAddress || o.streetAddress || "—",
+          cancel_reason: o.cancelReason,
+        }));
+        setOrders(mapped);
+        setExpandedId(mapped[0]?.id || null);
+      } else {
+        setExpandedId(MOCK_BUYER_ORDERS[0]?.id || null);
+      }
+    } catch {
+      /* keep mock data */
+      setExpandedId(MOCK_BUYER_ORDERS[0]?.id || null);
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   /* UC-27: Review state */
   const [reviewingOrderId, setReviewingOrderId] = useState<string | null>(null);
@@ -92,15 +133,36 @@ function BuyerOrderContent() {
   const [reviewImages, setReviewImages] = useState<string[]>([]);
   const reviewFileRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmitReview = (orderId: string) => {
+  const handleSubmitReview = async (orderId: string) => {
     if (reviewRating === 0 || reviewComment.length < 10) return;
+    // Optimistic UI update
     setReviewedOrders((prev) => new Set(prev).add(orderId));
     setReviewingOrderId(null);
+    const savedRating = reviewRating;
+    const savedComment = reviewComment;
+    const savedImages = [...reviewImages];
     setReviewRating(0);
     setReviewComment("");
+    setReviewImages([]);
+    // Call API in background
+    try {
+      const { createReview } = await import("@/services/api/review");
+      // Find the order to get product/item IDs
+      const order = orders.find((o) => o.id === orderId);
+      const firstItem = order?.items?.[0];
+      await createReview({
+        productId: (firstItem as unknown as { productId?: string })?.productId || orderId,
+        orderItemId: orderId,
+        rating: savedRating,
+        comment: savedComment,
+        images: savedImages.length > 0 ? savedImages : undefined,
+      });
+    } catch {
+      /* optimistic — UI already updated, silent fail */
+    }
   };
 
-  const filtered = filter === "all" ? MOCK_BUYER_ORDERS : MOCK_BUYER_ORDERS.filter((o) => o.status === filter);
+  const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
@@ -135,7 +197,17 @@ function BuyerOrderContent() {
         ))}
       </div>
 
+      {/* Loading */}
+      {loadingOrders && (
+        <div className="text-center py-12">
+          <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-foreground-muted text-sm">Đang tải đơn hàng...</p>
+        </div>
+      )}
+
       {/* Orders */}
+      {!loadingOrders && (
+      <>
       <div className="space-y-4">
         {filtered.map((order) => {
           const expanded = expandedId === order.id;
@@ -143,7 +215,7 @@ function BuyerOrderContent() {
           const currentStepIdx = STATUS_ORDER.indexOf(order.status);
 
           return (
-            <div key={order.id} className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border overflow-hidden">
+            <div key={order.id} className="bg-white dark:bg-surface rounded-2xl border border-gray-100 dark:border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
               {/* Order header - clickable */}
               <button
                 type="button"
@@ -176,9 +248,14 @@ function BuyerOrderContent() {
                 </div>
               </button>
 
-              {/* Expanded detail */}
+              {/* Expanded detail — ticket-notch separator */}
               {expanded && (
-                <div className="border-t border-gray-100 dark:border-border p-5 space-y-6">
+                <>
+                  {/* Tear line — phiếu thu nông sản */}
+                  <div className="ticket-notch relative mx-0 overflow-hidden">
+                    <div className="border-t-2 border-dashed border-gray-200 dark:border-gray-600 mx-6" />
+                  </div>
+                  <div className="p-5 space-y-6">
                   {/* Progress tracker */}
                   {!isCancelled && (
                     <div className="flex items-center justify-between">
@@ -344,7 +421,8 @@ function BuyerOrderContent() {
                       )}
                     </div>
                   )}
-                </div>
+                  </div>
+                </>
               )}
             </div>
           );
@@ -356,6 +434,8 @@ function BuyerOrderContent() {
           <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p>Không có đơn hàng nào</p>
         </div>
+      )}
+      </>
       )}
     </div>
   );

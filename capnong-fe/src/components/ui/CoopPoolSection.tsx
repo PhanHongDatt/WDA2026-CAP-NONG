@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import CoopPoolCard from "@/components/ui/CoopPoolCard";
-import type { CoopPool } from "@/lib/mock-data";
+import type { CoopPool } from "@/types/order";
 
 /**
  * CoopPoolSection — Only visible to HTX members/managers

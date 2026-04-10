@@ -10,6 +10,7 @@ export interface Shop {
   province: string;
   district: string;
   bio?: string;                 // Câu chuyện người trồng
+  description?: string;         // Mô tả gian hàng
   years_experience?: number;
   farm_area_m2?: number;
   avatar_url?: string;

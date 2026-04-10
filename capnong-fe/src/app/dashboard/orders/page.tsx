@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -79,7 +79,36 @@ export default function OrderManagementPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loadingData, setLoadingData] = useState(true);
   const ITEMS_PER_PAGE = 5;
+
+  /* Fetch real orders from API, fallback to mock */
+  const fetchOrders = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const { orderService } = await import("@/services");
+      const apiOrders = await orderService.getMyOrders();
+      if (Array.isArray(apiOrders) && apiOrders.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped = apiOrders.map((o: any) => ({
+          id: o.orderCode || o.id || "#???",
+          buyer: o.buyerName || o.guestName || "—",
+          phone: o.buyerPhone || o.guestPhone || "—",
+          products: (o.items || []).map((i: any) => `${i.productName || "SP"} x${i.quantity || 1}`).join(", ") || "—",
+          total: o.totalAmount || 0,
+          status: (o.status || "PENDING") as OrderStatus,
+          date: o.createdAt ? new Date(o.createdAt).toLocaleDateString("vi-VN") : "—",
+        }));
+        setOrders(mapped);
+      }
+    } catch {
+      /* keep mock */
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   const filtered = activeFilter === "all" ? orders : orders.filter((o) => o.status === activeFilter);
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);

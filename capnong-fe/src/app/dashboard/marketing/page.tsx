@@ -18,19 +18,19 @@ import {
 type TabType = "caption" | "background" | "creative";
 
 const CAPTION_STYLES = [
-  { id: "funny", label: "😄 Hài hước", color: "bg-yellow-50 text-warning" },
-  { id: "authentic", label: "🌾 Chân chất", color: "bg-green-50 text-success" },
-  { id: "professional", label: "💼 Chuyên nghiệp", color: "bg-blue-50 text-info" },
+  { id: "funny", label: "😄 Hài hước", color: "bg-yellow-50 text-warning dark:bg-yellow-900/20 dark:text-yellow-300" },
+  { id: "authentic", label: "🌾 Chân chất", color: "bg-green-50 text-success dark:bg-green-900/20 dark:text-green-300" },
+  { id: "professional", label: "💼 Chuyên nghiệp", color: "bg-blue-50 text-info dark:bg-blue-900/20 dark:text-blue-300" },
 ];
 
-const MOCK_CAPTIONS = {
-  funny:
-    "🍊 Cam sành Bến Tre vừa hái xong, ngọt lịm tim! Ai chưa thử thì thiệt thòi lắm nha bà con ơi! 😋🔥\n\n#CạpNông #CamSànhBếnTre #NôngSảnSạch",
-  authentic:
-    "🌿 Cam sành nhà trồng ở đất Bến Tre, chăm bón tự nhiên, không thuốc. Thu hoạch mỗi sáng, giao tận tay bà con. Ăn thử rồi sẽ ghiền!\n\n#CạpNông #TừVườnĐếnBàn",
-  professional:
-    "📦 CAM SÀNH BẾN TRE — Thu hoạch trực tiếp từ vườn\n✅ Đạt chuẩn VietGAP\n✅ Cam tươi trong ngày\n✅ Miễn phí giao hàng đơn >300K\n\n👉 Đặt hàng ngay tại Cạp Nông\n#CạpNông #NôngSảnChấtLượng",
-};
+function generateCaptions(name: string, desc: string) {
+  const d = desc || `${name} tươi sạch từ vườn`;
+  return {
+    funny: `🍊 ${name} vừa hái xong, ${d.toLowerCase()}! Ai chưa thử thì thiệt thòi lắm nha bà con ơi! 😋🔥\n\nMua 3kg tặng 1kg — chỉ có tại Cạp Nông, nhanh tay kẻo hết nha! 💨\n\n#CạpNông #${name.replace(/\s+/g, "")} #NôngSảnSạch`,
+    authentic: `🌿 ${name} nhà trồng, ${d.toLowerCase()}. Thu hoạch mỗi sáng, giao tận tay bà con.\n\nChăm bón tự nhiên, không thuốc hóa học. Ăn thử rồi sẽ ghiền!\n\n#CạpNông #TừVườnĐếnBàn #NôngSảnViệt`,
+    professional: `📦 ${name.toUpperCase()} — Thu hoạch trực tiếp từ vườn\n✅ ${d}\n✅ Đạt chuẩn VietGAP\n✅ Miễn phí giao hàng đơn >300K\n✅ Đóng gói cẩn thận, giữ tươi 5 ngày\n\n👉 Đặt hàng ngay tại Cạp Nông\n#CạpNông #NôngSảnChấtLượng`,
+  };
+}
 
 function ProcessingSimulator({ onDone }: { onDone: () => void }) {
   useEffect(() => {
@@ -52,14 +52,24 @@ function ProcessingSimulator({ onDone }: { onDone: () => void }) {
 export default function MarketingLabPage() {
   const [activeTab, setActiveTab] = useState<TabType>("caption");
   const [productName, setProductName] = useState("Cam Sành Bến Tre");
+  const [productDesc, setProductDesc] = useState("");
   const [captionStyle, setCaptionStyle] = useState("funny");
   const [generated, setGenerated] = useState(false);
+  const [captionGenerating, setCaptionGenerating] = useState(false);
+  const [captions, setCaptions] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [bgState, setBgState] = useState<"idle" | "processing" | "done">("idle");
   const [posterTemplate, setPosterTemplate] = useState<string | null>(null);
 
   const handleGenerate = () => {
-    setGenerated(true);
+    if (!productName.trim()) return;
+    setCaptionGenerating(true);
+    setGenerated(false);
+    setTimeout(() => {
+      setCaptions(generateCaptions(productName, productDesc));
+      setCaptionGenerating(false);
+      setGenerated(true);
+    }, 1500);
   };
 
   const handleCopy = (style: string, text: string) => {
@@ -138,60 +148,64 @@ export default function MarketingLabPage() {
                 <input
                   id="caption-product-desc"
                   type="text"
-                  placeholder="Ví dụ: Cam vừa hái vườn, ngọt lịm"
+                  value={productDesc}
+                  onChange={(e) => setProductDesc(e.target.value)}
+                  placeholder="Ví dụ: Cam vừa hái vườn, ngọt lịm, thịt mọng"
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 />
               </div>
               <button type="button"
                 onClick={handleGenerate}
-                className="w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                disabled={captionGenerating || !productName.trim()}
+                className="w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <Sparkles className="w-5 h-5" />
-                Tạo 3 caption bằng AI
+                {captionGenerating ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> AI đang viết caption...</>
+                ) : (
+                  <><Sparkles className="w-5 h-5" /> Tạo 3 caption bằng AI</>
+                )}
               </button>
             </div>
           </div>
 
           {generated && (
             <div className="space-y-4">
-              {CAPTION_STYLES.map((style) => (
-                <div
-                  key={style.id}
-                  className="bg-white border border-border rounded-xl p-5 shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span
-                      className={`text-xs font-bold px-3 py-1 rounded-full ${style.color}`}
-                    >
-                      {style.label}
-                    </span>
-                    <button type="button"
-                      onClick={() =>
-                        handleCopy(
-                          style.id,
-                          MOCK_CAPTIONS[style.id as keyof typeof MOCK_CAPTIONS]
-                        )
-                      }
-                      className="text-xs text-foreground-muted hover:text-primary flex items-center gap-1"
-                    >
-                      {copied === style.id ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-success" />
-                          Đã copy!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          Copy
-                        </>
-                      )}
-                    </button>
+              {CAPTION_STYLES.map((style) => {
+                const text = captions[style.id] || "";
+                return (
+                  <div
+                    key={style.id}
+                    className="bg-white dark:bg-surface border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span
+                        className={`text-xs font-bold px-3 py-1 rounded-full ${style.color}`}
+                      >
+                        {style.label}
+                      </span>
+                      <button type="button"
+                        onClick={() => handleCopy(style.id, text)}
+                        className="text-xs text-foreground-muted hover:text-primary flex items-center gap-1 transition-colors"
+                      >
+                        {copied === style.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-success" />
+                            Đã copy!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-sm whitespace-pre-line text-foreground leading-relaxed">
+                      {text}
+                    </p>
                   </div>
-                  <p className="text-sm whitespace-pre-line text-foreground leading-relaxed">
-                    {MOCK_CAPTIONS[style.id as keyof typeof MOCK_CAPTIONS]}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -50,6 +51,43 @@ function DashboardContent() {
   const roleSubtitle = isHtxManager
     ? `Tổng quan hợp tác xã${user?.htx_name ? " — " + user.htx_name : ""}`
     : "Tổng quan hoạt động gian hàng của bạn";
+
+  const [stats, setStats] = useState(STATS);
+  const [recentOrders, setRecentOrders] = useState(RECENT_ORDERS);
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const { orderService, productService } = await import("@/services");
+      const [apiOrders, productResult] = await Promise.allSettled([
+        orderService.getMyOrders(),
+        productService.search({ page: 0, size: 1 }),
+      ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const orders: any[] = apiOrders.status === "fulfilled" && Array.isArray(apiOrders.value) ? apiOrders.value : [];
+      const totalProducts = productResult.status === "fulfilled" ? (productResult.value as { total_elements: number }).total_elements : 12;
+      const totalRevenue = orders.reduce((s: number, o: { totalAmount?: number }) => s + (o.totalAmount || 0), 0);
+
+      if (orders.length > 0) {
+        setStats([
+          { label: "Đơn hàng", value: String(orders.length), icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
+          { label: "Sản phẩm", value: String(totalProducts), icon: ShoppingCart, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
+          { label: "Doanh thu", value: formatCurrency(totalRevenue), icon: TrendingUp, color: "text-success bg-green-50 dark:bg-green-900/30" },
+          { label: "Đánh giá", value: "4.8", icon: Star, color: "text-warning bg-yellow-50 dark:bg-yellow-900/30" },
+        ]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setRecentOrders(orders.slice(0, 3).map((o: any) => ({
+          id: o.orderCode || o.id || "#???",
+          buyer: o.buyerName || o.guestName || "—",
+          product: (o.items || []).map((i: { productName?: string; quantity?: number }) => `${i.productName || "SP"} x${i.quantity || 1}`).join(", ") || "—",
+          total: o.totalAmount || 0,
+          status: o.status === "DELIVERED" ? "Đã nhận" : o.status === "SHIPPED" ? "Đang giao" : "Đã xác nhận",
+          statusColor: o.status === "DELIVERED" ? "text-success bg-green-50" : o.status === "SHIPPED" ? "text-primary bg-primary-50" : "text-info bg-blue-50",
+        })));
+      }
+    } catch { /* keep mock */ }
+  }, []);
+
+  useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
@@ -234,7 +272,7 @@ function DashboardContent() {
  */
 export default function DashboardPage() {
   return (
-    <ProtectedRoute roles={["FARMER", "HTX_MANAGER", "HTX_MEMBER"]}>
+    <ProtectedRoute roles={["FARMER", "HTX_MANAGER", "HTX_MEMBER", "ADMIN"]}>
       <DashboardContent />
     </ProtectedRoute>
   );

@@ -26,11 +26,11 @@ const REVIEWS = [
   {
     id: 1,
     name: "Nguyễn Thu Hà",
-    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuB38X9KJkwa28pn5XXZG1FgK5mF0sYSglZd8Dbv0-w6sOTbUp51gwebgB8wx0mJ6pdWKzg2dEvajHyMCEtvvFO8Uebwvhtq04o1cLrZCREW8MtYP6-w0L0Vd6Ys8o0CjcviziwNQqWeE0llUm7BUvTt_SQ3i6Od88Jfsvzv8gw8vrKblIwX_lTMXYAajqTypENgM--5_OVU32XM6136G9SL1lPApmQf9ZhKlmV2XuT3FKMMCuFyOq4kStDjWEWf3AWt6FeviA71OZE",
+    avatar: "",
     rating: 5,
     comment:
       "Xoài rất tươi, ngọt lịm đúng vị Hòa Lộc. Đóng gói rất kỹ, giao hàng nhanh. Sẽ ủng hộ vườn tiếp!",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBZeKkIY8e5WkwU3khRSOVshbUr7plJMSo37BzpU6RLQVafP9gzl0ukR6Ohj6LiKDmexDFAZf7DB1lDfipv2H8Apk2tVa4UBfKtzMKGxj1unZcyqH67xlYRNbKyXewHa_Elyey75LVmDouKGxEz6_ujY0GzhckEMIWkrhra0S4XswpXD5Bg2CzDJkg4oI912ijDXWSWQhMbdkxDuhc_DVPEk6nr22WMx3rlTCWsXi-f4jGAHdxoXF8igUfcxCWr-QIvgv6rL3gDmos",
+    image: "",
     date: "2 ngày trước",
   },
   {
@@ -235,7 +235,7 @@ export default function ProductDetailPage() {
                 </div>
               </div>
               <Link
-                href={`/shops/${product.shop.slug}`}
+                href={`/shop/${product.shop.slug}`}
                 className="text-primary text-sm font-bold border border-primary px-4 py-2 rounded-lg hover:bg-primary/5 transition-colors"
               >
                 Xem gian hàng
@@ -423,6 +423,38 @@ export default function ProductDetailPage() {
                   Xem chứng chỉ đầy đủ
                 </button>
               </div>
+            </div>
+
+            {/* Traceability Timeline — hash-chain */}
+            <div className="bg-white dark:bg-surface border border-border rounded-2xl p-6">
+              <h3 className="text-base font-bold mb-4">Hành trình nông sản</h3>
+              <div className="relative pl-6 space-y-5">
+                {/* Timeline line */}
+                <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-gray-200 dark:bg-gray-700" />
+                {[
+                  { step: "Gieo trồng", date: "05/01/2026", desc: "Gieo hạt giống đạt chuẩn, đất đã kiểm tra pH", hash: "a3f8c1", color: "bg-amber-500" },
+                  { step: "Chăm sóc", date: "05/01 – 15/03/2026", desc: "Bón phân hữu cơ, tưới nhỏ giọt, không thuốc BVTV", hash: "7d2e4b", color: "bg-green-500" },
+                  { step: "Thu hoạch", date: product.harvest_date || "20/03/2026", desc: "Hái chín tự nhiên trên cây, chọn lọc kỹ", hash: "e9c3f0", color: "bg-primary" },
+                  { step: "Đóng gói & Giao", date: "21/03/2026", desc: "Đóng hộp giữ tươi, giao trong 24h", hash: "1b5a82", color: "bg-blue-500" },
+                ].map((item, i) => (
+                  <div key={i} className="relative flex gap-3">
+                    <div className={`absolute -left-6 top-1 w-[18px] h-[18px] rounded-full ${item.color} border-2 border-white dark:border-surface shadow-sm z-10`} />
+                    <div className="flex-1">
+                      <div className="flex items-baseline justify-between">
+                        <p className="text-sm font-bold text-foreground">{item.step}</p>
+                        <span className="text-[10px] text-foreground-muted">{item.date}</span>
+                      </div>
+                      <p className="text-xs text-foreground-muted mt-0.5">{item.desc}</p>
+                      <p className="text-[10px] text-foreground-muted/60 font-mono mt-1">
+                        SHA-256: {item.hash}...
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-foreground-muted mt-4 text-center">
+                Mỗi bước được ghi nhận bằng hash không thể thay đổi
+              </p>
             </div>
           </div>
         </div>

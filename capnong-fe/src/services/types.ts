@@ -1,8 +1,8 @@
 /**
- * Service Interfaces — khớp API Contract v1.1
- * 
- * Bất kỳ BE nào implement đúng contract → FE chạy tốt.
- * Mock adapter trả data giả khi không có BE.
+ * Service Interfaces — Khớp BE API Contract
+ *
+ * Mỗi interface define contract giữa FE service layer ↔ component.
+ * Cả mock adapter và API adapter cùng implement interface này.
  */
 
 import type { Product } from "@/types/product";
@@ -25,9 +25,21 @@ export interface IAuthService {
     password: string;
     role: string;
     email?: string;
+    username?: string;
+    otp?: string;
   }): Promise<AuthResult>;
   logout(): void;
   getToken(): string | null;
+}
+
+/* ─── User Profile ─────────────────────────────── */
+
+export interface IUserService {
+  getProfile(): Promise<User>;
+  updateProfile(data: { fullName?: string; username?: string; email?: string; phone?: string; otp?: string }): Promise<User>;
+  uploadAvatar(file: File): Promise<User>;
+  changePassword(oldPassword: string, newPassword: string): Promise<void>;
+  sendUpdateOtp(identifier: string): Promise<void>;
 }
 
 /* ─── Products ──────────────────────────────────── */
@@ -57,14 +69,26 @@ export interface IProductService {
   getSeasonalProducts(): Promise<Product[]>;
   getNewProducts(): Promise<Product[]>;
   getFlashDeals(): Promise<Product[]>;
+  createProduct?(data: {
+    name: string;
+    description?: string;
+    category: string;
+    unitCode: string;
+    pricePerUnit: number;
+    availableQuantity: number;
+    locationDetail: string;
+  }): Promise<unknown>;
 }
 
 /* ─── Cart ──────────────────────────────────────── */
 
 export interface CartItem {
   id: string;
-  product: Product;
+  productId?: string;
+  productName?: string;
+  product?: Product;
   quantity: number;
+  pricePerUnit?: number;
 }
 
 export interface ICartService {
@@ -76,9 +100,28 @@ export interface ICartService {
   getItemCount(): Promise<number>;
 }
 
+/* ─── Orders ───────────────────────────────────── */
+
+export interface IOrderService {
+  checkout(data: {
+    guestEmail?: string;
+    guestPhone?: string;
+    guestName?: string;
+    streetAddress?: string;
+    wardCode?: string;
+    provinceCode?: string;
+    orderNotes?: string;
+    otpCode?: string;
+  }): Promise<unknown>;
+  getMyOrders(): Promise<unknown[]>;
+}
+
 /* ─── Shops ─────────────────────────────────────── */
 
 export interface IShopService {
   getBySlug(slug: string): Promise<Shop | null>;
   getProducts(shopSlug: string): Promise<Product[]>;
+  getFeaturedShops(): Promise<Shop[]>;
+  createShop?(data: { name: string; slug: string; province: string; district: string; bio?: string }): Promise<unknown>;
+  updateShop?(slug: string, data: { name: string; slug: string; province: string; district: string; bio?: string }): Promise<unknown>;
 }

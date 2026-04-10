@@ -18,4 +18,9 @@ export const mockShopService: IShopService = {
     await new Promise((r) => setTimeout(r, 200));
     return ALL_PRODUCTS.filter((p) => p.shop?.slug === shopSlug);
   },
+
+  async getFeaturedShops(): Promise<Shop[]> {
+    await new Promise((r) => setTimeout(r, 200));
+    return MOCK_SHOPS;
+  },
 };

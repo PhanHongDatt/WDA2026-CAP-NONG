@@ -1,109 +1,163 @@
 /**
- * API Auth Service — gọi BE thật theo API Contract v1.1
- * 
- * BE trả camelCase (accessToken, userId, fullName, shopSlug)
- * FE normalize về snake_case (access_token, user_id, full_name, shop_slug)
- * Wrapper: ApiResponse<AuthResponse> → { success, message, data: AuthResponse }
+ * API Auth Service — Khớp chính xác với BE AuthController
+ *
+ * BE Endpoints:
+ *   POST /api/auth/login          { identifier, password }
+ *   POST /api/auth/register       { identifier, username, password, fullName, otp, role }
+ *   POST /api/auth/refresh        { refreshToken }
+ *   POST /api/auth/logout         { refreshToken }
+ *   POST /api/auth/send-register-otp  { identifier }
+ *   POST /api/auth/forgot-password    { identifier }
+ *   POST /api/auth/reset-password     { identifier, otp, newPassword }
+ *   POST /api/auth/oauth/google       { supabaseToken }
+ *   POST /api/auth/oauth/google/register  { supabaseToken, username }
+ *
+ * BE Response wrapper: ApiResponse<AuthResponse> = { success, message, data: AuthResponse }
+ * BE AuthResponse (camelCase): { accessToken, refreshToken, type, expiresIn, username, phone, email, role }
  */
+import api from "../api";
 import type { IAuthService, AuthResult } from "../types";
-import type { User } from "@/types/user";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+import type { User, AuthResponse as BEAuthResponse, UserProfileResponse } from "@/types/user";
 
 export const apiAuthService: IAuthService = {
+  /**
+   * Login — gửi identifier (username hoặc SĐT) + password
+   */
   async login(phone: string, password: string): Promise<AuthResult> {
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, password }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || "Đăng nhập thất bại");
+    const res = await api.post<{ success: boolean; message: string; data: BEAuthResponse }>(
+      "/api/auth/login",
+      { identifier: phone, password }
+    );
+    const authData = res.data.data;
+
+    // Lưu tokens
+    localStorage.setItem("access_token", authData.accessToken);
+    if (authData.refreshToken) {
+      localStorage.setItem("refresh_token", authData.refreshToken);
     }
-    const json = await res.json();
-    return normalizeAuthResponse(json);
+
+    // Gọi /users/me để lấy full profile (BE AuthResponse thiếu id, fullName, avatarUrl, ...)
+    const user = await fetchUserProfile(authData);
+
+    return {
+      access_token: authData.accessToken,
+      refresh_token: authData.refreshToken,
+      user,
+    };
   },
 
-  async register(data): Promise<AuthResult> {
-    const res = await fetch(`${API_URL}/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        full_name: data.full_name,
-        phone: data.phone,
+  /**
+   * Register — BE yêu cầu OTP verify trước
+   */
+  async register(data: {
+    full_name: string;
+    phone: string;
+    password: string;
+    role: string;
+    email?: string;
+    username?: string;
+    otp?: string;
+  }): Promise<AuthResult> {
+    const res = await api.post<{ success: boolean; message: string; data: BEAuthResponse }>(
+      "/api/auth/register",
+      {
+        identifier: data.phone || data.email,
+        username: data.username || data.phone,
         password: data.password,
+        fullName: data.full_name,
+        otp: data.otp || "", // OTP from register form
         role: data.role,
-        email: data.email,
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || "Đăng ký thất bại");
+      }
+    );
+    const authData = res.data.data;
+
+    localStorage.setItem("access_token", authData.accessToken);
+    if (authData.refreshToken) {
+      localStorage.setItem("refresh_token", authData.refreshToken);
     }
-    const json = await res.json();
-    return normalizeAuthResponse(json);
+
+    const user = await fetchUserProfile(authData);
+
+    return {
+      access_token: authData.accessToken,
+      refresh_token: authData.refreshToken,
+      user,
+    };
   },
 
+  /**
+   * Logout — thu hồi refresh token
+   */
   logout(): void {
+    const refreshToken = localStorage.getItem("refresh_token");
+    if (refreshToken) {
+      // Fire-and-forget
+      api.post("/api/auth/logout", { refreshToken }).catch(() => {});
+    }
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("capnong-user");
   },
 
+  /**
+   * Get stored token
+   */
   getToken(): string | null {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("access_token");
   },
 };
 
+/* ─── Extended Auth Methods (không nằm trong IAuthService interface) ─── */
+
 /**
- * Normalize BE AuthResponse (camelCase) → FE format (snake_case)
- * 
- * BE trả: { success, message, data: { accessToken, tokenType, userId, fullName, phone, email, role, shopSlug } }
- * FE cần: { access_token, user: { id, full_name, phone, email, role, shop_slug, ... } }
+ * Gửi OTP trước khi đăng ký
  */
-function normalizeAuthResponse(json: Record<string, unknown>): AuthResult {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const d = (json.data || json) as any;
-
-  // Token: camelCase (accessToken) hoặc snake_case (access_token)
-  const token = d.accessToken || d.access_token || d.token || "";
-
-  // Lưu token
-  if (token) localStorage.setItem("access_token", token);
-  if (d.refreshToken || d.refresh_token) {
-    localStorage.setItem("refresh_token", d.refreshToken || d.refresh_token);
-  }
-
-  // User: có thể là object riêng hoặc flat trong response
-  const user: User = d.user ? normalizeUser(d.user) : {
-    id: String(d.userId || d.user_id || d.id || ""),
-    full_name: d.fullName || d.full_name || "",
-    phone: d.phone || "",
-    email: d.email,
-    role: d.role as User["role"],
-    shop_slug: d.shopSlug || d.shop_slug,
-    is_banned: d.isBanned ?? d.is_banned ?? false,
-    created_at: d.createdAt || d.created_at || new Date().toISOString(),
-  };
-
-  return { access_token: token, refresh_token: d.refreshToken || d.refresh_token, user };
+export async function sendRegisterOtp(identifier: string): Promise<void> {
+  await api.post("/api/auth/send-register-otp", { identifier });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeUser(u: any): User {
-  return {
-    id: String(u.id || u.userId || u.user_id || ""),
-    full_name: u.fullName || u.full_name || "",
-    phone: u.phone || "",
-    email: u.email,
-    role: u.role as User["role"],
-    shop_slug: u.shopSlug || u.shop_slug,
-    avatar_url: u.avatarUrl || u.avatar_url,
-    htx_id: u.htxId || u.htx_id,
-    htx_name: u.htxName || u.htx_name,
-    is_banned: u.isBanned ?? u.is_banned ?? false,
-    created_at: u.createdAt || u.created_at || new Date().toISOString(),
-  };
+/**
+ * Quên mật khẩu — gửi OTP
+ */
+export async function forgotPassword(identifier: string): Promise<void> {
+  await api.post("/api/auth/forgot-password", { identifier });
+}
+
+/**
+ * Đặt lại mật khẩu
+ */
+export async function resetPassword(identifier: string, otp: string, newPassword: string): Promise<void> {
+  await api.post("/api/auth/reset-password", { identifier, otp, newPassword });
+}
+
+/* ─── Helper: Fetch full profile sau login ─── */
+async function fetchUserProfile(authData: BEAuthResponse): Promise<User> {
+  try {
+    const profileRes = await api.get<{ success: boolean; data: UserProfileResponse }>("/api/users/me");
+    const p = profileRes.data.data;
+    return {
+      id: String(p.id),
+      full_name: p.fullName || "",
+      username: p.username,
+      phone: p.phone || "",
+      email: p.email,
+      role: p.role as User["role"],
+      avatar_url: p.avatarUrl,
+      is_banned: !(p.active ?? true),
+      created_at: p.createdAt || new Date().toISOString(),
+    };
+  } catch {
+    // Fallback: build user từ AuthResponse (thiếu một số field)
+    return {
+      id: "",
+      full_name: authData.username || "",
+      username: authData.username,
+      phone: authData.phone || "",
+      email: authData.email,
+      role: authData.role as User["role"],
+      is_banned: false,
+      created_at: new Date().toISOString(),
+    };
+  }
 }
