@@ -1,58 +1,77 @@
+// src/main/java/com/capnong/service/ShopService.java
 package com.capnong.service;
 
+import com.capnong.dto.request.ShopCreateRequest;
 import com.capnong.exception.AppException;
+import com.capnong.exception.ResourceNotFoundException;
 import com.capnong.model.Shop;
+import com.capnong.model.User;
 import com.capnong.repository.ShopRepository;
+import com.capnong.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Service
 public class ShopService {
-
     private final ShopRepository shopRepository;
+    private final UserRepository userRepository;
 
-    public ShopService(ShopRepository shopRepository) {
+    public ShopService(ShopRepository shopRepository, UserRepository userRepository) {
         this.shopRepository = shopRepository;
+        this.userRepository = userRepository;
     }
 
-    public Shop getBySlug(String slug) {
-        return shopRepository.findBySlug(slug)
-                .orElseThrow(() -> new AppException("Không tìm thấy gian hàng", HttpStatus.NOT_FOUND));
-    }
-
-    public Shop getByOwnerId(UUID ownerId) {
-        return shopRepository.findByOwnerId(ownerId)
-                .orElseThrow(() -> new AppException("Bạn chưa có gian hàng", HttpStatus.NOT_FOUND));
-    }
-
+    @SuppressWarnings("null")
     @Transactional
-    public Shop createShop(UUID ownerId, Shop shop) {
-        if (shopRepository.existsByOwnerId(ownerId)) {
-            throw new AppException("Bạn đã có gian hàng rồi", HttpStatus.CONFLICT);
+    public Shop createShop(ShopCreateRequest request, String username) {
+        User owner = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        if (shopRepository.existsByOwnerId(owner.getId())) {
+            throw new AppException("Người dùng này đã có gian hàng", HttpStatus.CONFLICT);
         }
-        if (shopRepository.existsBySlug(shop.getSlug())) {
-            throw new AppException("Slug đã tồn tại", HttpStatus.CONFLICT);
+        if (shopRepository.existsBySlug(request.getSlug())) {
+            throw new AppException("Slug (đường dẫn) này đã tồn tại", HttpStatus.CONFLICT);
         }
-        shop.setOwnerId(ownerId);
+
+        Shop shop = Shop.builder()
+                .owner(owner)
+                .name(request.getName())
+                .slug(request.getSlug())
+                .province(request.getProvince())
+                .district(request.getDistrict())
+                .bio(request.getBio())
+                .build();
         return shopRepository.save(shop);
     }
 
-    @Transactional
-    public Shop updateShop(UUID ownerId, Shop updates) {
-        Shop shop = shopRepository.findByOwnerId(ownerId)
-                .orElseThrow(() -> new AppException("Bạn chưa có gian hàng", HttpStatus.NOT_FOUND));
+    @Transactional(readOnly = true)
+    public Shop getShopBySlug(String slug) {
+        return shopRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop", "slug", slug));
+    }
 
-        if (updates.getName() != null) shop.setName(updates.getName());
-        if (updates.getBio() != null) shop.setBio(updates.getBio());
-        if (updates.getProvince() != null) shop.setProvince(updates.getProvince());
-        if (updates.getDistrict() != null) shop.setDistrict(updates.getDistrict());
-        if (updates.getYearsExperience() != null) shop.setYearsExperience(updates.getYearsExperience());
-        if (updates.getFarmAreaM2() != null) shop.setFarmAreaM2(updates.getFarmAreaM2());
-        if (updates.getAvatarUrl() != null) shop.setAvatarUrl(updates.getAvatarUrl());
-        if (updates.getCoverUrl() != null) shop.setCoverUrl(updates.getCoverUrl());
+    @Transactional
+    public Shop updateShop(String slug, ShopCreateRequest request, String username) {
+        Shop shop = shopRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop", "slug", slug));
+
+        // RBAC Check: Chỉ chủ sở hữu mới được sửa
+        if (!shop.getOwner().getUsername().equals(username)) {
+            throw new AppException("Bạn không có quyền chỉnh sửa gian hàng này", HttpStatus.FORBIDDEN);
+        }
+
+        // Nếu đổi slug, kiểm tra trùng lặp
+        if (!shop.getSlug().equals(request.getSlug()) && shopRepository.existsBySlug(request.getSlug())) {
+            throw new AppException("Slug (đường dẫn) mới đã tồn tại", HttpStatus.CONFLICT);
+        }
+
+        shop.setName(request.getName());
+        shop.setSlug(request.getSlug());
+        shop.setProvince(request.getProvince());
+        shop.setDistrict(request.getDistrict());
+        shop.setBio(request.getBio());
 
         return shopRepository.save(shop);
     }

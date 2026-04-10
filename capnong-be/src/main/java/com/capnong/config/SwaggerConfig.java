@@ -13,17 +13,21 @@ public class SwaggerConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
+        final String securitySchemeName = "bearerAuth";
         return new OpenAPI()
-                .info(new Info()
-                        .title("Cạp Nông API")
-                        .description("API Contract v1.1 — Hệ sinh thái Thương mại Nông sản Thông minh")
-                        .version("1.1.0"))
-                .addSecurityItem(new SecurityRequirement().addList("BearerAuth"))
-                .components(new Components()
-                        .addSecuritySchemes("BearerAuth",
-                                new SecurityScheme()
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")));
+                .info(new Info().title("CapNong API")
+                        .version("1.0")
+                        .description("API Documentation for CapNong Project"))
+                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
+                .components(
+                        new Components()
+                                .addSecuritySchemes(securitySchemeName,
+                                        new SecurityScheme()
+                                                .name(securitySchemeName)
+                                                .type(SecurityScheme.Type.HTTP)
+                                                .scheme("bearer")
+                                                .bearerFormat("JWT")
+                                )
+                );
     }
 }

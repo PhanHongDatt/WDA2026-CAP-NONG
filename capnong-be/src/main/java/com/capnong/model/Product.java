@@ -1,29 +1,26 @@
 package com.capnong.model;
 
-import com.capnong.model.enums.FarmingMethod;
-import com.capnong.model.enums.ProductCategory;
-import com.capnong.model.enums.ProductStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "products")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Product {
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    private java.util.UUID id;
 
-    @Column(name = "shop_id", nullable = false)
-    private UUID shopId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shop_id", nullable = false)
+    private Shop shop;
 
     @Column(nullable = false)
     private String name;
@@ -31,56 +28,28 @@ public class Product {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private ProductCategory category;
+    @Column(nullable = false)
+    private String category; // ENUM: FRUIT, VEGETABLE... in DB as String
 
-    @Column(name = "unit_code", nullable = false, length = 10)
+    @Column(nullable = false)
     private String unitCode;
 
-    @Column(name = "price_per_unit", nullable = false, precision = 15, scale = 2)
+    @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal pricePerUnit;
 
-    @Column(name = "available_quantity", nullable = false, precision = 12, scale = 3)
-    @Builder.Default
-    private BigDecimal availableQuantity = BigDecimal.ZERO;
+    @Column(nullable = false, precision = 12, scale = 3)
+    private BigDecimal availableQuantity;
 
-    @Column(name = "harvest_date")
-    private LocalDate harvestDate;
-
-    @Column(name = "available_from")
-    private LocalDate availableFrom;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "farming_method", nullable = false, length = 20)
-    @Builder.Default
-    private FarmingMethod farmingMethod = FarmingMethod.TRADITIONAL;
-
-    @Column(name = "pesticide_free", nullable = false)
-    @Builder.Default
-    private Boolean pesticideFree = false;
-
-    @Column(name = "location_detail", nullable = false)
+    @Column(nullable = false)
     private String locationDetail;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
     @Builder.Default
-    private ProductStatus status = ProductStatus.UPCOMING;
-
-    @Column(name = "average_rating", precision = 3, scale = 2)
-    @Builder.Default
-    private BigDecimal averageRating = BigDecimal.ZERO;
-
-    @Column(name = "total_reviews")
-    @Builder.Default
-    private Integer totalReviews = 0;
+    private String status = "UPCOMING"; // IN_SEASON, UPCOMING, HIDDEN...
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
+    private LocalDateTime updatedAt;
 }

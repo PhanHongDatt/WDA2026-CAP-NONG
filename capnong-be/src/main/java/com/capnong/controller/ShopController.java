@@ -1,60 +1,63 @@
 package com.capnong.controller;
 
+import com.capnong.dto.request.ShopCreateRequest;
 import com.capnong.dto.response.ApiResponse;
-import com.capnong.model.Product;
-import com.capnong.model.Shop;
-import com.capnong.repository.ProductRepository;
-import com.capnong.security.UserDetailsImpl;
+import com.capnong.service.ProductService;
 import com.capnong.service.ShopService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api/v1/shops")
+@RequestMapping("/api/shops")
+@Tag(name = "Shop Management")
 public class ShopController {
-
     private final ShopService shopService;
-    private final ProductRepository productRepository;
+    private final ProductService productService;
 
-    public ShopController(ShopService shopService, ProductRepository productRepository) {
+    public ShopController(ShopService shopService, ProductService productService) {
         this.shopService = shopService;
-        this.productRepository = productRepository;
-    }
-
-    @GetMapping("/{slug}")
-    public ResponseEntity<ApiResponse<Shop>> getShop(@PathVariable String slug) {
-        Shop shop = shopService.getBySlug(slug);
-        return ResponseEntity.ok(ApiResponse.success("OK", shop));
-    }
-
-    @GetMapping("/{slug}/products")
-    public ResponseEntity<ApiResponse<List<Product>>> getShopProducts(@PathVariable String slug) {
-        Shop shop = shopService.getBySlug(slug);
-        List<Product> products = productRepository.findVisibleByShopId(shop.getId());
-        return ResponseEntity.ok(ApiResponse.success("OK", products));
+        this.productService = productService;
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
-    public ResponseEntity<ApiResponse<Shop>> createShop(
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestBody Shop shop) {
-        Shop created = shopService.createShop(userDetails.getId(), shop);
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Tạo gian hàng mới", description = "Yêu cầu quyền bán hàng (FARMER trở lên). Mỗi user chỉ được phép có tối đa 1 gian hàng.")
+    public ResponseEntity<ApiResponse<Object>> createShop(
+            @Valid @RequestBody ShopCreateRequest request,
+            Authentication authentication) {
+        var shop = shopService.createShop(request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tạo gian hàng thành công", created));
+                .body(ApiResponse.success("Tạo gian hàng thành công", shop));
     }
 
-    @PutMapping
-    @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
-    public ResponseEntity<ApiResponse<Shop>> updateShop(
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestBody Shop updates) {
-        Shop updated = shopService.updateShop(userDetails.getId(), updates);
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật gian hàng thành công", updated));
+    @GetMapping("/{slug}")
+    @Operation(summary = "Xem chi tiết gian hàng", description = "Lấy thông tin công khai của gian hàng dựa trên slug (đường dẫn). API này public.")
+    public ResponseEntity<ApiResponse<Object>> getShop(@PathVariable String slug) {
+        var shop = shopService.getShopBySlug(slug);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin gian hàng thành công", shop));
+    }
+
+    @PutMapping("/{slug}")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Cập nhật thông tin gian hàng", description = "Cập nhật các thông tin cơ bản của gian hàng. Yêu cầu user đang gọi API phải là chủ sở hữu (owner) của gian hàng này.")
+    public ResponseEntity<ApiResponse<Object>> updateShop(
+            @PathVariable String slug,
+            @Valid @RequestBody ShopCreateRequest request,
+            Authentication authentication) {
+        var shop = shopService.updateShop(slug, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật gian hàng thành công", shop));
+    }
+
+    @GetMapping("/{slug}/products")
+    @Operation(summary = "Lấy danh sách sản phẩm của gian hàng", description = "Hiển thị tất cả sản phẩm đang bán tại gian hàng (đã tự động loại trừ các sản phẩm bị ẩn). API public.")
+    public ResponseEntity<ApiResponse<Object>> getShopProducts(@PathVariable String slug) {
+        var products = productService.getProductsByShopSlug(slug);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", products));
     }
 }

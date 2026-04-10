@@ -1,89 +1,59 @@
 package com.capnong.controller;
 
-import com.capnong.dto.response.ApiResponse;
-import com.capnong.model.Cart;
-import com.capnong.model.CartItem;
-import com.capnong.exception.AppException;
-import com.capnong.repository.CartItemRepository;
-import com.capnong.repository.CartRepository;
+import com.capnong.dto.request.AddToCartRequest;
+import com.capnong.dto.response.CartResponse;
 import com.capnong.security.UserDetailsImpl;
-import org.springframework.http.HttpStatus;
+import com.capnong.service.CartService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 @RestController
-@RequestMapping("/api/v1/cart")
+@RequestMapping("/api/cart")
+@RequiredArgsConstructor
 public class CartController {
 
-    private final CartRepository cartRepository;
-    private final CartItemRepository cartItemRepository;
+    private final CartService cartService;
 
-    public CartController(CartRepository cartRepository, CartItemRepository cartItemRepository) {
-        this.cartRepository = cartRepository;
-        this.cartItemRepository = cartItemRepository;
+    @PostMapping("/add")
+    public ResponseEntity<CartResponse> addToCart(
+            @RequestHeader(value = "Guest-Session-Id", required = false) String guestSessionId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @Valid @RequestBody AddToCartRequest request) {
+
+        Long userId = userDetails != null ? userDetails.getId() : null;
+        if (userId == null && guestSessionId == null) {
+            throw new IllegalArgumentException("Either User ID or Guest-Session-Id must be provided");
+        }
+
+        return ResponseEntity.ok(cartService.addToCart(guestSessionId, userId, request));
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getCart(
+    public ResponseEntity<CartResponse> getCart(
+            @RequestHeader(value = "Guest-Session-Id", required = false) String guestSessionId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        Cart cart = getOrCreateCart(userDetails.getId());
-        List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
-        return ResponseEntity.ok(ApiResponse.success("OK",
-                Map.of("cart", cart, "items", items)));
-    }
 
-    @PostMapping("/items")
-    public ResponseEntity<ApiResponse<CartItem>> addItem(
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestBody Map<String, Object> body) {
-        Cart cart = getOrCreateCart(userDetails.getId());
-        UUID productId = UUID.fromString((String) body.get("productId"));
-        BigDecimal quantity = new BigDecimal(body.get("quantity").toString());
-
-        // Check if item exists — update quantity
-        var existing = cartItemRepository.findByCartIdAndProductId(cart.getId(), productId);
-        if (existing.isPresent()) {
-            CartItem item = existing.get();
-            item.setQuantity(item.getQuantity().add(quantity));
-            cartItemRepository.save(item);
-            return ResponseEntity.ok(ApiResponse.success("Cập nhật số lượng", item));
+        Long userId = userDetails != null ? userDetails.getId() : null;
+        if (userId == null && guestSessionId == null) {
+            throw new IllegalArgumentException("Either User ID or Guest-Session-Id must be provided");
         }
 
-        CartItem item = CartItem.builder()
-                .cartId(cart.getId())
-                .productId(productId)
-                .quantity(quantity)
-                .build();
-        cartItemRepository.save(item);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Đã thêm vào giỏ hàng", item));
+        return ResponseEntity.ok(cartService.getCart(guestSessionId, userId));
     }
 
-    @PutMapping("/items/{itemId}")
-    public ResponseEntity<ApiResponse<CartItem>> updateItem(
-            @PathVariable UUID itemId,
-            @RequestBody Map<String, Object> body) {
-        CartItem item = cartItemRepository.findById(itemId)
-                .orElseThrow(() -> new AppException("Item not found", HttpStatus.NOT_FOUND));
-        item.setQuantity(new BigDecimal(body.get("quantity").toString()));
-        cartItemRepository.save(item);
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", item));
-    }
+    @PostMapping("/merge")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> mergeCart(
+            @RequestHeader(value = "Guest-Session-Id") String guestSessionId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-    @DeleteMapping("/items/{itemId}")
-    public ResponseEntity<ApiResponse<Void>> removeItem(@PathVariable UUID itemId) {
-        cartItemRepository.deleteById(itemId);
-        return ResponseEntity.ok(ApiResponse.success("Đã xóa khỏi giỏ hàng", null));
-    }
-
-    private Cart getOrCreateCart(UUID userId) {
-        return cartRepository.findByUserId(userId)
-                .orElseGet(() -> cartRepository.save(Cart.builder().userId(userId).build()));
+        if (userDetails != null && guestSessionId != null) {
+            cartService.mergeGuestCartToUser(guestSessionId, userDetails.getId());
+        }
+        return ResponseEntity.ok().build();
     }
 }

@@ -3,64 +3,56 @@ package com.capnong.model;
 import com.capnong.model.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.experimental.SuperBuilder;
 
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "phone"),
+        @UniqueConstraint(columnNames = "username"),
         @UniqueConstraint(columnNames = "email"),
-        @UniqueConstraint(columnNames = "telegram_chat_id")
+        @UniqueConstraint(columnNames = "phone")
 })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class User {
+@SuperBuilder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password"})
+@SQLRestriction("deleted = false")
+public class User extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @Column(unique = true, length = 50)
+    private String username;
 
-    @Column(name = "full_name", nullable = false, length = 150)
-    private String fullName;
-
-    @Column(nullable = false, unique = true, length = 20)
-    private String phone;
-
-    @Column(unique = true)
+    @Column(unique = true, length = 100)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+    private String password;
+
+    @Column(name = "full_name", length = 100)
+    private String fullName;
+
+    @Column(unique = true, length = 15)
+    private String phone;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    private Role role;
+
+    @Column(nullable = false)
     @Builder.Default
-    private Role role = Role.BUYER;
+    private Boolean active = true;
 
-    @Column(name = "avatar_url", columnDefinition = "TEXT")
-    private String avatarUrl;
+    @Column(name = "google_id", unique = true)
+    private String googleId;
 
-    @Column(name = "telegram_chat_id", unique = true, length = 100)
-    private String telegramChatId;
-
-    @Column(name = "htx_id")
-    private UUID htxId;
-
-    @Column(name = "is_banned", nullable = false)
-    @Builder.Default
-    private Boolean isBanned = false;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
+    @Column(name = "username_updated_at")
+    private LocalDateTime usernameUpdatedAt;
 }

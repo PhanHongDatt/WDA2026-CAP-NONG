@@ -2,8 +2,7 @@ package com.capnong.model.enums;
 
 public enum OrderStatus {
     PENDING,
-    CONFIRMED,
-    PREPARING,
+    PROCESSING,
     SHIPPED,
     DELIVERED,
     CANCELLED

@@ -1,95 +1,159 @@
 package com.capnong.service;
 
-import com.capnong.exception.AppException;
+import com.capnong.dto.request.AddToCartRequest;
+import com.capnong.dto.response.CartItemResponse;
+import com.capnong.dto.response.CartResponse;
+import com.capnong.exception.ResourceNotFoundException;
 import com.capnong.model.Cart;
 import com.capnong.model.CartItem;
 import com.capnong.model.Product;
-import com.capnong.repository.CartItemRepository;
+import com.capnong.model.User;
 import com.capnong.repository.CartRepository;
 import com.capnong.repository.ProductRepository;
-import org.springframework.http.HttpStatus;
+import com.capnong.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.UUID;
+
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class CartService {
 
     private final CartRepository cartRepository;
-    private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
+    private final UserRepository userRepository;
 
-    public CartService(CartRepository cartRepository,
-                       CartItemRepository cartItemRepository,
-                       ProductRepository productRepository) {
-        this.cartRepository = cartRepository;
-        this.cartItemRepository = cartItemRepository;
-        this.productRepository = productRepository;
-    }
+    @Transactional
+    public CartResponse addToCart(String guestSessionId, Long userId, AddToCartRequest request) {
+        Cart cart = getOrCreateCart(guestSessionId, userId);
 
-    public Cart getOrCreateCart(UUID userId) {
-        return cartRepository.findByUserId(userId)
-                .orElseGet(() -> cartRepository.save(Cart.builder().userId(userId).build()));
-    }
+        Product product = productRepository.findById(java.util.Objects.requireNonNull(request.getProductId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
-    public List<CartItem> getCartItems(UUID cartId) {
-        return cartItemRepository.findByCartId(cartId);
+        Optional<CartItem> existingItem = cart.getItems().stream()
+                .filter(item -> item.getProduct().getId().equals(request.getProductId()))
+                .findFirst();
+
+        if (existingItem.isPresent()) {
+            CartItem item = existingItem.get();
+            item.setQuantity(item.getQuantity().add(request.getQuantity()));
+        } else {
+            CartItem newItem = CartItem.builder()
+                    .cart(cart)
+                    .product(product)
+                    .quantity(request.getQuantity())
+                    .build();
+            cart.getItems().add(newItem);
+        }
+
+        cartRepository.save(cart);
+        return mapToCartResponse(cart);
     }
 
     @Transactional
-    public CartItem addItem(UUID userId, UUID productId, BigDecimal quantity) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new AppException("Sản phẩm không tồn tại", HttpStatus.NOT_FOUND));
-
-        if (product.getAvailableQuantity().compareTo(quantity) < 0) {
-            throw new AppException("Sản phẩm không đủ số lượng (còn " + product.getAvailableQuantity() + ")", HttpStatus.CONFLICT);
+    public CartResponse getCart(String guestSessionId, Long userId) {
+        Cart cart;
+        if (userId != null) {
+            cart = cartRepository.findByUserId(userId).orElse(null);
+        } else {
+            cart = cartRepository.findByGuestSessionId(guestSessionId).orElse(null);
         }
 
-        Cart cart = getOrCreateCart(userId);
-        var existing = cartItemRepository.findByCartIdAndProductId(cart.getId(), productId);
-        if (existing.isPresent()) {
-            CartItem item = existing.get();
-            BigDecimal newQty = item.getQuantity().add(quantity);
-            if (product.getAvailableQuantity().compareTo(newQty) < 0) {
-                throw new AppException("Tổng số lượng vượt quá tồn kho", HttpStatus.CONFLICT);
+        if (cart == null) {
+            return CartResponse.builder()
+                    .guestSessionId(guestSessionId)
+                    .userId(userId)
+                    .items(java.util.List.of())
+                    .build();
+        }
+
+        return mapToCartResponse(cart);
+    }
+
+    @Transactional
+    public void mergeGuestCartToUser(String guestSessionId, Long userId) {
+        if (guestSessionId == null || userId == null) return;
+
+        Optional<Cart> guestCartOpt = cartRepository.findByGuestSessionId(guestSessionId);
+        if (guestCartOpt.isEmpty()) return;
+
+        Cart guestCart = guestCartOpt.get();
+        Optional<Cart> userCartOpt = cartRepository.findByUserId(userId);
+
+        if (userCartOpt.isPresent()) {
+            Cart userCart = userCartOpt.get();
+            for (CartItem guestItem : guestCart.getItems()) {
+                Optional<CartItem> existingUserItem = userCart.getItems().stream()
+                        .filter(item -> item.getProduct().getId().equals(guestItem.getProduct().getId()))
+                        .findFirst();
+
+                if (existingUserItem.isPresent()) {
+                    CartItem userItem = existingUserItem.get();
+                    userItem.setQuantity(userItem.getQuantity().add(guestItem.getQuantity()));
+                } else {
+                    guestItem.setCart(userCart);
+                    userCart.getItems().add(guestItem);
+                }
             }
-            item.setQuantity(newQty);
-            return cartItemRepository.save(item);
+            cartRepository.save(java.util.Objects.requireNonNull(userCart));
+            // clear guest items to prevent orphan removal cascade from deleting the products? No, orphanRemoval means if we remove from list or delete parent, children are removed.
+            // Since we reparented guestItem by setting guestItem.setCart(userCart) and added to userCart, we should clear it from guestCart.
+            guestCart.getItems().clear();
+            cartRepository.delete(guestCart);
+        } else {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            guestCart.setUser(user);
+            guestCart.setGuestSessionId(null);
+            cartRepository.save(guestCart);
+        }
+    }
+
+    @Transactional
+    public void clearCart(String guestSessionId, Long userId) {
+        Cart cart;
+        if (userId != null) {
+            cart = cartRepository.findByUserId(userId).orElse(null);
+        } else {
+            cart = cartRepository.findByGuestSessionId(guestSessionId).orElse(null);
         }
 
-        return cartItemRepository.save(CartItem.builder()
-                .cartId(cart.getId())
-                .productId(productId)
-                .quantity(quantity)
-                .build());
-    }
-
-    @Transactional
-    public CartItem updateItemQuantity(UUID itemId, UUID userId, BigDecimal quantity) {
-        CartItem item = cartItemRepository.findById(itemId)
-                .orElseThrow(() -> new AppException("Item không tồn tại", HttpStatus.NOT_FOUND));
-
-        Product product = productRepository.findById(item.getProductId())
-                .orElseThrow(() -> new AppException("Sản phẩm không tồn tại", HttpStatus.NOT_FOUND));
-
-        if (product.getAvailableQuantity().compareTo(quantity) < 0) {
-            throw new AppException("Số lượng vượt quá tồn kho", HttpStatus.CONFLICT);
+        if (cart != null) {
+            cart.getItems().clear();
+            cartRepository.save(cart);
         }
-
-        item.setQuantity(quantity);
-        return cartItemRepository.save(item);
     }
 
-    @Transactional
-    public void removeItem(UUID itemId) {
-        cartItemRepository.deleteById(itemId);
+    private Cart getOrCreateCart(String guestSessionId, Long userId) {
+        if (userId != null) {
+            return cartRepository.findByUserId(userId).orElseGet(() -> {
+                User user = userRepository.findById(userId)
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                return cartRepository.save(java.util.Objects.requireNonNull(Cart.builder().user(user).build()));
+            });
+        } else {
+            return cartRepository.findByGuestSessionId(guestSessionId).orElseGet(() ->
+                    cartRepository.save(java.util.Objects.requireNonNull(Cart.builder().guestSessionId(guestSessionId).build()))
+            );
+        }
     }
 
-    @Transactional
-    public void clearCart(UUID cartId) {
-        cartItemRepository.deleteByCartId(cartId);
+    private CartResponse mapToCartResponse(Cart cart) {
+        return CartResponse.builder()
+                .id(cart.getId())
+                .guestSessionId(cart.getGuestSessionId())
+                .userId(cart.getUser() != null ? cart.getUser().getId() : null)
+                .items(cart.getItems().stream().map(item -> CartItemResponse.builder()
+                        .id(item.getId())
+                        .productId(item.getProduct().getId())
+                        .productName(item.getProduct().getName())
+                        .quantity(item.getQuantity())
+                        .pricePerUnit(item.getProduct().getPricePerUnit())
+                        .build()).collect(Collectors.toList()))
+                .build();
     }
 }

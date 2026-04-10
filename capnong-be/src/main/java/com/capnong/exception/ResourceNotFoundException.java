@@ -8,4 +8,8 @@ public class ResourceNotFoundException extends AppException {
         super(String.format("%s not found with %s: '%s'", resource, field, value),
                 HttpStatus.NOT_FOUND);
     }
+
+    public ResourceNotFoundException(String message) {
+        super(message, HttpStatus.NOT_FOUND);
+    }
 }

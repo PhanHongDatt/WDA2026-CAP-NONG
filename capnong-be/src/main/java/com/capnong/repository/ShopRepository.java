@@ -1,3 +1,4 @@
+// src/main/java/com/capnong/repository/ShopRepository.java
 package com.capnong.repository;
 
 import com.capnong.model.Shop;
@@ -10,7 +11,7 @@ import java.util.UUID;
 @Repository
 public interface ShopRepository extends JpaRepository<Shop, UUID> {
     Optional<Shop> findBySlug(String slug);
-    Optional<Shop> findByOwnerId(UUID ownerId);
+    Optional<Shop> findByOwnerUsername(String username);
+    boolean existsByOwnerId(Long ownerId);
     boolean existsBySlug(String slug);
-    boolean existsByOwnerId(UUID ownerId);
 }

@@ -1,94 +1,68 @@
 package com.capnong.controller;
 
+import com.capnong.dto.request.ChangeRoleRequest;
 import com.capnong.dto.response.ApiResponse;
-import com.capnong.exception.AppException;
-import com.capnong.model.Htx;
-import com.capnong.model.User;
-import com.capnong.model.enums.HtxStatus;
-import com.capnong.model.enums.Role;
-import com.capnong.repository.HtxRepository;
-import com.capnong.repository.UserRepository;
+import com.capnong.dto.response.UserResponse;
+import com.capnong.service.AdminService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 @RestController
-@RequestMapping("/api/v1/admin")
-@PreAuthorize("hasRole('ADMIN')")
+@RequestMapping("/api/admin/users")
+@Tag(name = "Admin Management", description = "Quản lý hệ thống người dùng (chỉ dành cho ADMIN)")
+@RequiredArgsConstructor
 public class AdminController {
 
-    private final HtxRepository htxRepository;
-    private final UserRepository userRepository;
+    private final AdminService adminService;
 
-    public AdminController(HtxRepository htxRepository, UserRepository userRepository) {
-        this.htxRepository = htxRepository;
-        this.userRepository = userRepository;
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Lấy danh sách người dùng", description = "Lấy tất cả user có phân trang")
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<UserResponse> users = adminService.getAllUsers(PageRequest.of(page, size));
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách user thành công", users));
     }
 
-    // ─── HTX Management ──────────────────────────
-    @GetMapping("/htx-requests")
-    public ResponseEntity<ApiResponse<List<Htx>>> getPendingHtx() {
-        List<Htx> pending = htxRepository.findByStatus(HtxStatus.PENDING);
-        return ResponseEntity.ok(ApiResponse.success("OK", pending));
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Xem chi tiết user")
+    public ResponseEntity<ApiResponse<UserResponse>> getUser(@PathVariable Long id) {
+        UserResponse user = adminService.getUserDetails(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin thành công", user));
     }
 
-    @PatchMapping("/htx/{id}/approve")
-    public ResponseEntity<ApiResponse<Htx>> approveHtx(
-            @PathVariable UUID id,
-            @RequestBody Map<String, String> body) {
-        Htx htx = htxRepository.findById(id)
-                .orElseThrow(() -> new AppException("Không tìm thấy HTX", HttpStatus.NOT_FOUND));
-
-        String action = body.get("action"); // APPROVE or REJECT
-        htx.setAdminNote(body.get("note"));
-
-        if ("APPROVE".equals(action)) {
-            htx.setStatus(HtxStatus.ACTIVE);
-            htxRepository.save(htx);
-            // Upgrade creator → HTX_MANAGER
-            User manager = userRepository.findById(htx.getManagerId()).get();
-            manager.setRole(Role.HTX_MANAGER);
-            manager.setHtxId(htx.getId());
-            userRepository.save(manager);
-        } else {
-            htx.setStatus(HtxStatus.REJECTED);
-            htxRepository.save(htx);
-        }
-
-        return ResponseEntity.ok(ApiResponse.success("Đã xử lý HTX", htx));
+    @PatchMapping("/{id}/ban")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Khóa tài khoản (Ban)")
+    public ResponseEntity<ApiResponse<UserResponse>> banUser(@PathVariable Long id) {
+        UserResponse user = adminService.banUser(id);
+        return ResponseEntity.ok(ApiResponse.success("Đã khóa tài khoản", user));
     }
 
-    // ─── User Management ─────────────────────────
-    @GetMapping("/users")
-    public ResponseEntity<ApiResponse<Page<User>>> getUsers(
-            @RequestParam(required = false) String keyword,
-            @PageableDefault(size = 20) Pageable pageable) {
-        Page<User> users;
-        if (keyword != null && !keyword.isBlank()) {
-            users = userRepository.searchUsers(keyword, pageable);
-        } else {
-            users = userRepository.findAll(pageable);
-        }
-        return ResponseEntity.ok(ApiResponse.success("OK", users));
+    @PatchMapping("/{id}/unban")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Mở khóa tài khoản (Unban)")
+    public ResponseEntity<ApiResponse<UserResponse>> unbanUser(@PathVariable Long id) {
+        UserResponse user = adminService.unbanUser(id);
+        return ResponseEntity.ok(ApiResponse.success("Đã mở khóa tài khoản", user));
     }
 
-    @PatchMapping("/users/{id}/ban")
-    public ResponseEntity<ApiResponse<User>> toggleBan(
-            @PathVariable UUID id,
-            @RequestBody Map<String, Boolean> body) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new AppException("Không tìm thấy user", HttpStatus.NOT_FOUND));
-        user.setIsBanned(body.getOrDefault("banned", true));
-        userRepository.save(user);
-        return ResponseEntity.ok(ApiResponse.success(
-                user.getIsBanned() ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản", user));
+    @PatchMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Thay đổi Role của user")
+    public ResponseEntity<ApiResponse<UserResponse>> changeRole(
+            @PathVariable Long id,
+            @Valid @RequestBody ChangeRoleRequest request) {
+        UserResponse user = adminService.changeUserRole(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật quyền thành công", user));
     }
 }

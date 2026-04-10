@@ -4,18 +4,20 @@
 # ============================================
 
 server:
-  port: 8080
+  port: 9999
 
 # ─── Spring Core ───────────────────────────────
 spring:
   application:
     name: capnong-be
+  profiles:
+    active: dev
 
-  # ─── PostgreSQL DataSource ─────────────────
+  # ─── PostgreSQL Supabase DataSource ─────────────────
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/capnong_dev}
     username: ${SPRING_DATASOURCE_USERNAME:capnong}
-    password: ${SPRING_DATASOURCE_PASSWORD:capnong123}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -29,16 +31,9 @@ spring:
       ddl-auto: update
     show-sql: true
     open-in-view: false
-    defer-datasource-initialization: true
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-
-  # ─── Seed Data ───────────────────────────
-  sql:
-    init:
-      mode: always
 
   # ─── Redis ─────────────────────────────────
   data:
@@ -52,7 +47,7 @@ spring:
   cache:
     type: redis
     redis:
-      time-to-live: 600000        # 10 minutes in milliseconds
+      time-to-live: 600000 # 10 minutes in milliseconds
       cache-null-values: false
       use-key-prefix: true
       key-prefix: "capnong:"
@@ -68,22 +63,26 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET:default-dev-secret-change-in-production}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}              # Access token: 1h
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}  # Refresh token: 7 ngày
 
-# ─── AI Provider (hiện dùng OpenAI/MegaLLM, sau chuyển Gemini) ──
-  ai:
-    api-key: ${AI_API_KEY:sk-mega-92eb00a3dda468dbd97bfe465583153ce53d993099baf62a76475bfa0fcefd1e}
-    model: ${AI_MODEL:openai-gpt-oss-20b}
-    base-url: ${AI_BASE_URL:https://api.mega-llm.com/v1}
+  # ─── Supabase OAuth ───────────────────────────
+  supabase:
+    jwt-secret: ${SUPABASE_JWT_SECRET:}
 
-# ─── Google Gemini AI (dự phòng) ─────────────
+  # ─── Google Gemini AI ────────────────────────
   gemini:
     api-key: ${GEMINI_API_KEY:}
 
-# ─── Telegram Bot ────────────────────────────
+  # ─── Telegram Bot ────────────────────────────
   telegram:
     bot-token: ${TELEGRAM_BOT_TOKEN:}
     bot-username: ${TELEGRAM_BOT_USERNAME:}
+
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME}
+    api-key: ${CLOUDINARY_API_KEY}
+    api-secret: ${CLOUDINARY_API_SECRET}
 
 # ─── Logging (Dev) ──────────────────────────
 logging:
@@ -92,3 +91,8 @@ logging:
     com.capnong: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+ai:
+  service:
+    base-url: http://localhost:8001
+    timeout: 15000
