@@ -116,6 +116,13 @@ export default function RootLayout({
         {/* DNS prefetch + preconnect to backend API for faster first request */}
         <link rel="dns-prefetch" href="//localhost:8080" />
         <link rel="preconnect" href="http://localhost:8080" crossOrigin="anonymous" />
+        {/* Anti-FOUC: Apply dark mode BEFORE first paint to prevent white flash
+            Ref: web.dev/prefers-color-scheme — "blocking script" pattern */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('capnong-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}var f=localStorage.getItem('capnong-font-size');if(f){document.documentElement.classList.add('font-'+f)}}catch(e){}})()`,
+          }}
+        />
       </head>
       <body className={`${publicSans.variable} antialiased min-h-screen flex flex-col`} suppressHydrationWarning>
         <ClientProviders>
