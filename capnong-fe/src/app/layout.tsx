@@ -1,9 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import { Public_Sans } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import ClientProviders from "@/components/layout/ClientProviders";
 
+const publicSans = Public_Sans({
+  subsets: ["latin", "vietnamese"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  display: "swap",
+  variable: "--font-display",
+  preload: true,
+});
 const SITE_URL = "https://capnong.vn";
 
 export const metadata: Metadata = {
@@ -104,7 +112,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" suppressHydrationWarning>
-      <body className="antialiased min-h-screen flex flex-col" suppressHydrationWarning>
+      <head>
+        {/* DNS prefetch + preconnect to backend API for faster first request */}
+        <link rel="dns-prefetch" href="//localhost:8080" />
+        <link rel="preconnect" href="http://localhost:8080" crossOrigin="anonymous" />
+      </head>
+      <body className={`${publicSans.variable} antialiased min-h-screen flex flex-col`} suppressHydrationWarning>
         <ClientProviders>
           <Header />
           <main className="flex-1">{children}</main>

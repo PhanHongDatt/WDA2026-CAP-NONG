@@ -1,34 +1,32 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Routes that don't require authentication
-const publicPaths = ['/', '/login', '/register'];
-
+/**
+ * Middleware — Performance-optimized
+ * Only runs on protected routes, not on public pages or static assets.
+ * Client-side AuthContext handles the actual auth check.
+ */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths
-  if (publicPaths.some((path) => pathname === path)) {
-    return NextResponse.next();
+  // Dashboard/admin routes — could add cookie-based auth check here
+  // For now, client-side ProtectedRoute handles auth redirection
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
+    // Placeholder for server-side auth check via cookie
+    // const token = request.cookies.get('access_token')?.value;
+    // if (!token) return NextResponse.redirect(new URL('/login', request.url));
   }
-
-  // Allow static assets and API routes
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.includes('.')
-  ) {
-    return NextResponse.next();
-  }
-
-  // Check for token in cookies (for SSR middleware)
-  // Note: localStorage is not available in middleware (server-side)
-  // Client-side AuthContext handles the actual auth check
-  // This middleware provides a basic server-side redirect for unauthenticated users
 
   return NextResponse.next();
 }
 
+// PERF: Only match routes that actually need middleware processing
+// Skip all static assets, API routes, and public pages to reduce edge function invocations
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/dashboard/:path*',
+    '/admin/:path*',
+    '/profile',
+    '/cooperative/manage/:path*',
+  ],
 };

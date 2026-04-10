@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800;900&display=swap");
+/* Font loaded via next/font in layout.tsx for zero-CLS loading */
 @import "tailwindcss";
 
 /* ==========================================
@@ -139,9 +139,7 @@ body {
   }
 }
 
-/* ═══ LIGHT MODE: viền rõ ràng hơn ═══ */
-[class*="border-gray"] { border-color: #c4d4c4 !important; }
-[class*="divide-gray"] > * + * { border-color: #c4d4c4 !important; }
+/* ═══ LIGHT MODE: border design tokens (replaces expensive [class*=] selectors) ═══ */
 
 /* ==========================================
    DARK MODE

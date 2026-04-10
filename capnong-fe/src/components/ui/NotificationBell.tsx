@@ -85,20 +85,44 @@ export default function NotificationBell() {
     }
   }, [isLoggedIn, loaded]);
 
-  /* Fetch on mount + poll unread count */
+  /* Fetch on mount + poll unread count only when tab visible */
   useEffect(() => {
     fetchNotifications();
 
-    // Poll unread count every 30s
-    const interval = setInterval(async () => {
-      if (!isLoggedIn) return;
-      try {
-        const count = await notificationApi.getUnreadCount();
-        setUnreadCount(count);
-      } catch { /* silent */ }
-    }, 30_000);
+    let interval: ReturnType<typeof setInterval> | null = null;
 
-    return () => clearInterval(interval);
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(async () => {
+        if (!isLoggedIn) return;
+        try {
+          const count = await notificationApi.getUnreadCount();
+          setUnreadCount(count);
+        } catch { /* silent */ }
+      }, 30_000);
+    };
+
+    const stopPolling = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+    };
+
+    // Only poll when tab is visible
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchNotifications(); // refresh immediately
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (document.visibilityState === "visible") startPolling();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [fetchNotifications, isLoggedIn]);
 
   /* Refresh when dropdown opens */

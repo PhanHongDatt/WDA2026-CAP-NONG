@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload, Loader2, CheckCircle2 } from "lucide-react";
-import VoiceRecorder from "@/components/ui/VoiceRecorder";
 import type { VoiceProductResult } from "@/components/ui/VoiceRecorder";
-import AIRefiner from "@/components/ui/AIRefiner";
-import PriceAdvisor from "@/components/ui/PriceAdvisor";
 import { productService } from "@/services";
 import { useToast } from "@/components/ui/Toast";
+
+// Lazy-load heavy AI components — not needed in initial bundle
+const VoiceRecorder = lazy(() => import("@/components/ui/VoiceRecorder"));
+const AIRefiner = lazy(() => import("@/components/ui/AIRefiner"));
+const PriceAdvisor = lazy(() => import("@/components/ui/PriceAdvisor"));
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -93,9 +95,11 @@ export default function NewProductPage() {
         </div>
       </div>
 
-      {/* Voice-to-Product */}
+      {/* Voice-to-Product — lazy loaded */}
       <div className="mb-6">
-        <VoiceRecorder onResult={handleVoiceResult} />
+        <Suspense fallback={<div className="h-48 bg-primary/5 border border-primary/20 rounded-xl animate-pulse flex items-center justify-center text-sm text-foreground-muted">Đang tải Voice AI...</div>}>
+          <VoiceRecorder onResult={handleVoiceResult} />
+        </Suspense>
       </div>
 
       {/* Confidence warning */}
@@ -181,11 +185,13 @@ export default function NewProductPage() {
             <label className="block text-sm font-medium mb-2">
               Mô tả sản phẩm * {confidenceBadge("description")}
             </label>
-            <AIRefiner
-              value={description}
-              onAccept={(text) => setDescription(text)}
-              placeholder="Mô tả chi tiết về sản phẩm, nguồn gốc, đặc điểm nổi bật..."
-            />
+            <Suspense fallback={<div className="h-32 bg-gray-100 dark:bg-surface rounded-xl animate-pulse" />}>
+              <AIRefiner
+                value={description}
+                onAccept={(text) => setDescription(text)}
+                placeholder="Mô tả chi tiết về sản phẩm, nguồn gốc, đặc điểm nổi bật..."
+              />
+            </Suspense>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -239,8 +245,10 @@ export default function NewProductPage() {
             </div>
           </div>
 
-          {/* AI Price Advisor */}
-          <PriceAdvisor productName={name} currentPrice={price} />
+          {/* AI Price Advisor — lazy loaded */}
+          <Suspense fallback={<div className="h-20 bg-blue-50/50 dark:bg-info/5 rounded-xl animate-pulse" />}>
+            <PriceAdvisor productName={name} currentPrice={price} />
+          </Suspense>
 
           <div>
             <label htmlFor="new-product-category" className="block text-sm font-medium mb-2">Danh mục</label>
