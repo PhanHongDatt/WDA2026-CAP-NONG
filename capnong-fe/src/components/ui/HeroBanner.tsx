@@ -72,8 +72,10 @@ export default function HeroBanner() {
                   src={b.src}
                   alt={b.alt}
                   fill
+                  sizes="(max-width: 1024px) 100vw, 75vw"
                   className="object-cover"
                   priority={i === 0}
+                  {...(i === 0 ? { fetchPriority: "high" as const } : { loading: "lazy" })}
                 />
               </Link>
             ))}
@@ -123,6 +125,8 @@ export default function HeroBanner() {
                   src={b.src}
                   alt={b.alt}
                   fill
+                  sizes="280px"
+                  loading="lazy"
                   className="object-cover group-hover/side:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

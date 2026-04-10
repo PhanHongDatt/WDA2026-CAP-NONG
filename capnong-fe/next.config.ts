@@ -20,9 +20,19 @@ const nextConfig: NextConfig = {
   // Disable x-powered-by header (security + smaller response)
   poweredByHeader: false,
 
+  // React Compiler — stable in Next.js 16 (ref: nextjs.org/blog/next-16)
+  // Provides automatic memoization (useMemo/useCallback/React.memo) at build time
+  // Eliminates unnecessary re-renders without manual optimization
+  reactCompiler: true,
+
   // Tree-shake heavy icon libraries — only import used icons
   experimental: {
-    optimizePackageImports: ["lucide-react"],
+    optimizePackageImports: ["lucide-react", "@tanstack/react-query"],
+    // Prefetch staleness — reduce unnecessary prefetch re-fetches
+    staleTimes: {
+      dynamic: 30,  // dynamic routes cached 30s before re-prefetch
+      static: 300,  // static routes cached 5min before re-prefetch
+    },
   },
 
   // Image optimization — auto-convert to AVIF/WebP

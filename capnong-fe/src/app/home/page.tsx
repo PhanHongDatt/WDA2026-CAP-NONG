@@ -108,11 +108,15 @@ export default async function HomePage() {
         <HeroBanner />
       </div>
 
-      {/* CATEGORY GRID — Shopee-style "DANH MỤC" */}
-      <CategoryGrid />
+      {/* CATEGORY GRID — Shopee-style "DANH MỤC" (below fold → content-visibility) */}
+      <div className="cv-auto">
+        <CategoryGrid />
+      </div>
 
       {/* FLASH DEAL — Shopee-style countdown + scroll */}
-      <FlashDeal />
+      <div className="cv-auto">
+        <FlashDeal />
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 py-2">
         {/* SECTION: Seasonal Products */}
@@ -147,7 +151,7 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 product-grid-section">
             {seasonalProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -155,7 +159,9 @@ export default async function HomePage() {
         </section>
 
         {/* SECTION: Cooperative Pool — chỉ hiện cho HTX members/managers */}
-        <CoopPoolSection pool={MOCK_COOP_POOL} />
+        <div className="cv-auto">
+          <CoopPoolSection pool={MOCK_COOP_POOL} />
+        </div>
 
         {/* SECTION: Featured Farms — giống hình tham khảo carousel */}
         <section className="mb-12 relative">
@@ -196,7 +202,7 @@ export default async function HomePage() {
             </h2>
             <div className="w-20 h-0.5 bg-primary mx-auto mt-2" />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 product-grid-section">
             {[...seasonalProducts, ...newProducts].map((product) => (
               <ProductCard key={`suggest-${product.id}`} product={product} />
             ))}

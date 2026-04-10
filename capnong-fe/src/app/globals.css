@@ -312,3 +312,52 @@ html, html body {
   filter: blur(1px);
 }
 
+/* ==========================================
+   PERFORMANCE OPTIMIZATIONS
+   Ref: Google web.dev — content-visibility (Sep 2025 Baseline)
+   Ref: Chrome DevRel — CSS Containment for rendering perf
+   ========================================== */
+
+/* content-visibility: auto — skip rendering for off-screen sections
+   chromestatus.com/feature/4613920211058688
+   Up to 7x rendering speedup for long pages (web.dev/content-visibility) */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px; /* estimated height to prevent scrollbar jump */
+}
+
+/* GPU-accelerated transforms — promote to compositor layer
+   Ref: developers.google.com/web/fundamentals/performance/rendering/stick-to-compositor-only-properties */
+.gpu-accelerated {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Reduce motion — accessibility + performance for users who prefer reduced motion
+   Ref: web.dev/prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Priority hints visual — LCP images should never be lazy-loaded
+   Ref: web.dev/priority-hints */
+
+/* Optimize paint for fixed/sticky headers
+   Ref: Google DevRel — position:sticky performance */
+header[class*="sticky"] {
+  will-change: transform;
+  contain: layout style;
+}
+
+/* Avoid layout thrashing in product grids
+   Ref: Microsoft Edge DevTools — layout containment */
+.product-grid-section {
+  contain: layout style;
+}
