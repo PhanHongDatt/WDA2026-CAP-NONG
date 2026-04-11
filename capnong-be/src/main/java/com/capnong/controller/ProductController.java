@@ -2,16 +2,20 @@ package com.capnong.controller;
 
 import com.capnong.dto.request.ProductCreateRequest;
 import com.capnong.dto.response.ApiResponse;
+import com.capnong.dto.response.ProductResponse;
 import com.capnong.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,14 +30,14 @@ public class ProductController {
 
     @GetMapping
     @Operation(summary = "Danh sách sản phẩm công khai", description = "Trả về tất cả sản phẩm đang bán (trừ HIDDEN). API public.")
-    public ResponseEntity<ApiResponse<Object>> getAllProducts() {
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts() {
         var products = productService.getAllPublicProducts();
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", products));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Chi tiết sản phẩm", description = "Xem chi tiết một sản phẩm theo ID. API public.")
-    public ResponseEntity<ApiResponse<Object>> getProduct(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<ProductResponse>> getProduct(@PathVariable UUID id) {
         var product = productService.getProductById(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin sản phẩm thành công", product));
     }
@@ -41,7 +45,7 @@ public class ProductController {
     @PostMapping
     @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
     @Operation(summary = "Đăng bán sản phẩm mới", description = "Thêm sản phẩm mới vào gian hàng. Trạng thái mặc định UPCOMING.")
-    public ResponseEntity<ApiResponse<Object>> createProduct(
+    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
             @Valid @RequestBody ProductCreateRequest request,
             Authentication authentication) {
         var product = productService.createProduct(request, authentication.getName());
@@ -52,7 +56,7 @@ public class ProductController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
     @Operation(summary = "Cập nhật sản phẩm", description = "Chỉnh sửa thông tin sản phẩm. Yêu cầu user là chủ sở hữu.")
-    public ResponseEntity<ApiResponse<Object>> updateProduct(
+    public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
             @PathVariable UUID id,
             @Valid @RequestBody ProductCreateRequest request,
             Authentication authentication) {
@@ -68,5 +72,16 @@ public class ProductController {
             Authentication authentication) {
         productService.softDeleteProduct(id, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Sản phẩm đã được xóa thành công"));
+    }
+
+    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Upload ảnh sản phẩm", description = "Tải lên ảnh cho sản phẩm. Tối đa 10 ảnh.")
+    public ResponseEntity<ApiResponse<ProductResponse>> uploadImages(
+            @PathVariable UUID id,
+            @RequestParam("files") List<MultipartFile> files,
+            Authentication authentication) {
+        var product = productService.uploadProductImages(id, files, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Upload ảnh sản phẩm thành công", product));
     }
 }

@@ -55,6 +55,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/shops/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/htx").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/htx/{htxId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/units").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/units/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/seasonal-configs").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/seasonal-configs/**").permitAll()
                         // Admin endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // All other endpoints require authentication

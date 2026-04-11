@@ -2,6 +2,7 @@ package com.capnong.service;
 
 import com.capnong.dto.request.ProductCreateRequest;
 import com.capnong.dto.response.ProductResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,4 +14,5 @@ public interface ProductService {
     List<ProductResponse> getAllPublicProducts();
     ProductResponse updateProduct(UUID productId, ProductCreateRequest request, String username);
     void softDeleteProduct(UUID productId, String username);
+    ProductResponse uploadProductImages(UUID productId, List<MultipartFile> files, String username);
 }
