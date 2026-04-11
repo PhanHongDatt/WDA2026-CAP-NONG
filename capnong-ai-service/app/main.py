@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
-from app.routers import voice, refiner, caption
+from app.routers import voice, refiner, caption, poster
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,8 +22,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Cạp Nông AI Service",
-    description="AI microservice cho Voice-to-Product, AI Refiner và Caption Generator",
-    version="1.0.0",
+    description="AI microservice cho Voice-to-Product, AI Refiner, Caption Generator và Poster Generator",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -39,6 +39,7 @@ app.add_middleware(
 app.include_router(voice.router)
 app.include_router(refiner.router)
 app.include_router(caption.router)
+app.include_router(poster.router)
 
 
 @app.get("/health", tags=["Health"])

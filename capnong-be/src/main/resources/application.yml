@@ -97,6 +97,11 @@ ai:
     base-url: http://localhost:8001
     timeout: 15000
 
+# ─── AI Marketing Lab ────────────────────────
+app:
+  ai-service:
+    url: ${AI_SERVICE_URL:http://localhost:8000}
+
 # ─── Kafka ───────────────────────────────────
 spring.kafka:
   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}

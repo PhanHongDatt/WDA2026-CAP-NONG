@@ -17,4 +17,12 @@ public final class KafkaTopics {
 
     /** Refine description result */
     public static final String AI_REFINE_RESULT = "ai.refine.result";
+
+    /** AI Caption generation */
+    public static final String AI_CAPTION_REQUEST = "ai.caption.request";
+    public static final String AI_CAPTION_RESULT = "ai.caption.result";
+
+    /** AI Poster generation */
+    public static final String AI_POSTER_REQUEST = "ai.poster.request";
+    public static final String AI_POSTER_RESULT = "ai.poster.result";
 }
