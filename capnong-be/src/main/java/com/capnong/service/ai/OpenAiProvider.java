@@ -23,7 +23,7 @@ public class OpenAiProvider implements AiProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiProvider.class);
 
-    @Value("${app.ai.api-key}")
+    @Value("${app.ai.api-key:}")
     private String apiKey;
 
     @Value("${app.ai.model:openai-gpt-oss-20b}")

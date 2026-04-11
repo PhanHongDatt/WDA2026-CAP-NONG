@@ -1,122 +1,139 @@
 package com.capnong.controller;
 
+import com.capnong.dto.request.HtxCreateRequest;
+import com.capnong.dto.request.HtxJoinRequestDto;
+import com.capnong.dto.request.JoinRequestReviewDto;
 import com.capnong.dto.response.ApiResponse;
-import com.capnong.exception.AppException;
-import com.capnong.model.Htx;
-import com.capnong.model.HtxJoinRequest;
-import com.capnong.model.User;
-import com.capnong.model.enums.HtxStatus;
-import com.capnong.model.enums.JoinRequestStatus;
-import com.capnong.model.enums.Role;
-import com.capnong.repository.HtxJoinRequestRepository;
-import com.capnong.repository.HtxRepository;
-import com.capnong.repository.UserRepository;
-import com.capnong.security.UserDetailsImpl;
+import com.capnong.dto.response.HtxJoinRequestResponse;
+import com.capnong.dto.response.HtxResponse;
+import com.capnong.dto.response.UserResponse;
+import com.capnong.service.HtxService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/htx")
+@RequestMapping("/api/htx")
+@Tag(name = "HTX Management", description = "Quản lý Hợp tác xã")
+@RequiredArgsConstructor
 public class HtxController {
 
-    private final HtxRepository htxRepository;
-    private final HtxJoinRequestRepository joinRequestRepository;
-    private final UserRepository userRepository;
+    private final HtxService htxService;
 
-    public HtxController(HtxRepository htxRepository,
-                          HtxJoinRequestRepository joinRequestRepository,
-                          UserRepository userRepository) {
-        this.htxRepository = htxRepository;
-        this.joinRequestRepository = joinRequestRepository;
-        this.userRepository = userRepository;
+    // ─── Public ─────────────────────────────────────────────
+
+    @GetMapping
+    @Operation(summary = "Danh sách HTX đang hoạt động (public)")
+    public ResponseEntity<ApiResponse<List<HtxResponse>>> getActiveHtxList() {
+        var list = htxService.getActiveHtxList();
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách HTX thành công", list));
     }
+
+    @GetMapping("/{htxId}")
+    @Operation(summary = "Xem chi tiết HTX (public)")
+    public ResponseEntity<ApiResponse<HtxResponse>> getHtx(@PathVariable UUID htxId) {
+        var htx = htxService.getHtxById(htxId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin HTX thành công", htx));
+    }
+
+    // ─── FARMER: Tạo HTX ────────────────────────────────────
 
     @PostMapping
     @PreAuthorize("hasRole('FARMER')")
-    public ResponseEntity<ApiResponse<Htx>> createHtx(
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestBody Htx htx) {
-        if (htxRepository.existsByOfficialCode(htx.getOfficialCode())) {
-            throw new AppException("Mã HTX đã tồn tại", HttpStatus.CONFLICT);
-        }
-        htx.setManagerId(userDetails.getId());
-        htx.setStatus(HtxStatus.PENDING);
-        Htx saved = htxRepository.save(htx);
+    @Operation(summary = "Tạo đơn thành lập HTX",
+            description = "FARMER gửi đơn thành lập HTX. Status ban đầu: PENDING. ADMIN sẽ xét duyệt.")
+    public ResponseEntity<ApiResponse<HtxResponse>> createHtx(
+            @Valid @RequestBody HtxCreateRequest request,
+            Authentication auth) {
+        var htx = htxService.createHtx(request, auth.getName());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Đã gửi yêu cầu tạo HTX", saved));
+                .body(ApiResponse.success("Gửi đơn thành lập HTX thành công, đang chờ xét duyệt", htx));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Htx>> getHtx(@PathVariable UUID id) {
-        Htx htx = htxRepository.findById(id)
-                .orElseThrow(() -> new AppException("Không tìm thấy HTX", HttpStatus.NOT_FOUND));
-        return ResponseEntity.ok(ApiResponse.success("OK", htx));
-    }
+    // ─── FARMER: Gia nhập HTX ───────────────────────────────
 
-    @GetMapping("/{id}/members")
-    @PreAuthorize("hasRole('HTX_MANAGER')")
-    public ResponseEntity<ApiResponse<List<User>>> getMembers(@PathVariable UUID id) {
-        List<User> members = userRepository.findByHtxId(id);
-        return ResponseEntity.ok(ApiResponse.success("OK", members));
-    }
-
-    @PostMapping("/{id}/join")
+    @PostMapping("/{htxId}/join")
     @PreAuthorize("hasRole('FARMER')")
-    public ResponseEntity<ApiResponse<HtxJoinRequest>> requestJoin(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestBody(required = false) Map<String, String> body) {
-        if (joinRequestRepository.existsByHtxIdAndFarmerIdAndStatus(id, userDetails.getId(), JoinRequestStatus.PENDING)) {
-            throw new AppException("Bạn đã gửi yêu cầu gia nhập rồi", HttpStatus.CONFLICT);
-        }
-        HtxJoinRequest request = HtxJoinRequest.builder()
-                .htxId(id)
-                .farmerId(userDetails.getId())
-                .message(body != null ? body.get("message") : null)
-                .build();
-        joinRequestRepository.save(request);
+    @Operation(summary = "Gửi yêu cầu gia nhập HTX",
+            description = "FARMER gửi yêu cầu gia nhập một HTX đang ACTIVE. 1 farmer chỉ thuộc 1 HTX cùng lúc.")
+    public ResponseEntity<ApiResponse<HtxJoinRequestResponse>> requestToJoin(
+            @PathVariable UUID htxId,
+            @RequestBody(required = false) HtxJoinRequestDto request,
+            Authentication auth) {
+        if (request == null) request = new HtxJoinRequestDto();
+        var joinRequest = htxService.requestToJoin(htxId, request, auth.getName());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Đã gửi yêu cầu gia nhập HTX", request));
+                .body(ApiResponse.success("Gửi yêu cầu gia nhập thành công, đang chờ duyệt", joinRequest));
+    }
+
+    // ─── HTX_MEMBER: Rời HTX ────────────────────────────────
+
+    @PostMapping("/leave")
+    @PreAuthorize("hasRole('HTX_MEMBER')")
+    @Operation(summary = "Rời HTX",
+            description = "HTX_MEMBER tự rời HTX. Sau khi rời sẽ quay về role FARMER.")
+    public ResponseEntity<ApiResponse<Void>> leaveHtx(Authentication auth) {
+        htxService.leaveHtx(auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Bạn đã rời HTX thành công"));
+    }
+
+    // ─── HTX_MEMBER / HTX_MANAGER: Xem HTX của mình ─────────
+
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Xem HTX của tôi")
+    public ResponseEntity<ApiResponse<HtxResponse>> getMyHtx(Authentication auth) {
+        var htx = htxService.getMyHtx(auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin HTX thành công", htx));
+    }
+
+    // ─── HTX_MANAGER: Quản lý thành viên ────────────────────
+
+    @GetMapping("/members")
+    @PreAuthorize("hasRole('HTX_MANAGER')")
+    @Operation(summary = "Danh sách thành viên HTX")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getMyHtxMembers(Authentication auth) {
+        var members = htxService.getMyHtxMembers(auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách thành viên thành công", members));
     }
 
     @GetMapping("/join-requests")
     @PreAuthorize("hasRole('HTX_MANAGER')")
-    public ResponseEntity<ApiResponse<List<HtxJoinRequest>>> getPendingRequests(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        User user = userRepository.findById(userDetails.getId()).get();
-        List<HtxJoinRequest> requests = joinRequestRepository
-                .findByHtxIdAndStatus(user.getHtxId(), JoinRequestStatus.PENDING);
-        return ResponseEntity.ok(ApiResponse.success("OK", requests));
+    @Operation(summary = "Danh sách đơn xin gia nhập (PENDING)")
+    public ResponseEntity<ApiResponse<List<HtxJoinRequestResponse>>> getPendingJoinRequests(Authentication auth) {
+        var list = htxService.getPendingJoinRequests(auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn thành công", list));
     }
 
     @PatchMapping("/join-requests/{requestId}")
     @PreAuthorize("hasRole('HTX_MANAGER')")
-    public ResponseEntity<ApiResponse<HtxJoinRequest>> handleJoinRequest(
+    @Operation(summary = "Duyệt/Từ chối đơn gia nhập",
+            description = "HTX_MANAGER chọn APPROVE hoặc REJECT cho đơn gia nhập.")
+    public ResponseEntity<ApiResponse<HtxJoinRequestResponse>> reviewJoinRequest(
             @PathVariable UUID requestId,
-            @RequestBody Map<String, String> body) {
-        HtxJoinRequest request = joinRequestRepository.findById(requestId)
-                .orElseThrow(() -> new AppException("Không tìm thấy yêu cầu", HttpStatus.NOT_FOUND));
+            @Valid @RequestBody JoinRequestReviewDto review,
+            Authentication auth) {
+        var result = htxService.reviewJoinRequest(requestId, review, auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Xử lý đơn gia nhập thành công", result));
+    }
 
-        JoinRequestStatus status = JoinRequestStatus.valueOf(body.get("status"));
-        request.setStatus(status);
-        request.setNote(body.get("note"));
-        joinRequestRepository.save(request);
-
-        // Nếu approve → upgrade role farmer thành HTX_MEMBER
-        if (status == JoinRequestStatus.APPROVED) {
-            User farmer = userRepository.findById(request.getFarmerId()).get();
-            farmer.setRole(Role.HTX_MEMBER);
-            farmer.setHtxId(request.getHtxId());
-            userRepository.save(farmer);
-        }
-
-        return ResponseEntity.ok(ApiResponse.success("Đã xử lý yêu cầu", request));
+    @DeleteMapping("/members/{memberId}")
+    @PreAuthorize("hasRole('HTX_MANAGER')")
+    @Operation(summary = "Xóa thành viên khỏi HTX",
+            description = "HTX_MANAGER xóa HTX_MEMBER. Member sẽ quay về role FARMER.")
+    public ResponseEntity<ApiResponse<Void>> removeMember(
+            @PathVariable UUID memberId,
+            Authentication auth) {
+        htxService.removeMember(memberId, auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Đã xóa thành viên khỏi HTX"));
     }
 }

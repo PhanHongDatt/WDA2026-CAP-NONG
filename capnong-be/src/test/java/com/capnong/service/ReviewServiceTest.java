@@ -3,11 +3,10 @@ package com.capnong.service;
 import com.capnong.exception.AppException;
 import com.capnong.model.Review;
 import com.capnong.model.OrderItem;
-import com.capnong.model.SubOrder;
+import com.capnong.model.Order;
 import com.capnong.model.enums.OrderStatus;
 import com.capnong.repository.OrderItemRepository;
 import com.capnong.repository.ReviewRepository;
-import com.capnong.repository.SubOrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,34 +26,32 @@ class ReviewServiceTest {
 
     @Mock private ReviewRepository reviewRepository;
     @Mock private OrderItemRepository orderItemRepository;
-    @Mock private SubOrderRepository subOrderRepository;
     @InjectMocks private ReviewService reviewService;
 
     private UUID authorId;
     private UUID orderItemId;
-    private UUID subOrderId;
+    private UUID orderId;
     private UUID productId;
 
     @BeforeEach
     void setUp() {
         authorId = UUID.randomUUID();
         orderItemId = UUID.randomUUID();
-        subOrderId = UUID.randomUUID();
+        orderId = UUID.randomUUID();
         productId = UUID.randomUUID();
     }
 
     @Test
     void createReview_shouldSucceed_whenOrderDelivered() {
+        Order order = Order.builder()
+                .id(orderId).status(OrderStatus.DELIVERED).build();
         OrderItem orderItem = OrderItem.builder()
-                .id(orderItemId).subOrderId(subOrderId).productId(productId).build();
-        SubOrder subOrder = SubOrder.builder()
-                .id(subOrderId).status(OrderStatus.DELIVERED).build();
+                .id(orderItemId).order(order).product(com.capnong.model.Product.builder().id(productId).build()).build();
         Review review = Review.builder()
                 .orderItemId(orderItemId).productId(productId)
                 .rating((short) 5).comment("Rất ngon!").build();
 
         when(orderItemRepository.findById(orderItemId)).thenReturn(Optional.of(orderItem));
-        when(subOrderRepository.findById(subOrderId)).thenReturn(Optional.of(subOrder));
         when(reviewRepository.existsByOrderItemId(orderItemId)).thenReturn(false);
         when(reviewRepository.save(any(Review.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -66,28 +63,26 @@ class ReviewServiceTest {
 
     @Test
     void createReview_shouldThrow_whenOrderNotDelivered() {
+        Order order = Order.builder()
+                .id(orderId).status(OrderStatus.PROCESSING).build();
         OrderItem orderItem = OrderItem.builder()
-                .id(orderItemId).subOrderId(subOrderId).build();
-        SubOrder subOrder = SubOrder.builder()
-                .id(subOrderId).status(OrderStatus.PREPARING).build();
+                .id(orderItemId).order(order).build();
         Review review = Review.builder().orderItemId(orderItemId).build();
 
         when(orderItemRepository.findById(orderItemId)).thenReturn(Optional.of(orderItem));
-        when(subOrderRepository.findById(subOrderId)).thenReturn(Optional.of(subOrder));
 
         assertThrows(AppException.class, () -> reviewService.createReview(authorId, review));
     }
 
     @Test
     void createReview_shouldThrow_whenAlreadyReviewed() {
+        Order order = Order.builder()
+                .id(orderId).status(OrderStatus.DELIVERED).build();
         OrderItem orderItem = OrderItem.builder()
-                .id(orderItemId).subOrderId(subOrderId).build();
-        SubOrder subOrder = SubOrder.builder()
-                .id(subOrderId).status(OrderStatus.DELIVERED).build();
+                .id(orderItemId).order(order).build();
         Review review = Review.builder().orderItemId(orderItemId).build();
 
         when(orderItemRepository.findById(orderItemId)).thenReturn(Optional.of(orderItem));
-        when(subOrderRepository.findById(subOrderId)).thenReturn(Optional.of(subOrder));
         when(reviewRepository.existsByOrderItemId(orderItemId)).thenReturn(true);
 
         assertThrows(AppException.class, () -> reviewService.createReview(authorId, review));
