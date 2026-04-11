@@ -16,10 +16,9 @@ import java.util.UUID;
 public class UserDetailsImpl implements UserDetails {
 
     private UUID id;
-    private String phone;
-    private String passwordHash;
-    private String role;
-    private boolean banned;
+    private String username;
+    private String email;
+    private String password;
     private Collection<? extends GrantedAuthority> authorities;
 
     public static UserDetailsImpl build(User user) {

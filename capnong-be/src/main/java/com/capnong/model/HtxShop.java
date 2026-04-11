@@ -2,22 +2,18 @@ package com.capnong.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "htx_shops")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class HtxShop {
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
+@SQLRestriction("deleted = false")
+public class HtxShop extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-
-    @Column(name = "htx_id", nullable = false, unique = true)
-    private UUID htxId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "htx_id", nullable = false, unique = true)
+    private Htx htx;
 
     @Column(nullable = false, unique = true, length = 100)
     private String slug;
@@ -30,8 +26,4 @@ public class HtxShop {
 
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
 }

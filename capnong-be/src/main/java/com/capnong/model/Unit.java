@@ -3,33 +3,41 @@ package com.capnong.model;
 import com.capnong.model.enums.UnitCategory;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
 @Table(name = "units")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class Unit {
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
+@SQLRestriction("deleted = false")
+public class Unit extends BaseEntity {
 
-    @Id
-    @Column(length = 10)
+    @Column(nullable = false, unique = true, length = 10)
     private String code;
 
-    @Column(name = "display_name", nullable = false, length = 50)
+    @Column(nullable = false, length = 50)
     private String displayName;
 
     @Column(nullable = false, length = 10)
     private String symbol;
 
-    @Column(name = "base_unit", length = 10)
-    private String baseUnit;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "base_unit_id")
+    private Unit baseUnit;
 
-    @Column(name = "conversion_factor", nullable = false, precision = 12, scale = 6)
+    @Column(nullable = false, precision = 12, scale = 6)
     @Builder.Default
-    private java.math.BigDecimal conversionFactor = java.math.BigDecimal.ONE;
+    private BigDecimal conversionFactor = BigDecimal.ONE;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UnitCategory category;
 
-    @Column(columnDefinition = "TEXT[]")
-    private String aliases;
+    @ElementCollection
+    @CollectionTable(name = "unit_aliases", joinColumns = @JoinColumn(name = "unit_id"))
+    @Column(name = "alias")
+    private List<String> aliases;
 }

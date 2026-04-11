@@ -11,9 +11,9 @@ import java.util.UUID;
 
 @Repository
 public interface HtxRepository extends JpaRepository<Htx, UUID> {
+    boolean existsByOfficialCode(String officialCode);
     Optional<Htx> findByOfficialCode(String officialCode);
     List<Htx> findByStatus(HtxStatus status);
-    List<Htx> findByManagerId(UUID managerId);
-    List<Htx> findByProvince(String province);
-    boolean existsByOfficialCode(String officialCode);
+    Optional<Htx> findByManager_Id(UUID managerId);
+    boolean existsByCreatedByUser_Id(UUID userId);
 }

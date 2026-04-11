@@ -3,25 +3,20 @@ package com.capnong.model;
 import com.capnong.model.enums.JoinRequestStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "htx_join_requests")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class HtxJoinRequest {
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
+public class HtxJoinRequest extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "htx_id", nullable = false)
+    private Htx htx;
 
-    @Column(name = "htx_id", nullable = false)
-    private UUID htxId;
-
-    @Column(name = "farmer_id", nullable = false)
-    private UUID farmerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "farmer_id", nullable = false)
+    private User farmer;
 
     @Column(columnDefinition = "TEXT")
     private String message;
@@ -31,10 +26,7 @@ public class HtxJoinRequest {
     @Builder.Default
     private JoinRequestStatus status = JoinRequestStatus.PENDING;
 
+    /** Ghi chú từ HTX_MANAGER khi duyệt/từ chối */
     @Column(columnDefinition = "TEXT")
     private String note;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
 }

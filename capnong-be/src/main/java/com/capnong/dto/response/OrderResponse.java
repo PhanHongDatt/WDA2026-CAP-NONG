@@ -15,7 +15,7 @@ public class OrderResponse {
 
     private UUID id;
     private String orderNumber;
-    private Long userId;
+    private UUID userId;
     private String guestEmail;
     private String guestPhone;
     private String guestName;

@@ -1,22 +1,25 @@
 package com.capnong.model;
 
+import com.capnong.model.enums.FarmingMethod;
+import com.capnong.model.enums.ProductCategory;
+import com.capnong.model.enums.ProductStatus;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class Product {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private java.util.UUID id;
+@SQLRestriction("deleted = false")
+public class Product extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shop_id", nullable = false)
@@ -28,10 +31,11 @@ public class Product {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
-    private String category; // ENUM: FRUIT, VEGETABLE... in DB as String
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ProductCategory category;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 10)
     private String unitCode;
 
     @Column(nullable = false, precision = 15, scale = 2)
@@ -40,16 +44,36 @@ public class Product {
     @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal availableQuantity;
 
-    @Column(nullable = false)
-    private String locationDetail;
+    private LocalDate harvestDate;
+
+    private LocalDate availableFrom;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private FarmingMethod farmingMethod = FarmingMethod.TRADITIONAL;
 
     @Column(nullable = false)
     @Builder.Default
-    private String status = "UPCOMING"; // IN_SEASON, UPCOMING, HIDDEN...
+    private Boolean pesticideFree = false;
 
-    @CreationTimestamp
-    private LocalDateTime createdAt;
+    @Column(nullable = false)
+    private String locationDetail;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private ProductStatus status = ProductStatus.UPCOMING;
+
+    @Column(precision = 3, scale = 2)
+    @Builder.Default
+    private BigDecimal averageRating = BigDecimal.ZERO;
+
+    @Builder.Default
+    private Integer totalReviews = 0;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    @Builder.Default
+    private List<ProductImage> images = new ArrayList<>();
 }

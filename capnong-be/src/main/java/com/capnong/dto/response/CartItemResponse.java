@@ -11,7 +11,7 @@ import java.util.UUID;
 @Setter
 @Builder
 public class CartItemResponse {
-    private Long id;
+    private UUID id;
     private UUID productId;
     private String productName;
     private BigDecimal quantity;

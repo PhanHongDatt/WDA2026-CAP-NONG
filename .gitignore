@@ -28,6 +28,7 @@ capnong-be/*.jar
 capnong-be/*.war
 capnong-be/.mvn/wrapper/maven-wrapper.jar
 *.log
+*.txt
 
 # ─── Node.js / Next.js ────────────────────────
 capnong-fe/node_modules/

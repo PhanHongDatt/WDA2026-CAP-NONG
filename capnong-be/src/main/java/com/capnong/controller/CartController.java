@@ -1,5 +1,7 @@
 package com.capnong.controller;
 
+import java.util.UUID;
+
 import com.capnong.dto.request.AddToCartRequest;
 import com.capnong.dto.response.CartResponse;
 import com.capnong.security.UserDetailsImpl;
@@ -24,7 +26,7 @@ public class CartController {
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @Valid @RequestBody AddToCartRequest request) {
 
-        Long userId = userDetails != null ? userDetails.getId() : null;
+        UUID userId = userDetails != null ? userDetails.getId() : null;
         if (userId == null && guestSessionId == null) {
             throw new IllegalArgumentException("Either User ID or Guest-Session-Id must be provided");
         }
@@ -37,7 +39,7 @@ public class CartController {
             @RequestHeader(value = "Guest-Session-Id", required = false) String guestSessionId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        Long userId = userDetails != null ? userDetails.getId() : null;
+        UUID userId = userDetails != null ? userDetails.getId() : null;
         if (userId == null && guestSessionId == null) {
             throw new IllegalArgumentException("Either User ID or Guest-Session-Id must be provided");
         }

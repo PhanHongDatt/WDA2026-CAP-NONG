@@ -55,4 +55,9 @@ public class User extends BaseEntity {
 
     @Column(name = "username_updated_at")
     private LocalDateTime usernameUpdatedAt;
+
+    /** HTX hiện tại mà user đang là thành viên (null nếu không thuộc HTX nào) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "htx_id")
+    private Htx htx;
 }

@@ -1,11 +1,12 @@
-// src/main/java/com/capnong/dto/request/ProductCreateRequest.java
 package com.capnong.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 public class ProductCreateRequest {
@@ -30,4 +31,10 @@ public class ProductCreateRequest {
 
     @NotBlank(message = "Địa chỉ canh tác không được để trống")
     private String locationDetail;
+
+    // New fields
+    private LocalDate harvestDate;
+    private LocalDate availableFrom;
+    private String farmingMethod;    // TRADITIONAL, ORGANIC, VIETGAP, GLOBALGAP
+    private Boolean pesticideFree;
 }

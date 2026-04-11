@@ -11,8 +11,9 @@ import java.util.UUID;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
-    List<Order> findByUserId(Long userId);
-    
+    // Navigate via Order.user.id (User object relationship)
+    List<Order> findByUser_Id(UUID userId);
+
     @Query("SELECT o FROM Order o WHERE (o.guestPhone = :phone OR o.guestEmail = :email) AND o.user IS NULL")
     List<Order> findUnmergedGuestOrders(@Param("phone") String phone, @Param("email") String email);
 }

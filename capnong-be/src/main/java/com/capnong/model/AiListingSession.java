@@ -1,45 +1,40 @@
 package com.capnong.model;
 
-import com.capnong.model.enums.SessionStatus;
-import com.capnong.model.enums.SessionType;
+import com.capnong.model.enums.AiSessionStatus;
+import com.capnong.model.enums.AiSessionType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
 
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "ai_listing_sessions")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class AiListingSession {
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
+@SQLRestriction("deleted = false")
+public class AiListingSession extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
-
-    @Column(name = "shop_id", nullable = false)
-    private UUID shopId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shop_id", nullable = false)
+    private Shop shop;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "session_type", nullable = false, length = 30)
-    private SessionType sessionType;
+    @Column(nullable = false, length = 30)
+    private AiSessionType sessionType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private SessionStatus status = SessionStatus.IN_PROGRESS;
+    private AiSessionStatus status = AiSessionStatus.IN_PROGRESS;
 
-    @Column(name = "product_id")
-    private UUID productId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private Product product;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
-
-    @Column(name = "completed_at")
-    private OffsetDateTime completedAt;
+    private LocalDateTime completedAt;
 }

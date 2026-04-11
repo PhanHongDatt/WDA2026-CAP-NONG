@@ -3,19 +3,14 @@ package com.capnong.model;
 import com.capnong.model.enums.HtxStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.OffsetDateTime;
-import java.util.UUID;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "htx")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class Htx {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
+@SQLRestriction("deleted = false")
+public class Htx extends BaseEntity {
 
     @Column(nullable = false)
     private String name;
@@ -40,13 +35,15 @@ public class Htx {
     @Builder.Default
     private HtxStatus status = HtxStatus.PENDING;
 
-    @Column(name = "manager_id")
-    private UUID managerId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    private User manager;
 
     @Column(name = "admin_note", columnDefinition = "TEXT")
     private String adminNote;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
+    /** User đã gửi đơn tạo HTX (creator, trước khi được duyệt) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id", nullable = false)
+    private User createdByUser;
 }

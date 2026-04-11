@@ -9,7 +9,8 @@ import java.util.UUID;
 
 @Repository
 public interface HtxShopRepository extends JpaRepository<HtxShop, UUID> {
+    Optional<HtxShop> findByHtx_Id(UUID htxId);
     Optional<HtxShop> findBySlug(String slug);
-    Optional<HtxShop> findByHtxId(UUID htxId);
-    boolean existsByHtxId(UUID htxId);
+    boolean existsBySlug(String slug);
+    boolean existsByHtx_Id(UUID htxId);
 }
