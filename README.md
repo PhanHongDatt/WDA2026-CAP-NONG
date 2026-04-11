@@ -10,7 +10,7 @@ Nền tảng nông nghiệp thông minh tích hợp AI, hỗ trợ nông dân Vi
 | Backend | Java 21 + Spring Boot 3 |
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 |
-| AI | Google Gemini API |
+| AI | OpenAI/MegaLLM (hiện tại) → Google Gemini (sau) |
 | Messaging | Telegram Bot API |
 
 ## Yêu cầu
@@ -66,22 +66,61 @@ WD2026/
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/capnong/
-│   │   │   │   ├── config/              # Cấu hình (Redis, Security, CORS, ...)
-│   │   │   │   │   └── RedisConfig.java
-│   │   │   │   ├── controller/          # REST Controllers (nhận request)
-│   │   │   │   ├── service/             # Business logic
-│   │   │   │   ├── repository/          # JPA Repositories (truy vấn DB)
-│   │   │   │   ├── model/               # Entity classes (mapping bảng DB)
-│   │   │   │   ├── dto/                 # Data Transfer Objects (request/response)
-│   │   │   │   ├── security/            # JWT filter, AuthProvider, ...
-│   │   │   │   ├── exception/           # Global exception handler
-│   │   │   │   ├── util/                # Utility / helper classes
-│   │   │   │   └── CapnongApplication.java  # Main class (@SpringBootApplication)
+│   │   │   │   ├── config/              # Cấu hình
+│   │   │   │   │   ├── RedisConfig.java
+│   │   │   │   │   ├── SecurityConfig.java
+│   │   │   │   │   ├── CorsConfig.java
+│   │   │   │   │   ├── SwaggerConfig.java
+│   │   │   │   │   └── WebConfig.java       # snake_case + JavaTimeModule
+│   │   │   │   ├── controller/          # 13 REST Controllers
+│   │   │   │   │   ├── AuthController.java
+│   │   │   │   │   ├── ShopController.java
+│   │   │   │   │   ├── ProductController.java
+│   │   │   │   │   ├── CartController.java
+│   │   │   │   │   ├── OrderController.java
+│   │   │   │   │   ├── HtxController.java
+│   │   │   │   │   ├── CooperativeController.java
+│   │   │   │   │   ├── ReviewController.java
+│   │   │   │   │   ├── NotificationController.java
+│   │   │   │   │   ├── AiController.java        # 6 AI endpoints
+│   │   │   │   │   ├── AdminController.java
+│   │   │   │   │   ├── UserController.java
+│   │   │   │   │   └── UnitController.java
+│   │   │   │   ├── service/             # 13 Business Logic services
+│   │   │   │   │   ├── AuthService.java
+│   │   │   │   │   ├── ShopService.java
+│   │   │   │   │   ├── ProductService.java
+│   │   │   │   │   ├── CartService.java
+│   │   │   │   │   ├── OrderService.java
+│   │   │   │   │   ├── HtxService.java
+│   │   │   │   │   ├── CooperativeService.java
+│   │   │   │   │   ├── ReviewService.java
+│   │   │   │   │   ├── NotificationService.java
+│   │   │   │   │   ├── AdminService.java
+│   │   │   │   │   ├── TelegramBotService.java
+│   │   │   │   │   ├── TelegramNotificationService.java
+│   │   │   │   │   ├── GeminiService.java       # (dự phòng)
+│   │   │   │   │   └── ai/                      # AI Adapter Pattern
+│   │   │   │   │       ├── AiProvider.java      # Interface (swap provider)
+│   │   │   │   │       ├── OpenAiProvider.java  # @Primary — MegaLLM
+│   │   │   │   │       └── AiService.java       # 6 AI features
+│   │   │   │   ├── repository/          # 20 JPA Repositories
+│   │   │   │   ├── model/               # Entity classes + enums
+│   │   │   │   │   └── enums/           # OrderStatus, Role, BundleStatus, ...
+│   │   │   │   ├── dto/                 # Data Transfer Objects
+│   │   │   │   │   ├── request/         # 10 Request DTOs
+│   │   │   │   │   └── response/        # 15 Response DTOs + PageResponse + ApiError
+│   │   │   │   ├── security/            # JWT filter, UserDetailsImpl
+│   │   │   │   ├── exception/           # AppException, GlobalExceptionHandler
+│   │   │   │   └── CapnongApplication.java
 │   │   │   └── resources/
-│   │   │       ├── application.yml      # Config chính
-│   │   │       ├── application-dev.yml  # Config riêng cho môi trường dev (nếu cần)
-│   │   │       └── static/              # File tĩnh phục vụ từ backend (nếu có)
-│   │   └── test/java/com/capnong/      # Unit test & Integration test
+│   │   │       ├── application.yml      # Config chính (DB, Redis, JWT, AI, Telegram)
+│   │   │       └── data.sql             # Seed data
+│   │   └── test/java/com/capnong/      # Unit tests (15 tests)
+│   │       └── service/
+│   │           ├── CartServiceTest.java         # 4 tests
+│   │           ├── CooperativeServiceTest.java  # 6 tests
+│   │           └── ReviewServiceTest.java       # 5 tests
 │   ├── Dockerfile.dev
 │   └── pom.xml
 │
@@ -175,7 +214,7 @@ Xem chi tiết trong [`.env.example`](.env.example). Các biến quan trọng:
 | `POSTGRES_PASSWORD` | Mật khẩu PostgreSQL |
 | `REDIS_PASSWORD` | Mật khẩu Redis |
 | `JWT_SECRET` | Secret key cho JWT (≥256 bits) |
-| `GEMINI_API_KEY` | API key Google Gemini |
+| `AI_API_KEY` | API key AI provider (hiện dùng MegaLLM) |
 | `TELEGRAM_BOT_TOKEN` | Token Telegram Bot |
 
 > ⚠️ **Không commit file `.env`** — file này đã được thêm vào `.gitignore`.

@@ -28,10 +28,31 @@ public class UserDetailsImpl implements UserDetails {
 
         return new UserDetailsImpl(
                 user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getPassword(),
+                user.getPhone(),
+                user.getPasswordHash(),
+                user.getRole().name(),
+                user.getIsBanned(),
                 authorities
         );
+    }
+
+    @Override
+    public String getUsername() {
+        return phone; // Spring Security uses "username" — we use phone
+    }
+
+    @Override
+    public String getPassword() {
+        return passwordHash;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return !banned;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return !banned;
     }
 }

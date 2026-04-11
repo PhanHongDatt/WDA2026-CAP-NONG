@@ -1,0 +1,40 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.capnong:capnong-be >-----------------------
+[INFO] Building C?p N⌠ng Backend 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ capnong-be ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ capnong-be ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 130 source files with javac [debug parameters release 21] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/ReviewService.java:[56,15] cannot find symbol
+  symbol:   method setBuyerId(java.util.UUID)
+  location: variable review of type com.capnong.model.Review
+[INFO] 1 error
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  7.373 s
+[INFO] Finished at: 2026-03-22T08:41:45+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project capnong-be: Compilation failure
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/ReviewService.java:[56,15] cannot find symbol
+[ERROR]   symbol:   method setBuyerId(java.util.UUID)
+[ERROR]   location: variable review of type com.capnong.model.Review
+[ERROR] 
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

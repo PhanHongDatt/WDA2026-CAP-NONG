@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Flame,
@@ -50,11 +50,55 @@ export default function CooperativeContent() {
   const [pledgeKg, setPledgeKg] = useState("");
   const [pledgedPools, setPledgedPools] = useState<Set<number>>(new Set());
 
-  const handlePledge = (poolId: number) => {
+  /* ─── API-first fetch for bundles + HTX list ─── */
+  const [pools, setPools] = useState(POOLS);
+  const [activeHtx, setActiveHtx] = useState(MOCK_ACTIVE_HTX);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const htxApi = await import("@/services/api/htx");
+      const [apiBundles, apiHtxList] = await Promise.all([
+        htxApi.getOpenBundles(),
+        htxApi.getAllHtx(),
+      ]);
+      if (Array.isArray(apiBundles) && apiBundles.length > 0) {
+        setPools(apiBundles as unknown as typeof POOLS);
+      }
+      if (Array.isArray(apiHtxList) && apiHtxList.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setActiveHtx(apiHtxList.map((h: any) => ({
+          id: String(h.id || ""),
+          name: h.name || "",
+          province: h.province || "",
+          members: h.memberCount || h.members || 0,
+          manager: h.managerName || h.manager || "",
+        })));
+      }
+    } catch {
+      // keep mock
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleJoinHtx = async (htxId: string) => {
+    setJoinRequested(htxId);
+    try {
+      const htxApi = await import("@/services/api/htx");
+      await htxApi.requestJoinHtx(htxId);
+    } catch { /* optimistic — UI already updated */ }
+  };
+
+  const handlePledge = async (poolId: number) => {
     if (!pledgeKg || Number(pledgeKg) <= 0) return;
     setPledgedPools((prev) => new Set(prev).add(poolId));
     setPledgingPoolId(null);
+    const qty = Number(pledgeKg);
     setPledgeKg("");
+    try {
+      const htxApi = await import("@/services/api/htx");
+      await htxApi.addPledge(String(poolId), qty);
+    } catch { /* optimistic */ }
   };
 
   /* UC-33: Cancel pledge */
@@ -110,7 +154,7 @@ export default function CooperativeContent() {
             <Building2 className="w-5 h-5 text-primary" /> Các HTX đang hoạt động
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {MOCK_ACTIVE_HTX.map((htx) => (
+            {activeHtx.map((htx) => (
               <div key={htx.id} className="bg-white dark:bg-surface border border-border rounded-xl p-5 space-y-3">
                 <h3 className="font-bold text-gray-900 dark:text-foreground">{htx.name}</h3>
                 <div className="text-sm text-gray-500 dark:text-foreground-muted space-y-1">
@@ -125,7 +169,7 @@ export default function CooperativeContent() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setJoinRequested(htx.id)}
+                    onClick={() => handleJoinHtx(htx.id)}
                     className="flex items-center gap-1.5 bg-primary/10 text-primary px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors w-full justify-center"
                   >
                     <UserPlus className="w-4 h-4" /> Xin gia nhập
@@ -141,7 +185,7 @@ export default function CooperativeContent() {
       <section>
         <h2 className="text-xl font-bold mb-4">Danh sách Pool</h2>
         <div className="space-y-4">
-          {POOLS.map((pool) => {
+          {pools.map((pool) => {
             const progress = Math.round((pool.currentQty / pool.targetQty) * 100);
             const isFulfilled = pool.status === "FULFILLED";
             const hasPledged = pledgedPools.has(pool.id);

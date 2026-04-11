@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Zap, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { MOCK_FLASH_DEALS } from "@/lib/mock-data";
+import { productService } from "@/services";
+import type { Product } from "@/types/product";
 
 function useCountdown(hours: number) {
   const [seconds, setSeconds] = useState(hours * 3600);
@@ -31,22 +32,27 @@ function TimerBox({ value }: { value: number }) {
 
 export default function FlashDeal() {
   const { h, m, s } = useCountdown(3);
+  const [deals, setDeals] = useState<Product[]>([]);
+
+  useEffect(() => {
+    productService.getFlashDeals().then(setDeals);
+  }, []);
 
   return (
     <section className="mb-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <div className="flex items-center gap-1.5 text-accent">
-                <Zap className="w-5 h-5 fill-current" />
-                <span className="font-bold text-lg uppercase tracking-wide">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+                <span className="font-bold text-sm sm:text-lg uppercase tracking-wide">
                   Giá sốc hôm nay
                 </span>
               </div>
               {/* Countdown */}
-              <div className="flex items-center gap-1 ml-3">
+              <div className="flex items-center gap-1">
                 <TimerBox value={h} />
                 <span className="text-gray-400 font-bold">:</span>
                 <TimerBox value={m} />
@@ -56,7 +62,7 @@ export default function FlashDeal() {
             </div>
             <Link
               href="/catalog?sort=flash-deal"
-              className="text-sm text-primary font-semibold flex items-center gap-1 hover:underline"
+              className="text-xs sm:text-sm text-primary font-semibold flex items-center gap-1 hover:underline"
             >
               Xem tất cả
               <ChevronRight className="w-4 h-4" />
@@ -65,7 +71,7 @@ export default function FlashDeal() {
 
           {/* Horizontal Product Scroll */}
           <div className="flex gap-0 overflow-x-auto px-1 py-4 scrollbar-hide">
-            {MOCK_FLASH_DEALS.map((deal) => {
+            {deals.map((deal) => {
               // Flash deals: giảm giá cứng 30% (mock)
               const discountPct = 30;
               const soldPct = Math.min(
@@ -77,7 +83,7 @@ export default function FlashDeal() {
                 <Link
                   key={deal.id}
                   href={`/products/${deal.slug}`}
-                  className="flex-shrink-0 w-[180px] px-3 border-r border-gray-50 last:border-r-0 group"
+                  className="flex-shrink-0 w-[140px] sm:w-[180px] px-2 sm:px-3 border-r border-gray-50 last:border-r-0 group"
                 >
                   {/* Image */}
                   <div className="relative aspect-square rounded-lg overflow-hidden mb-2 bg-gray-50">

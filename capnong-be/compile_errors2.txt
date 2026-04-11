@@ -1,0 +1,135 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.capnong:capnong-be >-----------------------
+[INFO] Building C?p N⌠ng Backend 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ capnong-be ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ capnong-be ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 130 source files with javac [debug parameters release 21] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[4,25] cannot find symbol
+  symbol:   class Bundle
+  location: package com.capnong.model
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[5,25] cannot find symbol
+  symbol:   class Pledge
+  location: package com.capnong.model
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[9,30] cannot find symbol
+  symbol:   class BundleRepository
+  location: package com.capnong.repository
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[10,30] cannot find symbol
+  symbol:   class PledgeRepository
+  location: package com.capnong.repository
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[26,19] cannot find symbol
+  symbol:   class BundleRepository
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[27,19] cannot find symbol
+  symbol:   class PledgeRepository
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[30,31] cannot find symbol
+  symbol:   class BundleRepository
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[31,31] cannot find symbol
+  symbol:   class PledgeRepository
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[38,17] cannot find symbol
+  symbol:   class Bundle
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[45,12] cannot find symbol
+  symbol:   class Bundle
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[51,48] cannot find symbol
+  symbol:   class Bundle
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[51,12] cannot find symbol
+  symbol:   class Bundle
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[64,12] cannot find symbol
+  symbol:   class Pledge
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[105,17] cannot find symbol
+  symbol:   class Pledge
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[109,17] cannot find symbol
+  symbol:   class Pledge
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[137,52] cannot find symbol
+  symbol:   class Pledge
+  location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[137,67] cannot find symbol
+  symbol:   class Bundle
+  location: class com.capnong.service.CooperativeService
+[INFO] 17 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.954 s
+[INFO] Finished at: 2026-03-22T08:33:09+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project capnong-be: Compilation failure: Compilation failure: 
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[4,25] cannot find symbol
+[ERROR]   symbol:   class Bundle
+[ERROR]   location: package com.capnong.model
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[5,25] cannot find symbol
+[ERROR]   symbol:   class Pledge
+[ERROR]   location: package com.capnong.model
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[9,30] cannot find symbol
+[ERROR]   symbol:   class BundleRepository
+[ERROR]   location: package com.capnong.repository
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[10,30] cannot find symbol
+[ERROR]   symbol:   class PledgeRepository
+[ERROR]   location: package com.capnong.repository
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[26,19] cannot find symbol
+[ERROR]   symbol:   class BundleRepository
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[27,19] cannot find symbol
+[ERROR]   symbol:   class PledgeRepository
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[30,31] cannot find symbol
+[ERROR]   symbol:   class BundleRepository
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[31,31] cannot find symbol
+[ERROR]   symbol:   class PledgeRepository
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[38,17] cannot find symbol
+[ERROR]   symbol:   class Bundle
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[45,12] cannot find symbol
+[ERROR]   symbol:   class Bundle
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[51,48] cannot find symbol
+[ERROR]   symbol:   class Bundle
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[51,12] cannot find symbol
+[ERROR]   symbol:   class Bundle
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[64,12] cannot find symbol
+[ERROR]   symbol:   class Pledge
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[105,17] cannot find symbol
+[ERROR]   symbol:   class Pledge
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[109,17] cannot find symbol
+[ERROR]   symbol:   class Pledge
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[137,52] cannot find symbol
+[ERROR]   symbol:   class Pledge
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] /C:/Users/Nguyen Trong Khoi/Downloads/CapNong/WDA2026-CAP-NONG/capnong-be/src/main/java/com/capnong/service/CooperativeService.java:[137,67] cannot find symbol
+[ERROR]   symbol:   class Bundle
+[ERROR]   location: class com.capnong.service.CooperativeService
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Home, Leaf, Banknote, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import ProductCard from "@/components/ui/ProductCard";
 import FarmCard from "@/components/ui/FarmCard";
-import CoopPoolCard from "@/components/ui/CoopPoolCard";
+import CoopPoolSection from "@/components/ui/CoopPoolSection";
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryGrid from "@/components/ui/CategoryGrid";
 import FlashDeal from "@/components/ui/FlashDeal";
-import {
-  MOCK_SEASONAL_PRODUCTS,
-  MOCK_NEW_PRODUCTS,
-  MOCK_SHOPS,
-  MOCK_COOP_POOL,
-} from "@/lib/mock-data";
+import { productService, shopService } from "@/services";
+import { MOCK_COOP_POOL } from "@/lib/mock-data";
 
 export const metadata: Metadata = {
   title: "Trang Chủ",
@@ -60,7 +56,19 @@ const jsonLd = {
   ],
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [seasonalProducts, newProducts, shops] = await Promise.all([
+    productService.getSeasonalProducts(),
+    productService.getNewProducts(),
+    shopService.getFeaturedShops().then(async (result) => {
+      if (result && result.length > 0) return result;
+      const { MOCK_SHOPS } = await import("@/lib/mock-data");
+      return MOCK_SHOPS;
+    }).catch(async () => {
+      const { MOCK_SHOPS } = await import("@/lib/mock-data");
+      return MOCK_SHOPS;
+    }),
+  ]);
   return (
     <>
       {/* JSON-LD Structured Data */}
@@ -69,22 +77,28 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Promo Banner — trust badges */}
-      <section className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-around items-center">
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <Home className="w-5 h-5" />
-            <span>Từ nông trại đến bàn ăn</span>
-          </div>
-          <div className="h-4 w-px bg-gray-300" />
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <Leaf className="w-5 h-5" />
-            <span>Nông sản hữu cơ</span>
-          </div>
-          <div className="h-4 w-px bg-gray-300" />
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <Banknote className="w-5 h-5" />
-            <span>Siêu tiết kiệm</span>
+      {/* Feature Cards — gradient + icon overflow (tham khảo Hình 6-8) */}
+      <section className="py-6">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            {[
+              { gradient: "card-gradient-organic", icon: "🌿", title: "Hữu cơ", desc: "VietGAP / GlobalGAP" },
+              { gradient: "card-gradient-delivery", icon: "🚛", title: "Giao tận nhà", desc: "Tươi ngon mỗi ngày" },
+              { gradient: "card-gradient-trace", icon: "🔍", title: "Truy xuất", desc: "Nguồn gốc minh bạch" },
+              { gradient: "card-gradient-coop", icon: "🤝", title: "Gom đơn", desc: "Tiết kiệm 20-40%" },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className={`${item.gradient} relative overflow-visible rounded-2xl p-5 pt-10 text-center shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-300`}
+              >
+                {/* Icon — nhô lên trên viền card */}
+                <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-4xl drop-shadow-lg bg-white/20 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center">
+                  {item.icon}
+                </span>
+                <p className="font-extrabold text-white text-base leading-tight">{item.title}</p>
+                <p className="text-white/80 text-xs mt-1">{item.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -94,29 +108,33 @@ export default function HomePage() {
         <HeroBanner />
       </div>
 
-      {/* CATEGORY GRID — Shopee-style "DANH MỤC" */}
-      <CategoryGrid />
+      {/* CATEGORY GRID — Shopee-style "DANH MỤC" (below fold → content-visibility) */}
+      <div className="cv-auto">
+        <CategoryGrid />
+      </div>
 
       {/* FLASH DEAL — Shopee-style countdown + scroll */}
-      <FlashDeal />
+      <div className="cv-auto">
+        <FlashDeal />
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 py-2">
         {/* SECTION: Seasonal Products */}
-        <section className="mb-12">
-          <div className="flex justify-between items-end mb-6">
+        <section className="mb-12 -mx-4 px-4 py-8 bg-gradient-to-b from-green-50/50 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
                 Nông sản đang mùa tại Cạp Nông
               </h2>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 {["Tất cả", "Trái cây", "Rau củ", "Thủy hải sản"].map(
                   (cat, i) => (
                     <button type="button"
                       key={cat}
                       className={
                         i === 0
-                          ? "px-5 py-1.5 rounded-full bg-primary text-white text-sm font-medium"
-                          : "px-5 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200"
+                          ? "px-4 sm:px-5 py-1.5 rounded-full bg-primary text-white text-xs sm:text-sm font-medium"
+                          : "px-4 sm:px-5 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs sm:text-sm font-medium hover:bg-gray-200"
                       }
                     >
                       {cat}
@@ -127,61 +145,66 @@ export default function HomePage() {
             </div>
             <Link
               href="/catalog"
-              className="text-sm text-primary font-semibold flex items-center gap-1 hover:underline"
+              className="text-sm text-primary font-semibold flex items-center gap-1 hover:underline shrink-0"
             >
               Xem tất cả <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-4 gap-6">
-            {MOCK_SEASONAL_PRODUCTS.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                variant="seasonal"
-              />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 product-grid-section">
+            {seasonalProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         </section>
 
-        {/* SECTION: Cooperative Pool */}
-        <CoopPoolCard pool={MOCK_COOP_POOL} />
+        {/* SECTION: Cooperative Pool — chỉ hiện cho HTX members/managers */}
+        <div className="cv-auto">
+          <CoopPoolSection pool={MOCK_COOP_POOL} />
+        </div>
 
-        {/* SECTION: Featured Farms */}
-        <section className="mb-12">
-          <div className="flex justify-between items-end mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
-              Nhà vườn nổi bật
+        {/* SECTION: Featured Farms — giống hình tham khảo carousel */}
+        <section className="mb-12 relative">
+          {/* Scalloped decorative border — sóng xanh giống hình */}
+          <div
+            className="h-4 w-full mb-4"
+            style={{
+              background: 'radial-gradient(circle 8px at 16px 0, transparent 8px, var(--color-primary, #2E7D32) 8.5px)',
+              backgroundSize: '32px 16px',
+              backgroundPosition: 'top center',
+              backgroundRepeat: 'repeat-x',
+              borderRadius: '0 0 4px 4px',
+              opacity: 0.15,
+            }}
+          />
+          <div className="text-center mb-6">
+            <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-foreground">
+              Khám phá <span className="text-primary">nhà cung cấp</span> dành riêng cho bạn!
             </h2>
-            <Link
-              href="/shops"
-              className="text-sm text-primary font-semibold flex items-center gap-1 hover:underline"
-            >
-              Xem tất cả <ChevronRight className="w-4 h-4" />
-            </Link>
           </div>
-          <div className="grid grid-cols-3 gap-6">
-            {MOCK_SHOPS.map((shop) => (
-              <FarmCard key={shop.id} shop={shop} />
-            ))}
+          {/* Horizontal scroll carousel */}
+          <div className="relative group/carousel">
+            <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory px-1">
+              {shops.map((shop) => (
+                <div key={shop.id} className="min-w-[280px] md:min-w-[320px] snap-start flex-shrink-0">
+                  <FarmCard shop={shop} />
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* SECTION: "Gợi ý cho bạn" — Shopee-style product grid */}
-        <section className="mb-12">
+        <section className="mb-12 -mx-4 px-4 py-8 bg-gradient-to-b from-primary-50/40 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-primary uppercase tracking-widest">
               Gợi ý cho bạn
             </h2>
             <div className="w-20 h-0.5 bg-primary mx-auto mt-2" />
           </div>
-          <div className="grid grid-cols-6 gap-4">
-            {[...MOCK_SEASONAL_PRODUCTS, ...MOCK_NEW_PRODUCTS].map((product) => (
-              <ProductCard
-                key={`suggest-${product.id}`}
-                product={product}
-                variant="latest"
-              />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 product-grid-section">
+            {[...seasonalProducts, ...newProducts].map((product) => (
+              <ProductCard key={`suggest-${product.id}`} product={product} />
             ))}
           </div>
         </section>

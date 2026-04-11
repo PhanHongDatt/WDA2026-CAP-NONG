@@ -1,4 +1,6 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -8,19 +10,18 @@ import {
   ArrowUpRight,
   Clock,
   Plus,
+  Users,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-
-export const metadata: Metadata = {
-  title: "Dashboard Nông Dân",
-  description: "Quản lý gian hàng, sản phẩm, đơn hàng và doanh thu trên Cạp Nông.",
-};
+import SimpleBarChart from "@/components/ui/SimpleBarChart";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
 
 const STATS = [
-  { label: "Đơn hàng", value: "28", icon: Package, color: "text-info bg-blue-50" },
-  { label: "Sản phẩm", value: "12", icon: ShoppingCart, color: "text-primary bg-primary-50" },
-  { label: "Doanh thu", value: formatCurrency(15600000), icon: TrendingUp, color: "text-success bg-green-50" },
-  { label: "Đánh giá", value: "4.8", icon: Star, color: "text-warning bg-yellow-50" },
+  { label: "Đơn hàng", value: "28", icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
+  { label: "Sản phẩm", value: "12", icon: ShoppingCart, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
+  { label: "Doanh thu", value: formatCurrency(15600000), icon: TrendingUp, color: "text-success bg-green-50 dark:bg-green-900/30" },
+  { label: "Đánh giá", value: "4.8", icon: Star, color: "text-warning bg-yellow-50 dark:bg-yellow-900/30" },
 ];
 
 const RECENT_ORDERS = [
@@ -29,26 +30,94 @@ const RECENT_ORDERS = [
   { id: "#CN-0040", buyer: "Lê Văn Bình", product: "Bưởi Da Xanh x3", total: 204000, status: "Đã nhận", statusColor: "text-success bg-green-50" },
 ];
 
-export default function DashboardPage() {
+const REVENUE_DATA = [
+  { label: "T1", value: 1200000 },
+  { label: "T2", value: 2100000 },
+  { label: "T3", value: 1800000 },
+  { label: "T4", value: 3200000 },
+  { label: "T5", value: 2900000 },
+  { label: "T6", value: 4100000 },
+  { label: "T7", value: 3800000 },
+  { label: "T8", value: 4500000 },
+  { label: "T9", value: 3900000 },
+  { label: "T10", value: 5200000 },
+  { label: "T11", value: 4800000 },
+  { label: "T12", value: 6100000 },
+];
+
+function DashboardContent() {
+  const { user, isHtxManager } = useAuth();
+  const displayName = user?.full_name || "Nhà vườn";
+  const roleSubtitle = isHtxManager
+    ? `Tổng quan hợp tác xã${user?.htx_name ? " — " + user.htx_name : ""}`
+    : "Tổng quan hoạt động gian hàng của bạn";
+
+  const [stats, setStats] = useState(STATS);
+  const [recentOrders, setRecentOrders] = useState(RECENT_ORDERS);
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const { orderService, productService } = await import("@/services");
+      const [apiOrders, productResult] = await Promise.allSettled([
+        orderService.getMyOrders(),
+        productService.search({ page: 0, size: 1 }),
+      ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const orders: any[] = apiOrders.status === "fulfilled" && Array.isArray(apiOrders.value) ? apiOrders.value : [];
+      const totalProducts = productResult.status === "fulfilled" ? (productResult.value as { total_elements: number }).total_elements : 12;
+      const totalRevenue = orders.reduce((s: number, o: { totalAmount?: number }) => s + (o.totalAmount || 0), 0);
+
+      if (orders.length > 0) {
+        setStats([
+          { label: "Đơn hàng", value: String(orders.length), icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
+          { label: "Sản phẩm", value: String(totalProducts), icon: ShoppingCart, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
+          { label: "Doanh thu", value: formatCurrency(totalRevenue), icon: TrendingUp, color: "text-success bg-green-50 dark:bg-green-900/30" },
+          { label: "Đánh giá", value: "4.8", icon: Star, color: "text-warning bg-yellow-50 dark:bg-yellow-900/30" },
+        ]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setRecentOrders(orders.slice(0, 3).map((o: any) => ({
+          id: o.orderCode || o.id || "#???",
+          buyer: o.buyerName || o.guestName || "—",
+          product: (o.items || []).map((i: { productName?: string; quantity?: number }) => `${i.productName || "SP"} x${i.quantity || 1}`).join(", ") || "—",
+          total: o.totalAmount || 0,
+          status: o.status === "DELIVERED" ? "Đã nhận" : o.status === "SHIPPED" ? "Đang giao" : "Đã xác nhận",
+          statusColor: o.status === "DELIVERED" ? "text-success bg-green-50" : o.status === "SHIPPED" ? "text-primary bg-primary-50" : "text-info bg-blue-50",
+        })));
+      }
+    } catch { /* keep mock */ }
+  }, []);
+
+  useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
       {/* Welcome */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-black text-foreground">
-            Xin chào, Nhà vườn Bác Ba! 👋
+            Xin chào, {displayName}! 👋
           </h1>
           <p className="text-foreground-muted mt-1">
-            Tổng quan hoạt động gian hàng của bạn
+            {roleSubtitle}
           </p>
         </div>
-        <Link
-          href="/dashboard/products/new"
-          className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20"
-        >
-          <Plus className="w-5 h-5" />
-          Đăng sản phẩm
-        </Link>
+        {isHtxManager ? (
+          <Link
+            href="/cooperative/manage"
+            className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20"
+          >
+            <Users className="w-5 h-5" />
+            Quản lý HTX
+          </Link>
+        ) : (
+          <Link
+            href="/dashboard/products/new"
+            className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20"
+          >
+            <Plus className="w-5 h-5" />
+            Đăng sản phẩm
+          </Link>
+        )}
       </div>
 
       {/* Stats Grid */}
@@ -56,7 +125,7 @@ export default function DashboardPage() {
         {STATS.map((stat) => (
           <div
             key={stat.label}
-            className="bg-white border border-border rounded-xl p-5 flex items-center gap-4 shadow-sm"
+            className="bg-white dark:bg-surface border border-border rounded-xl p-5 flex items-center gap-4 shadow-sm"
           >
             <div
               className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}
@@ -74,23 +143,36 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Orders */}
-        <div className="lg:col-span-2 bg-white border border-border rounded-xl shadow-sm">
-          <div className="p-5 border-b border-border flex items-center justify-between">
-            <h3 className="font-bold text-lg">Đơn hàng gần đây</h3>
-            <Link
-              href="/dashboard/orders"
-              className="text-sm text-primary font-medium hover:underline flex items-center gap-1"
-            >
-              Xem tất cả <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+        {/* Revenue Chart + Recent Orders */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Revenue Chart */}
+          <div className="bg-white dark:bg-surface border border-border rounded-xl shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">📊 Doanh thu theo tháng</h3>
+              <span className="text-xs text-foreground-muted bg-primary/5 px-3 py-1 rounded-full font-medium">
+                Năm 2026
+              </span>
+            </div>
+            <SimpleBarChart data={REVENUE_DATA} height={180} />
           </div>
-          <div className="divide-y divide-border">
-            {RECENT_ORDERS.map((order) => (
-              <div
-                key={order.id}
-                className="px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+
+          {/* Recent Orders */}
+          <div className="bg-white dark:bg-surface border border-border rounded-xl shadow-sm">
+            <div className="p-5 border-b border-border flex items-center justify-between">
+              <h3 className="font-bold text-lg">Đơn hàng gần đây</h3>
+              <Link
+                href="/dashboard/orders"
+                className="text-sm text-primary font-medium hover:underline flex items-center gap-1"
               >
+                Xem tất cả <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            <div className="divide-y divide-border">
+              {RECENT_ORDERS.map((order) => (
+                <div
+                  key={order.id}
+                  className="px-5 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors"
+                >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
                     <span className="text-sm font-bold">{order.id}</span>
@@ -108,12 +190,13 @@ export default function DashboardPage() {
                   {formatCurrency(order.total)}
                 </span>
               </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white border border-border rounded-xl shadow-sm p-5 space-y-4">
+        <div className="bg-white dark:bg-surface border border-border rounded-xl shadow-sm p-5 space-y-4">
           <h3 className="font-bold text-lg">Thao tác nhanh</h3>
           <div className="space-y-3">
             <Link
@@ -152,6 +235,15 @@ export default function DashboardPage() {
               </div>
               <span className="font-medium text-sm">AI Marketing Lab</span>
             </Link>
+            <Link
+              href="/dashboard/products/drafts"
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-orange-50 transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                <Clock className="w-5 h-5" />
+              </div>
+              <span className="font-medium text-sm">SP Nháp</span>
+            </Link>
           </div>
 
           {/* Notification */}
@@ -171,5 +263,17 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * /dashboard — Dashboard for FARMER / HTX_MANAGER
+ * Protected route with role guard
+ */
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute roles={["FARMER", "HTX_MANAGER", "HTX_MEMBER", "ADMIN"]}>
+      <DashboardContent />
+    </ProtectedRoute>
   );
 }

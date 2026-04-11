@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   Building2,
@@ -15,8 +17,8 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import ProgressBar from "@/components/ui/ProgressBar";
 
-/* Mock HTX data */
-const HTX = {
+/* ─── Default mock data (fallback khi API chưa sẵn) ─── */
+const MOCK_HTX = {
   name: "HTX Trái Cây Bến Tre",
   slug: "htx-trai-cay-ben-tre",
   province: "Bến Tre",
@@ -27,7 +29,7 @@ const HTX = {
   total_orders: 128,
 };
 
-const BUNDLE_PRODUCTS = [
+const MOCK_BUNDLES = [
   {
     id: "bp-1",
     name: "Bưởi Da Xanh Bến Tre",
@@ -64,6 +66,73 @@ const BUNDLE_PRODUCTS = [
 ];
 
 export default function HtxShopPage() {
+  const params = useParams();
+  const slug = params.slug as string;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [htx, setHtx] = useState<any>(MOCK_HTX);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [bundles, setBundles] = useState<any[]>(MOCK_BUNDLES);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const htxApi = await import("@/services/api/htx");
+      const [htxDetail, apiBundles] = await Promise.all([
+        htxApi.getHtxDetail(slug),
+        htxApi.getOpenBundles(),
+      ]);
+      if (htxDetail) {
+        setHtx({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          name: (htxDetail as any).name || MOCK_HTX.name,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          province: (htxDetail as any).province || MOCK_HTX.province,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          members: (htxDetail as any).memberCount || (htxDetail as any).members || MOCK_HTX.members,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          manager: (htxDetail as any).managerName || MOCK_HTX.manager,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          description: (htxDetail as any).description || MOCK_HTX.description,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          rating: (htxDetail as any).rating || MOCK_HTX.rating,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          total_orders: (htxDetail as any).totalOrders || MOCK_HTX.total_orders,
+        });
+      }
+      if (Array.isArray(apiBundles) && apiBundles.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped = apiBundles.map((b: any) => ({
+          id: b.id || b.bundleId,
+          name: b.productName || b.name || "Sản phẩm",
+          price: b.pricePerUnit || b.price || 0,
+          unit: b.unitCode || b.unit || "kg",
+          image: "📦",
+          target_qty: b.targetQuantity || b.target_qty || 0,
+          current_qty: b.currentQuantity || b.current_qty || 0,
+          deadline: b.deadline ? new Date(b.deadline).toLocaleDateString("vi-VN") : "—",
+          status: b.status === "FULFILLED" || (b.currentQuantity >= b.targetQuantity) ? "FULFILLED" as const : "OPEN" as const,
+        }));
+        setBundles(mapped);
+      }
+    } catch {
+      /* keep mock data */
+    } finally {
+      setLoading(false);
+    }
+  }, [slug]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-20 flex justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-8">
       {/* Header */}
@@ -72,7 +141,7 @@ export default function HtxShopPage() {
           <ArrowLeft className="w-5 h-5 text-foreground-muted" />
         </Link>
         <div>
-          <h1 className="text-2xl font-black text-foreground">{HTX.name}</h1>
+          <h1 className="text-2xl font-black text-foreground">{htx.name}</h1>
           <p className="text-sm text-foreground-muted">Gian hàng HTX — Đơn sỉ / Bundle</p>
         </div>
       </div>
@@ -84,13 +153,13 @@ export default function HtxShopPage() {
             🏛️
           </div>
           <div className="flex-1 space-y-2">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">{HTX.name}</h2>
-            <p className="text-sm text-gray-600 dark:text-foreground-muted">{HTX.description}</p>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">{htx.name}</h2>
+            <p className="text-sm text-gray-600 dark:text-foreground-muted">{htx.description}</p>
             <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-foreground-muted">
-              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {HTX.province}</span>
-              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {HTX.members} thành viên</span>
-              <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-400" /> {HTX.rating}</span>
-              <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {HTX.total_orders} đơn hoàn thành</span>
+              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {htx.province}</span>
+              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {htx.members} thành viên</span>
+              <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-400" /> {htx.rating}</span>
+              <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {htx.total_orders} đơn hoàn thành</span>
             </div>
           </div>
         </div>
@@ -102,8 +171,8 @@ export default function HtxShopPage() {
           <Building2 className="w-5 h-5 text-primary" /> Sản phẩm gom đơn
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {BUNDLE_PRODUCTS.map((bp) => {
-            const progress = Math.round((bp.current_qty / bp.target_qty) * 100);
+          {bundles.map((bp) => {
+            const progress = bp.target_qty > 0 ? Math.round((bp.current_qty / bp.target_qty) * 100) : 0;
             const isFulfilled = bp.status === "FULFILLED";
             return (
               <div key={bp.id} className="bg-white dark:bg-surface border border-gray-100 dark:border-border rounded-xl overflow-hidden shadow-sm">
@@ -131,7 +200,7 @@ export default function HtxShopPage() {
                     </div>
                   </div>
 
-                  {/* Deadline notice — item 9 */}
+                  {/* Deadline notice */}
                   <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
                     <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                     <p className="text-[11px] text-amber-700 dark:text-amber-300">
@@ -148,7 +217,6 @@ export default function HtxShopPage() {
                     </span>
                     <button
                       type="button"
-                      disabled={!isFulfilled && false}
                       className="flex items-center gap-1.5 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
                     >
                       <ShoppingCart className="w-3.5 h-3.5" /> Mua sỉ

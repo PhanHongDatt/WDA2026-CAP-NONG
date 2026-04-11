@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
@@ -11,11 +12,15 @@ import {
   MapPin,
   Save,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 function CreateShopContent() {
   const { user } = useAuth();
+  const router = useRouter();
   const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     slug: "",
@@ -42,10 +47,27 @@ function CreateShopContent() {
     setSaved(false);
   };
 
-  const handleSubmit = () => {
-    // TODO: gọi API POST /shops khi BE sẵn sàng
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleSubmit = async () => {
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const { shopService } = await import("@/services");
+      if (shopService.createShop) {
+        await shopService.createShop({
+          name: form.name,
+          slug: form.slug,
+          province: form.address_province,
+          district: form.address_district,
+          bio: form.bio || undefined,
+        });
+      }
+      setSaved(true);
+      setTimeout(() => router.push(`/shop/${form.slug}`), 1500);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : "Tạo gian hàng thất bại.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -168,12 +190,16 @@ function CreateShopContent() {
         <Link href="/dashboard" className="border border-gray-200 dark:border-border px-6 py-3 rounded-xl font-medium text-gray-600 dark:text-foreground-muted hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">
           Hủy
         </Link>
+        {submitError && (
+          <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-4 py-2 rounded-xl border border-red-200">{submitError}</div>
+        )}
         <button
           type="button"
           onClick={handleSubmit}
-          className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20"
+          disabled={submitting || saved}
+          className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20 disabled:opacity-60"
         >
-          {saved ? <><CheckCircle2 className="w-5 h-5" /> Đã tạo!</> : <><Save className="w-5 h-5" /> Tạo gian hàng</>}
+          {submitting ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang tạo...</> : saved ? <><CheckCircle2 className="w-5 h-5" /> Đã tạo!</> : <><Save className="w-5 h-5" /> Tạo gian hàng</>}
         </button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -47,6 +47,30 @@ export default function ProductListPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState("");
   const [editQty, setEditQty] = useState("");
+
+  // Fetch real products from API (mock fallback)
+  useEffect(() => {
+    async function load() {
+      try {
+        const { productService } = await import("@/services");
+        const result = await productService.search({ page: 0, size: 50 });
+        if (result.content.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setProducts(result.content.map((p: any) => ({
+            id: p.id || p.slug,
+            name: p.name,
+            category: p.category || "Trái cây",
+            price: p.price_per_unit || 0,
+            quantity: p.available_quantity || 0,
+            status: (p.status || "IN_SEASON") as ProductStatus,
+            image: p.images?.[0] ? "" : "🥬",
+            sold: p.sold_count || 0,
+          })));
+        }
+      } catch { /* keep mock */ }
+    }
+    load();
+  }, []);
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Menu,
@@ -32,9 +33,21 @@ import NotificationBell from "@/components/ui/NotificationBell";
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const { user, isLoggedIn, isFarmer, isHtxMember, isHtxManager, isAdmin, loginAs, logout } = useAuth();
+
+  const handleSearch = () => {
+    const q = searchQuery.trim();
+    if (q) {
+      router.push(`/catalog?q=${encodeURIComponent(q)}`);
+      setSearchQuery("");
+    } else {
+      router.push("/catalog");
+    }
+  };
 
   // Close user menu on outside click
   useEffect(() => {
@@ -59,28 +72,7 @@ export default function Header() {
             </a>
           </div>
           <div className="hidden md:flex items-center space-x-6">
-            {/* Quick role switcher — DEV ONLY (xóa trước khi deploy) */}
-            <div className="flex items-center gap-1 text-xs opacity-80">
-              <span>Demo:</span>
-              {["buyer", "farmer", "htx_member", "htx_manager", "admin"].map((r) => (
-                <button type="button"
-                  key={r}
-                  onClick={() => loginAs(r)}
-                  className={`px-1.5 py-0.5 rounded text-[10px] uppercase transition-colors ${
-                    user?.role?.toLowerCase().replace("_", "_") === r.toUpperCase().replace("_", "_")
-                      ? "bg-white text-primary-dark font-bold"
-                      : "hover:bg-white/20"
-                  }`}
-                >
-                  {r === "htx_member" ? "HTX" : r === "htx_manager" ? "QL" : r === "admin" ? "AD" : r === "farmer" ? "ND" : "Mua"}
-                </button>
-              ))}
-              {isLoggedIn && (
-                <button type="button" onClick={logout} className="px-1.5 py-0.5 rounded text-[10px] hover:bg-white/20">
-                  ✕
-                </button>
-              )}
-            </div>
+            {/* Spacer if needed or just empty to keep layout balanced */}
             <div className="flex items-center space-x-1 cursor-pointer">
               <span className="uppercase">VN</span>
               <ChevronDown className="w-4 h-4" />
@@ -104,21 +96,24 @@ export default function Header() {
             CẠP NÔNG
           </Link>
 
-          {/* Category Toggle */}
-          <button type="button" aria-label="Danh mục sản phẩm" className="hidden lg:flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-border rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover shrink-0 transition-colors">
+          {/* Category Toggle → link to catalog */}
+          <Link href="/catalog" className="hidden lg:flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-border rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover shrink-0 transition-colors">
             <Menu className="w-5 h-5" />
             <span className="font-medium text-gray-700 dark:text-foreground">Danh mục</span>
-          </button>
+          </Link>
 
-          {/* Search Bar */}
+          {/* Search Bar — functional */}
           <div className="flex-grow max-w-2xl relative hidden md:block">
             <input
               aria-label="Tìm kiếm nông sản"
               className="w-full pl-5 pr-12 py-2.5 rounded-full border border-gray-200 dark:border-border dark:bg-background-light dark:text-foreground focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm transition-colors"
               placeholder="Tìm kiếm nông sản sạch..."
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
-            <button type="button" aria-label="Tìm kiếm" className="absolute right-1 top-1 bottom-1 px-5 bg-primary text-white rounded-full hover:opacity-90 transition-all">
+            <button type="button" aria-label="Tìm kiếm" onClick={handleSearch} className="absolute right-1 top-1 bottom-1 px-5 bg-primary text-white rounded-full hover:opacity-90 transition-all">
               <Search className="w-5 h-5" />
             </button>
           </div>
@@ -133,9 +128,9 @@ export default function Header() {
 
             {/* Wishlist — only logged in */}
             {isLoggedIn && (
-              <div className="relative cursor-pointer hidden md:block" role="button" aria-label="Danh sách yêu thích">
+              <Link href="/wishlist" className="relative cursor-pointer hidden md:block" aria-label="Danh sách yêu thích">
                 <Heart className="w-6 h-6 text-gray-600 dark:text-foreground-muted hover:text-primary transition-colors" />
-              </div>
+              </Link>
             )}
 
             {/* Notifications — only logged in */}
@@ -147,9 +142,7 @@ export default function Header() {
             {(!isLoggedIn || user?.role === "BUYER") && (
               <Link href="/cart" className="relative cursor-pointer" aria-label="Giỏ hàng">
                 <ShoppingCart className="w-6 h-6 text-gray-600 dark:text-foreground-muted hover:text-primary transition-colors" />
-                <span className="absolute -top-2 -right-2 bg-primary text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white dark:border-surface">
-                  2
-                </span>
+                {/* Badge count sẽ từ cartService */}
               </Link>
             )}
 
@@ -204,6 +197,8 @@ export default function Header() {
                       <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-surface-hover text-gray-700 dark:text-foreground transition-colors" onClick={() => setUserMenuOpen(false)}>
                         <Package className="w-4 h-4" />
                         <span>Đơn hàng của tôi</span>
+                        {/* Badge đơn đang giao */}
+                        <span className="ml-auto text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded-full">2</span>
                       </Link>
                     )}
 

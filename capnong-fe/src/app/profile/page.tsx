@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
@@ -12,10 +13,13 @@ import {
   Save,
   Shield,
   Send,
+  Loader2,
 } from "lucide-react";
+import { apiUserService } from "@/services/api/user";
+import * as notificationApi from "@/services/api/notification";
 
 function ProfileContent() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
 
   const [form, setForm] = useState({
     full_name: user?.full_name || "",
@@ -28,21 +32,105 @@ function ProfileContent() {
   });
 
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(form.avatar_url || null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   /* UC-39: Telegram notification */
   const [telegramHandle, setTelegramHandle] = useState("");
   const [telegramEnabled, setTelegramEnabled] = useState(false);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+
+  /* Password change */
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current: "", newPass: "", confirm: "" });
+  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setSaved(false);
+    setError("");
   };
 
-  const handleSave = () => {
-    // TODO: gọi API PUT /users/me khi BE sẵn sàng
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
+  /* ── Save profile → real API ── */
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await apiUserService.updateProfile({
+        fullName: form.full_name,
+        email: form.email || undefined,
+        phone: form.phone || undefined,
+      });
+      // Refresh auth context so header/nav shows updated name
+      await refreshProfile?.();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Lỗi cập nhật hồ sơ";
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  }, [form, refreshProfile]);
+
+  /* ── Avatar upload → real API ── */
+  const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Instant preview
+    const reader = new FileReader();
+    reader.onload = () => setAvatarPreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    // Upload to BE
+    try {
+      await apiUserService.uploadAvatar(file);
+      await refreshProfile?.();
+    } catch {
+      // Preview already set, silent fail
+    }
+  }, [refreshProfile]);
+
+  /* ── Change password → real API ── */
+  const handlePasswordSave = useCallback(async () => {
+    if (passwordForm.newPass !== passwordForm.confirm) return;
+    setPasswordError("");
+    try {
+      await apiUserService.changePassword(passwordForm.current, passwordForm.newPass);
+      setPasswordSaved(true);
+      setTimeout(() => {
+        setPasswordSaved(false);
+        setShowPasswordForm(false);
+        setPasswordForm({ current: "", newPass: "", confirm: "" });
+      }, 2000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Mật khẩu hiện tại không đúng";
+      setPasswordError(msg);
+    }
+  }, [passwordForm]);
+
+  /* ── UC-39: Telegram toggle → real API ── */
+  const handleTelegramToggle = useCallback(async () => {
+    setTelegramLoading(true);
+    try {
+      if (telegramEnabled) {
+        await notificationApi.unlinkTelegram();
+        setTelegramEnabled(false);
+      } else {
+        if (!telegramHandle.trim()) return;
+        await notificationApi.registerTelegram(telegramHandle.replace("@", ""));
+        setTelegramEnabled(true);
+      }
+    } catch {
+      // silent
+    } finally {
+      setTelegramLoading(false);
+    }
+  }, [telegramEnabled, telegramHandle]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
@@ -56,10 +144,18 @@ function ProfileContent() {
       <div className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-6">
         <div className="flex items-center gap-6">
           <div className="relative">
-            <div className="w-20 h-20 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold">
-              {form.full_name.charAt(0) || "?"}
-            </div>
+            {avatarPreview ? (
+              <div className="w-20 h-20 rounded-full overflow-hidden">
+                <Image src={avatarPreview} alt="Avatar" width={80} height={80} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-20 h-20 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold">
+                {form.full_name.charAt(0) || "?"}
+              </div>
+            )}
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" aria-label="Upload ảnh đại diện" onChange={handleAvatarChange} />
             <button type="button"
+              onClick={() => avatarInputRef.current?.click()}
               className="absolute -bottom-1 -right-1 w-8 h-8 bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors"
               aria-label="Thay đổi ảnh đại diện"
             >
@@ -193,10 +289,35 @@ function ProfileContent() {
             <p className="text-sm font-medium text-gray-900 dark:text-foreground">Mật khẩu</p>
             <p className="text-xs text-foreground-muted">Đổi mật khẩu đăng nhập</p>
           </div>
-          <button type="button" className="text-sm text-primary font-medium hover:underline">
-            Đổi mật khẩu
+          <button type="button" onClick={() => setShowPasswordForm(!showPasswordForm)} className="text-sm text-primary font-medium hover:underline">
+            {showPasswordForm ? "Đóng" : "Đổi mật khẩu"}
           </button>
         </div>
+        {showPasswordForm && (
+          <div className="space-y-3 pt-3 border-t border-border">
+            <div>
+              <label htmlFor="pw-current" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Mật khẩu hiện tại</label>
+              <input id="pw-current" type="password" value={passwordForm.current} onChange={(e) => setPasswordForm(p => ({...p, current: e.target.value}))} className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+            <div>
+              <label htmlFor="pw-new" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Mật khẩu mới</label>
+              <input id="pw-new" type="password" value={passwordForm.newPass} onChange={(e) => setPasswordForm(p => ({...p, newPass: e.target.value}))} className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+            <div>
+              <label htmlFor="pw-confirm" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Xác nhận mật khẩu mới</label>
+              <input id="pw-confirm" type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm(p => ({...p, confirm: e.target.value}))} className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              {passwordForm.confirm && passwordForm.newPass !== passwordForm.confirm && (
+                <p className="text-xs text-accent mt-1">Mật khẩu không khớp</p>
+              )}
+            </div>
+            {passwordError && (
+              <p className="text-xs text-accent">{passwordError}</p>
+            )}
+            <button type="button" onClick={handlePasswordSave} disabled={!passwordForm.current || !passwordForm.newPass || passwordForm.newPass !== passwordForm.confirm} className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              {passwordSaved ? "✅ Đã đổi!" : "Lưu mật khẩu mới"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* UC-39: Telegram Notification Toggle */}
@@ -225,7 +346,8 @@ function ProfileContent() {
           <div className="flex items-end gap-3">
             <button
               type="button"
-              onClick={() => setTelegramEnabled(!telegramEnabled)}
+              onClick={handleTelegramToggle}
+              disabled={telegramLoading}
               className={`relative w-12 h-7 rounded-full transition-colors ${telegramEnabled ? "bg-primary" : "bg-gray-300 dark:bg-gray-600"}`}
               aria-label={telegramEnabled ? "Tắt thông báo Telegram" : "Bật thông báo Telegram"}
             >
@@ -239,13 +361,15 @@ function ProfileContent() {
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3 items-center">
+        {error && <p className="text-sm text-accent">{error}</p>}
         <button type="button"
           onClick={handleSave}
-          className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20"
+          disabled={saving}
+          className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20 disabled:opacity-50"
         >
-          <Save className="w-5 h-5" />
-          {saved ? "✅ Đã lưu!" : "Lưu thay đổi"}
+          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+          {saved ? "✅ Đã lưu!" : saving ? "Đang lưu..." : "Lưu thay đổi"}
         </button>
       </div>
     </div>

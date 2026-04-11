@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import QueryProvider from "@/components/layout/QueryProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import ServiceWorkerRegistration from "@/components/layout/ServiceWorkerRegistration";
+import NetworkStatus from "@/components/ui/NetworkStatus";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import type { ReactNode } from "react";
 
 /**
@@ -18,7 +20,10 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <ToastProvider>
             <ServiceWorkerRegistration />
-            {children}
+            <NetworkStatus />
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </ToastProvider>
         </ThemeProvider>
       </AuthProvider>

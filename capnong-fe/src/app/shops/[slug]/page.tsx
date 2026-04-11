@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   Share2,
@@ -14,9 +15,8 @@ import {
   BookOpen,
 } from "lucide-react";
 import ProductCard from "@/components/ui/ProductCard";
-import { MOCK_SEASONAL_PRODUCTS, MOCK_SHOPS } from "@/lib/mock-data";
-
-const SHOP = MOCK_SHOPS[1]; // Hợp tác xã Bến Tre
+import { shopService } from "@/services";
+import type { Product } from "@/types/product";
 
 const GALLERY = [
   {
@@ -37,10 +37,55 @@ const GALLERY = [
   },
 ];
 
-const SHOP_PRODUCTS = MOCK_SEASONAL_PRODUCTS.slice(0, 3);
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function ShopProfilePage() {
+  const params = useParams();
+  const slug = params?.slug as string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [shop, setShop] = useState<any>(null);
+  const [shopProducts, setShopProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"products" | "reviews">("products");
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const s = await shopService.getBySlug(slug);
+        setShop(s);
+        const products = await shopService.getProducts(slug);
+        setShopProducts(products);
+      } catch {
+        setShop(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (slug) load();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="max-w-[1200px] mx-auto px-4 py-20 text-center">
+        <div className="animate-pulse">
+          <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4" />
+          <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!shop) {
+    return (
+      <div className="max-w-[1200px] mx-auto px-4 py-20 text-center">
+        <h2 className="text-2xl font-bold mb-2">Không tìm thấy gian hàng</h2>
+        <p className="text-foreground-muted mb-6">Gian hàng này không tồn tại hoặc đã ngừng hoạt động.</p>
+        <Link href="/catalog" className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold">
+          Xem danh mục
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -78,21 +123,21 @@ export default function ShopProfilePage() {
           <div className="absolute bottom-6 left-6 md:left-10 z-20 flex flex-col md:flex-row items-end md:items-center gap-4">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white overflow-hidden shadow-xl bg-white">
               <Image
-                src={SHOP.avatar_url || ""}
-                alt={SHOP.name}
+                src={shop.avatar_url || ""}
+                alt={shop.name}
                 width={128}
                 height={128}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex flex-col text-white pb-2">
-              <h1 className="text-2xl md:text-4xl font-bold">{SHOP.name}</h1>
+              <h1 className="text-2xl md:text-4xl font-bold">{shop.name}</h1>
               <p className="flex items-center gap-1 text-gray-200 text-sm md:text-base">
-                <MapPin className="w-4 h-4" /> {SHOP.province}
+                <MapPin className="w-4 h-4" /> {shop.province}
               </p>
               <p className="text-xs md:text-sm text-gray-300 mt-1 font-medium bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full w-fit">
-                {SHOP.average_rating} đánh giá — {SHOP.years_experience} năm kinh
-                nghiệm — {SHOP.farm_area_m2 ? `${(SHOP.farm_area_m2 / 10000).toFixed(1)} hecta` : ""} diện tích
+                {shop.average_rating} đánh giá — {shop.years_experience} năm kinh
+                nghiệm — {shop.farm_area_m2 ? `${(shop.farm_area_m2 / 10000).toFixed(1)} hecta` : ""} diện tích
               </p>
             </div>
           </div>
@@ -111,11 +156,9 @@ export default function ShopProfilePage() {
                 </h3>
               </div>
               <p className="italic text-foreground-muted leading-relaxed text-lg">
-                &ldquo;Hơn {SHOP.years_experience} năm gắn bó với mảnh đất{" "}
-                {SHOP.province}, chúng tôi luôn tâm niệm mang đến những sản
-                phẩm sạch, thuận tự nhiên nhất cho mọi gia đình. Vườn dừa và
-                bưởi da xanh của gia đình được chăm sóc bằng cả tâm huyết,
-                không hóa chất, chỉ có phù sa và tình yêu đất mặn...&rdquo;
+                &ldquo;Hơn {shop.years_experience} năm gắn bó với mảnh đất{" "}
+                {shop.province}, chúng tôi luôn tâm niệm mang đến những sản
+                phẩm sạch, thuận tự nhiên nhất cho mọi gia đình.&rdquo;
               </p>
             </section>
 
@@ -168,20 +211,26 @@ export default function ShopProfilePage() {
                       : "border-transparent text-foreground-muted hover:text-foreground"
                   }`}
                 >
-                  Đánh giá ({SHOP.total_reviews})
+                  Đánh giá ({shop.total_reviews})
                 </button>
               </div>
 
               {activeTab === "products" ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                  {SHOP_PRODUCTS.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      variant="latest"
-                    />
-                  ))}
-                </div>
+                shopProducts.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                    {shopProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        variant="latest"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-foreground-muted">
+                    <p className="font-medium">Chưa có sản phẩm nào</p>
+                  </div>
+                )
               ) : (
                 <div className="text-center py-12 text-foreground-muted">
                   <Star className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -199,7 +248,7 @@ export default function ShopProfilePage() {
                 <li className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-foreground-muted shrink-0 mt-0.5" />
                   <p className="text-sm text-foreground-muted">
-                    {SHOP.district}, {SHOP.province}
+                    {shop.district}, {shop.province}
                   </p>
                 </li>
                 <li className="flex items-start gap-3">

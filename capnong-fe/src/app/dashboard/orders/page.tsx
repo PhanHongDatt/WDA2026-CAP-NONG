@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import Pagination from "@/components/ui/Pagination";
 
 type OrderStatus = "PENDING" | "CONFIRMED" | "PREPARING" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
@@ -77,8 +78,41 @@ export default function OrderManagementPage() {
   const [orders, setOrders] = useState(INITIAL_ORDERS);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loadingData, setLoadingData] = useState(true);
+  const ITEMS_PER_PAGE = 5;
+
+  /* Fetch real orders from API, fallback to mock */
+  const fetchOrders = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const { orderService } = await import("@/services");
+      const apiOrders = await orderService.getMyOrders();
+      if (Array.isArray(apiOrders) && apiOrders.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped = apiOrders.map((o: any) => ({
+          id: o.orderCode || o.id || "#???",
+          buyer: o.buyerName || o.guestName || "—",
+          phone: o.buyerPhone || o.guestPhone || "—",
+          products: (o.items || []).map((i: any) => `${i.productName || "SP"} x${i.quantity || 1}`).join(", ") || "—",
+          total: o.totalAmount || 0,
+          status: (o.status || "PENDING") as OrderStatus,
+          date: o.createdAt ? new Date(o.createdAt).toLocaleDateString("vi-VN") : "—",
+        }));
+        setOrders(mapped);
+      }
+    } catch {
+      /* keep mock */
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   const filtered = activeFilter === "all" ? orders : orders.filter((o) => o.status === activeFilter);
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   /* advance status */
   const handleAdvance = (id: string) => {
@@ -163,7 +197,7 @@ export default function OrderManagementPage() {
 
       {/* Orders List */}
       <div className="space-y-3">
-        {filtered.map((order) => {
+        {paginated.map((order) => {
           const ns = NEXT_STATUS[order.status];
           return (
             <div key={order.id} className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-5 hover:shadow-sm transition-shadow">
@@ -263,9 +297,12 @@ export default function OrderManagementPage() {
         </div>
       )}
 
-      <p className="text-sm text-foreground-muted text-center">
-        Hiển thị {filtered.length}/{orders.length} đơn hàng
-      </p>
+      <div className="mt-6 flex flex-col items-center gap-3">
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+        <p className="text-xs text-foreground-muted">
+          Trang {currentPage}/{totalPages || 1} — {filtered.length}/{orders.length} đơn hàng
+        </p>
+      </div>
     </div>
   );
 }

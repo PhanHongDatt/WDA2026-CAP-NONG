@@ -1,58 +1,94 @@
 package com.capnong.controller;
 
-import com.capnong.dto.request.AiRefineRequest;
-import com.capnong.dto.response.AiRefineResponse;
 import com.capnong.dto.response.ApiResponse;
-import com.capnong.service.AiListingService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import com.capnong.service.ai.AiService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/ai")
-@RequiredArgsConstructor
-@Tag(name = "AI Listing Assistant", description = "Trợ lý AI cho việc đăng sản phẩm")
+@RequestMapping("/api/v1/ai")
 public class AiController {
 
-    private final AiListingService aiListingService;
+    private final AiService aiService;
 
-    @PostMapping("/voice-session")
-    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
-    @Operation(summary = "Tạo phiên Voice-to-Product",
-            description = "Tạo session AI và đẩy transcript vào hàng đợi Kafka để xử lý bất đồng bộ. Trả về sessionId để FE poll kết quả.")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> startVoiceSession(
-            @RequestBody Map<String, String> request,
-            Authentication authentication) {
-
-        String transcript = request.get("transcript");
-        String language = request.getOrDefault("language", "vi-VN");
-        String audioFileUrl = request.get("audioFileUrl"); // nullable
-
-        UUID sessionId = aiListingService.startVoiceExtractionSession(
-                authentication.getName(), transcript, language, audioFileUrl);
-
-        return ResponseEntity.ok(ApiResponse.success("Phiên AI đã được tạo. Kết quả đang xử lý.",
-                Map.of("sessionId", sessionId, "status", "IN_PROGRESS")));
+    public AiController(AiService aiService) {
+        this.aiService = aiService;
     }
 
+    /**
+     * POST /api/v1/ai/voice-to-product
+     * Trích xuất thông tin sản phẩm từ transcript giọng nói.
+     */
+    @PostMapping("/voice-to-product")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> voiceToProduct(
+            @RequestBody Map<String, String> body) {
+        String transcript = body.get("transcript");
+        var result = aiService.voiceToProduct(transcript);
+        return ResponseEntity.ok(ApiResponse.success("OK", result));
+    }
+
+    /**
+     * POST /api/v1/ai/refine-description
+     * Cải thiện mô tả sản phẩm.
+     */
     @PostMapping("/refine-description")
-    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
-    @Operation(summary = "AI Input Refiner",
-            description = "Gửi mô tả thô → AI trau chuốt → trả về preview cho nông dân xác nhận.")
-    public ResponseEntity<ApiResponse<AiRefineResponse>> refineDescription(
-            @Valid @RequestBody AiRefineRequest request,
-            Authentication authentication) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> refineDescription(
+            @RequestBody Map<String, String> body) {
+        var result = aiService.refineDescription(body.get("raw_text"), body.get("product_name"));
+        return ResponseEntity.ok(ApiResponse.success("OK", result));
+    }
 
-        AiRefineResponse response = aiListingService.refineDescription(request, authentication.getName());
+    /**
+     * POST /api/v1/ai/captions
+     * Tạo caption cho sản phẩm.
+     */
+    @PostMapping("/captions")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> generateCaptions(
+            @RequestBody Map<String, String> body) {
+        var result = aiService.generateCaptions(
+                body.get("product_name"),
+                body.get("description"),
+                body.get("province"),
+                body.getOrDefault("style", "PROFESSIONAL"));
+        return ResponseEntity.ok(ApiResponse.success("OK", result));
+    }
 
-        return ResponseEntity.ok(ApiResponse.success("AI đã trau chuốt mô tả thành công", response));
+    /**
+     * POST /api/v1/ai/poster-content
+     * Tạo nội dung poster (text only).
+     */
+    @PostMapping("/poster-content")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> posterContent(
+            @RequestBody Map<String, Object> body) {
+        var result = aiService.generatePosterContent(body);
+        return ResponseEntity.ok(ApiResponse.success("OK", result));
+    }
+
+    /**
+     * POST /api/v1/ai/crop-health
+     * Phân tích sức khỏe cây trồng.
+     */
+    @PostMapping("/crop-health")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> cropHealth(
+            @RequestBody Map<String, String> body) {
+        var result = aiService.cropHealthCheck(body.get("description"), body.get("crop_type"));
+        return ResponseEntity.ok(ApiResponse.success("OK", result));
+    }
+
+    /**
+     * POST /api/v1/ai/price-advice
+     * Gợi ý giá bán sản phẩm.
+     */
+    @PostMapping("/price-advice")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> priceAdvice(
+            @RequestBody Map<String, Object> body) {
+        var result = aiService.priceAdvice(
+                (String) body.get("product_name"),
+                (String) body.get("province"),
+                (String) body.get("category"),
+                body.get("current_price") != null ? Double.valueOf(body.get("current_price").toString()) : null);
+        return ResponseEntity.ok(ApiResponse.success("OK", result));
     }
 }

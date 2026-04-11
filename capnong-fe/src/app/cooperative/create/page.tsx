@@ -12,6 +12,7 @@ import {
   Upload,
   CheckCircle2,
   Clock,
+  Loader2,
 } from "lucide-react";
 
 const PROVINCES = [
@@ -24,6 +25,8 @@ const PROVINCES = [
 function CreateHtxContent() {
   const { user } = useAuth();
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     registration_code: "",
@@ -36,9 +39,24 @@ function CreateHtxContent() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    // TODO: POST /api/htx khi BE sẵn sàng
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const { createHtx } = await import("@/services/api/htx");
+      await createHtx({
+        name: form.name,
+        officialCode: form.registration_code,
+        province: form.province,
+        district: form.commune,
+        description: form.description || undefined,
+      });
+      setSubmitted(true);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : "Gửi yêu cầu thất bại.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const codeValid = /^\d{8,12}$/.test(form.registration_code);
@@ -159,8 +177,11 @@ function CreateHtxContent() {
         <Link href="/cooperative" className="border border-gray-200 dark:border-border px-6 py-3 rounded-xl font-medium text-gray-600 dark:text-foreground-muted hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">
           Hủy
         </Link>
-        <button type="button" onClick={handleSubmit} disabled={!canSubmit} className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
-          <CheckCircle2 className="w-5 h-5" /> Gửi yêu cầu tạo HTX
+        {submitError && (
+          <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-4 py-2 rounded-xl border border-red-200">{submitError}</div>
+        )}
+        <button type="button" onClick={handleSubmit} disabled={!canSubmit || submitting} className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
+          {submitting ? <><Loader2 className="w-5 h-5 animate-spin" /> Đang gửi...</> : <><CheckCircle2 className="w-5 h-5" /> Gửi yêu cầu tạo HTX</>}
         </button>
       </div>
     </div>

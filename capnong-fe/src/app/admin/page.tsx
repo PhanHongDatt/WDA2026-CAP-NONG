@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
@@ -14,6 +14,7 @@ import {
   Ban,
   UserCheck,
 } from "lucide-react";
+import Pagination from "@/components/ui/Pagination";
 
 /* ─── Types ─── */
 type HtxStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -133,24 +134,99 @@ function AdminContent() {
   const [users, setUsers] = useState(MOCK_USERS);
   const [seasonalConfig, setSeasonalConfig] = useState(MOCK_SEASONAL_CONFIG);
   const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [userPage, setUserPage] = useState(1);
+  const USERS_PER_PAGE = 5;
 
-  /* ─── HTX Actions ─── */
-  const handleApproveHtx = (id: string) => {
+  /* ─── API Fetch (fallback to mock) ─── */
+  const fetchUsers = useCallback(async () => {
+    try {
+      const adminApi = await import("@/services/api/admin");
+      const result = await adminApi.getAllUsers();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const apiUsers: any[] = (result as any)?.content || (Array.isArray(result) ? result : []);
+      if (apiUsers.length > 0) {
+        setUsers(apiUsers.map((u: Record<string, unknown>) => ({
+          id: String(u.id || ""),
+          full_name: String(u.fullName || u.full_name || ""),
+          phone: String(u.phone || ""),
+          role: String(u.role || "BUYER"),
+          is_banned: Boolean(u.banned || u.is_banned),
+          created_at: String(u.createdAt || u.created_at || ""),
+        })));
+      }
+    } catch {
+      // API unavailable → keep mock
+    }
+  }, []);
+
+  const fetchHtxRequests = useCallback(async () => {
+    try {
+      const htxApi = await import("@/services/api/htx");
+      const all = await htxApi.getAllHtx();
+      if (Array.isArray(all) && all.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setHtxRequests(all.map((h: any) => ({
+          id: String(h.id || ""),
+          name: h.name || "",
+          registration_code: h.officialCode || h.registration_code || "",
+          province: h.province || "",
+          commune: h.district || h.commune || "",
+          description: h.description || "",
+          creator_name: h.creatorName || h.managerName || "",
+          creator_phone: h.creatorPhone || "",
+          created_at: h.createdAt || h.created_at || "",
+          status: (h.status || "PENDING") as HtxStatus,
+        })));
+      }
+    } catch { /* keep mock */ }
+  }, []);
+
+  useEffect(() => { fetchUsers(); fetchHtxRequests(); }, [fetchUsers, fetchHtxRequests]);
+
+  /* ─── HTX Actions → API + optimistic ─── */
+  const handleApproveHtx = async (id: string) => {
     setHtxRequests((prev) =>
       prev.map((r) => (r.id === id ? { ...r, status: "APPROVED" as const } : r))
     );
+    try {
+      const adminApi = await import("@/services/api/admin");
+      await adminApi.approveHtx(id);
+    } catch { /* optimistic */ }
   };
-  const handleRejectHtx = (id: string) => {
+  const handleRejectHtx = async (id: string) => {
     setHtxRequests((prev) =>
       prev.map((r) => (r.id === id ? { ...r, status: "REJECTED" as const } : r))
     );
+    try {
+      const adminApi = await import("@/services/api/admin");
+      await adminApi.rejectHtx(id);
+    } catch { /* optimistic */ }
   };
 
-  /* ─── User Actions ─── */
-  const handleToggleBan = (id: string) => {
+  /* ─── User Actions (API + optimistic UI) ─── */
+  const handleToggleBan = async (id: string) => {
+    const targetUser = users.find((u) => u.id === id);
+    if (!targetUser) return;
+
+    // Optimistic update
     setUsers((prev) =>
       prev.map((u) => (u.id === id ? { ...u, is_banned: !u.is_banned } : u))
     );
+
+    try {
+      const adminApi = await import("@/services/api/admin");
+      if (targetUser.is_banned) {
+        await adminApi.unbanUser(id);
+      } else {
+        await adminApi.banUser(id);
+      }
+    } catch {
+      // Revert on error
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, is_banned: targetUser.is_banned } : u))
+      );
+    }
   };
 
   /* ─── Seasonal Config Actions ─── */
@@ -166,9 +242,12 @@ function AdminContent() {
 
   const filteredUsers = users.filter(
     (u) =>
-      u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.phone.includes(searchQuery)
+      (u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.phone.includes(searchQuery)) &&
+      (roleFilter === "" || u.role === roleFilter)
   );
+  const userTotalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
@@ -299,16 +378,30 @@ function AdminContent() {
       {/* ═══ Tab: Quản lý User ═══ */}
       {activeTab === "users" && (
         <div className="space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Tìm theo tên hoặc SĐT..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+          {/* Search + Filter */}
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm theo tên hoặc SĐT..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setUserPage(1); }}
+                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <select
+              aria-label="Lọc theo role"
+              value={roleFilter}
+              onChange={(e) => { setRoleFilter(e.target.value); setUserPage(1); }}
+              className="px-4 py-3 bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">Tất cả role</option>
+              <option value="BUYER">Người mua</option>
+              <option value="FARMER">Nông dân</option>
+              <option value="HTX_MEMBER">TV HTX</option>
+              <option value="HTX_MANAGER">QL HTX</option>
+            </select>
           </div>
 
           {/* Users Table */}
@@ -326,7 +419,7 @@ function AdminContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-border">
-                  {filteredUsers.map((u) => (
+                  {paginatedUsers.map((u) => (
                     <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-foreground">
                         {u.full_name}
@@ -384,6 +477,12 @@ function AdminContent() {
               <div className="text-center py-12 text-foreground-muted">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p>Không tìm thấy user nào</p>
+              </div>
+            )}
+            {/* Pagination */}
+            {userTotalPages > 1 && (
+              <div className="p-4 border-t border-border flex justify-center">
+                <Pagination currentPage={userPage} totalPages={userTotalPages} onPageChange={setUserPage} />
               </div>
             )}
           </div>
