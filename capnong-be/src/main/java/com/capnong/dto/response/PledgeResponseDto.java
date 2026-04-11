@@ -1,17 +1,18 @@
 package com.capnong.dto.response;
 
 import lombok.*;
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
 public class PledgeResponseDto {
     private UUID id;
     private UserSummaryDto farmer;
-    private Double quantity;
-    private UnitResponseDto unit;
-    private Float contributionPercent;
-    private Double estimatedRevenue;
+    private BigDecimal quantity;
+    private BigDecimal contributionPercent;
+    private BigDecimal estimatedRevenue;
     private String status;
-    private LocalDateTime createdAt;
+    private String note;
+    private OffsetDateTime createdAt;
 }

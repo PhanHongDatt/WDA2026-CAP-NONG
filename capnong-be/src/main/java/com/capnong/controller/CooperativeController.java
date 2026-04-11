@@ -1,162 +1,144 @@
 package com.capnong.controller;
 
+import com.capnong.dto.request.BundleCreateRequest;
+import com.capnong.dto.request.PledgeRequest;
 import com.capnong.dto.response.ApiResponse;
-import com.capnong.exception.AppException;
-import com.capnong.model.BundlePledge;
-import com.capnong.model.CooperativeBundle;
-import com.capnong.model.enums.BundleStatus;
-import com.capnong.model.enums.PledgeStatus;
-import com.capnong.model.enums.ProductCategory;
-import com.capnong.repository.BundlePledgeRepository;
-import com.capnong.repository.CooperativeBundleRepository;
+import com.capnong.dto.response.BundleResponseDto;
+import com.capnong.dto.response.PledgeResponseDto;
 import com.capnong.security.UserDetailsImpl;
+import com.capnong.service.CooperativeService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/cooperatives")
 public class CooperativeController {
 
-    private final CooperativeBundleRepository bundleRepository;
-    private final BundlePledgeRepository pledgeRepository;
+    private final CooperativeService cooperativeService;
 
-    public CooperativeController(CooperativeBundleRepository bundleRepository,
-                                  BundlePledgeRepository pledgeRepository) {
-        this.bundleRepository = bundleRepository;
-        this.pledgeRepository = pledgeRepository;
+    public CooperativeController(CooperativeService cooperativeService) {
+        this.cooperativeService = cooperativeService;
     }
 
-    // ─── Bundle CRUD ────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    //  BUNDLE — Public / Browse
+    // ═══════════════════════════════════════════════════════════════
 
+    /**
+     * Danh sách bundles đang OPEN (buyer sỉ browse).
+     */
     @GetMapping("/bundles")
-    public ResponseEntity<ApiResponse<List<CooperativeBundle>>> getOpenBundles() {
-        List<CooperativeBundle> bundles = bundleRepository.findByStatus(BundleStatus.OPEN);
-        return ResponseEntity.ok(ApiResponse.success("OK", bundles));
+    public ResponseEntity<ApiResponse<List<BundleResponseDto>>> getOpenBundles() {
+        return ResponseEntity.ok(ApiResponse.success("OK", cooperativeService.getOpenBundles()));
     }
 
+    /**
+     * Chi tiết bundle + pledges + progress.
+     */
     @GetMapping("/bundles/{id}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getBundle(@PathVariable UUID id) {
-        CooperativeBundle bundle = bundleRepository.findById(id)
-                .orElseThrow(() -> new AppException("Không tìm thấy gói", HttpStatus.NOT_FOUND));
-        List<BundlePledge> pledges = pledgeRepository.findByBundleIdAndStatus(id, PledgeStatus.ACTIVE);
-        return ResponseEntity.ok(ApiResponse.success("OK",
-                Map.of("bundle", bundle, "pledges", pledges)));
+    public ResponseEntity<ApiResponse<BundleResponseDto>> getBundle(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("OK", cooperativeService.getBundleById(id)));
     }
 
+    /**
+     * Bundles của 1 HTX_SHOP.
+     */
+    @GetMapping("/shops/{shopId}/bundles")
+    public ResponseEntity<ApiResponse<List<BundleResponseDto>>> getShopBundles(@PathVariable UUID shopId) {
+        return ResponseEntity.ok(ApiResponse.success("OK", cooperativeService.getShopBundles(shopId)));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  BUNDLE — Manager Actions
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * HTX_MANAGER tạo Bundle mới.
+     */
     @PostMapping("/bundles")
     @PreAuthorize("hasRole('HTX_MANAGER')")
-    public ResponseEntity<ApiResponse<CooperativeBundle>> createBundle(
-            @RequestBody CooperativeBundle bundle) {
-        bundle.setStatus(BundleStatus.OPEN);
-        bundle.setCurrentPledgedQuantity(BigDecimal.ZERO);
-        CooperativeBundle saved = bundleRepository.save(bundle);
+    public ResponseEntity<ApiResponse<BundleResponseDto>> createBundle(
+            @Valid @RequestBody BundleCreateRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        BundleResponseDto result = cooperativeService.createBundle(request, userDetails.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tạo gói thu mua thành công", saved));
+                .body(ApiResponse.success("Tạo gói gom đơn thành công", result));
     }
 
-    // ─── Pledge (cam kết nông sản) ──────────────
+    /**
+     * HTX_MANAGER hủy Bundle.
+     */
+    @PutMapping("/bundles/{id}/cancel")
+    @PreAuthorize("hasRole('HTX_MANAGER')")
+    public ResponseEntity<ApiResponse<BundleResponseDto>> cancelBundle(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
+        BundleResponseDto result = cooperativeService.cancelBundle(id, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.success("Đã hủy gói gom đơn", result));
+    }
+
+    /**
+     * HTX_MANAGER xác nhận Bundle đã đủ → tính doanh thu + tạo Product.
+     */
+    @PutMapping("/bundles/{id}/confirm")
+    @PreAuthorize("hasRole('HTX_MANAGER')")
+    public ResponseEntity<ApiResponse<BundleResponseDto>> confirmBundle(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        BundleResponseDto result = cooperativeService.confirmBundle(id, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.success("Bundle đã xác nhận, product đã tạo", result));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  PLEDGE — Farmer / HTX_MEMBER Actions
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Farmer cam kết (pledge) sản lượng vào Bundle.
+     */
     @PostMapping("/bundles/{bundleId}/pledges")
     @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER')")
-    public ResponseEntity<ApiResponse<BundlePledge>> addPledge(
+    public ResponseEntity<ApiResponse<PledgeResponseDto>> addPledge(
             @PathVariable UUID bundleId,
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody PledgeRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        CooperativeBundle bundle = bundleRepository.findById(bundleId)
-                .orElseThrow(() -> new AppException("Không tìm thấy gói", HttpStatus.NOT_FOUND));
-
-        if (bundle.getStatus() != BundleStatus.OPEN) {
-            throw new AppException("Gói không còn mở", HttpStatus.BAD_REQUEST);
-        }
-        if (pledgeRepository.existsByBundleIdAndFarmerId(bundleId, userDetails.getId())) {
-            throw new AppException("Bạn đã cam kết rồi", HttpStatus.CONFLICT);
-        }
-
-        BigDecimal quantity = new BigDecimal(body.get("quantity").toString());
-
-        // Check min pledge
-        if (bundle.getMinPledgeQuantity() != null && quantity.compareTo(bundle.getMinPledgeQuantity()) < 0) {
-            throw new AppException("Số lượng tối thiểu là " + bundle.getMinPledgeQuantity(), HttpStatus.BAD_REQUEST);
-        }
-
-        // Check remaining capacity
-        BigDecimal remaining = bundle.getTargetQuantity().subtract(bundle.getCurrentPledgedQuantity());
-        if (quantity.compareTo(remaining) > 0) {
-            throw new AppException("Số lượng vượt quá dung lượng còn lại: " + remaining, HttpStatus.BAD_REQUEST);
-        }
-
-        // Calculate contribution %
-        BigDecimal newTotal = bundle.getCurrentPledgedQuantity().add(quantity);
-        BigDecimal percent = quantity.divide(bundle.getTargetQuantity(), MathContext.DECIMAL64)
-                .multiply(BigDecimal.valueOf(100));
-
-        BundlePledge pledge = BundlePledge.builder()
-                .bundleId(bundleId)
-                .farmerId(userDetails.getId())
-                .quantity(quantity)
-                .contributionPercent(percent)
-                .estimatedRevenue(bundle.getPricePerUnit().multiply(quantity))
-                .note((String) body.get("note"))
-                .build();
-        pledgeRepository.save(pledge);
-
-        // Update bundle total
-        bundle.setCurrentPledgedQuantity(newTotal);
-        if (newTotal.compareTo(bundle.getTargetQuantity()) >= 0) {
-            bundle.setStatus(BundleStatus.FULL);
-        }
-        bundleRepository.save(bundle);
-
+        PledgeResponseDto result = cooperativeService.createPledge(bundleId, request, userDetails.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Cam kết thành công", pledge));
+                .body(ApiResponse.success("Cam kết thành công", result));
     }
 
+    /**
+     * Farmer rút cam kết.
+     */
     @DeleteMapping("/pledges/{pledgeId}")
     @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER')")
     public ResponseEntity<ApiResponse<Void>> withdrawPledge(
             @PathVariable UUID pledgeId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        BundlePledge pledge = pledgeRepository.findById(pledgeId)
-                .orElseThrow(() -> new AppException("Không tìm thấy cam kết", HttpStatus.NOT_FOUND));
-
-        if (!pledge.getFarmerId().equals(userDetails.getId())) {
-            throw new AppException("Không có quyền", HttpStatus.FORBIDDEN);
-        }
-        if (pledge.getStatus() != PledgeStatus.ACTIVE) {
-            throw new AppException("Cam kết không thể rút", HttpStatus.BAD_REQUEST);
-        }
-
-        pledge.setStatus(PledgeStatus.WITHDRAWN);
-        pledgeRepository.save(pledge);
-
-        // Update bundle total
-        CooperativeBundle bundle = bundleRepository.findById(pledge.getBundleId()).get();
-        bundle.setCurrentPledgedQuantity(bundle.getCurrentPledgedQuantity().subtract(pledge.getQuantity()));
-        if (bundle.getStatus() == BundleStatus.FULL) {
-            bundle.setStatus(BundleStatus.OPEN);
-        }
-        bundleRepository.save(bundle);
-
+        cooperativeService.withdrawPledge(pledgeId, userDetails.getId());
         return ResponseEntity.ok(ApiResponse.success("Đã rút cam kết", null));
     }
 
+    /**
+     * Pledges của farmer hiện tại.
+     */
     @GetMapping("/my-pledges")
     @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER')")
-    public ResponseEntity<ApiResponse<List<BundlePledge>>> getMyPledges(
+    public ResponseEntity<ApiResponse<List<PledgeResponseDto>>> getMyPledges(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        List<BundlePledge> pledges = pledgeRepository.findByFarmerIdAndStatus(
-                userDetails.getId(), PledgeStatus.ACTIVE);
-        return ResponseEntity.ok(ApiResponse.success("OK", pledges));
+
+        return ResponseEntity.ok(ApiResponse.success("OK", cooperativeService.getMyPledges(userDetails.getId())));
     }
 }

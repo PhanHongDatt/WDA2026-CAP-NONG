@@ -1,6 +1,7 @@
 package com.capnong.model;
 
 import com.capnong.model.enums.PledgeStatus;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -19,11 +20,19 @@ public class BundlePledge {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "bundle_id", nullable = false)
-    private UUID bundleId;
+    /* ─── Relationships ─── */
 
-    @Column(name = "farmer_id", nullable = false)
-    private UUID farmerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bundle_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "pledges"})
+    private CooperativeBundle bundle;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "farmer_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private User farmer;
+
+    /* ─── Pledge Data ─── */
 
     @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal quantity;

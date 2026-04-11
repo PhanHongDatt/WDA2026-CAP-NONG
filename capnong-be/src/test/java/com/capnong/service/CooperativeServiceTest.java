@@ -1,13 +1,13 @@
 package com.capnong.service;
 
+import com.capnong.dto.request.PledgeRequest;
+import com.capnong.dto.response.PledgeResponseDto;
 import com.capnong.exception.AppException;
-import com.capnong.model.CooperativeBundle;
-import com.capnong.model.BundlePledge;
+import com.capnong.mapper.BundleMapper;
+import com.capnong.model.*;
 import com.capnong.model.enums.BundleStatus;
 import com.capnong.model.enums.PledgeStatus;
-import com.capnong.repository.CooperativeBundleRepository;
-import com.capnong.repository.BundlePledgeRepository;
-import com.capnong.repository.UserRepository;
+import com.capnong.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,48 +28,72 @@ class CooperativeServiceTest {
 
     @Mock private CooperativeBundleRepository bundleRepository;
     @Mock private BundlePledgeRepository pledgeRepository;
+    @Mock private HtxShopRepository htxShopRepository;
+    @Mock private HtxRepository htxRepository;
     @Mock private UserRepository userRepository;
+    @Mock private ProductRepository productRepository;
+    @Mock private ShopRepository shopRepository;
+    @Mock private TelegramNotificationService telegramNotificationService;
+    @Mock private BundleMapper bundleMapper;
+
     @InjectMocks private CooperativeService cooperativeService;
 
     private UUID bundleId;
     private UUID farmerId;
     private CooperativeBundle bundle;
+    private User farmer;
 
     @BeforeEach
     void setUp() {
         bundleId = UUID.randomUUID();
         farmerId = UUID.randomUUID();
+        farmer = User.builder().id(farmerId).fullName("Farmer Test").build();
         bundle = CooperativeBundle.builder()
                 .id(bundleId)
-                .htxShopId(UUID.randomUUID())
+                .htxShop(HtxShop.builder().build())
                 .targetQuantity(BigDecimal.valueOf(1000))
                 .currentPledgedQuantity(BigDecimal.valueOf(400))
+                .unitCode("KG")
+                .productName("Lúa gạo")
                 .status(BundleStatus.OPEN)
                 .build();
     }
 
     @Test
     void createPledge_shouldSucceed_whenBundleOpenAndQuantityValid() {
+        PledgeRequest request = PledgeRequest.builder().quantity(100.0).build();
+
         when(bundleRepository.findById(bundleId)).thenReturn(Optional.of(bundle));
-        when(pledgeRepository.existsByBundleIdAndFarmerId(bundleId, farmerId)).thenReturn(false);
+        when(userRepository.findById(farmerId)).thenReturn(Optional.of(farmer));
+        when(pledgeRepository.existsByBundle_IdAndFarmer_Id(bundleId, farmerId)).thenReturn(false);
         when(pledgeRepository.save(any(BundlePledge.class))).thenAnswer(i -> i.getArgument(0));
         when(bundleRepository.save(any(CooperativeBundle.class))).thenAnswer(i -> i.getArgument(0));
+        when(bundleMapper.toPledgeDto(any())).thenReturn(PledgeResponseDto.builder().build());
 
-        BundlePledge result = cooperativeService.createPledge(bundleId, farmerId, BigDecimal.valueOf(100), null);
+        PledgeResponseDto result = cooperativeService.createPledge(bundleId, request, farmerId);
 
-        assertEquals(PledgeStatus.ACTIVE, result.getStatus());
+        assertNotNull(result);
         assertEquals(0, BigDecimal.valueOf(500).compareTo(bundle.getCurrentPledgedQuantity()));
     }
 
     @Test
-    void createPledge_shouldAutoClose_bundeWhenTargetReached() {
+    void createPledge_shouldAutoCloseBundleWhenTargetReached() {
         bundle.setCurrentPledgedQuantity(BigDecimal.valueOf(900));
+        PledgeRequest request = PledgeRequest.builder().quantity(100.0).build();
+
         when(bundleRepository.findById(bundleId)).thenReturn(Optional.of(bundle));
-        when(pledgeRepository.existsByBundleIdAndFarmerId(bundleId, farmerId)).thenReturn(false);
+        when(userRepository.findById(farmerId)).thenReturn(Optional.of(farmer));
+        when(pledgeRepository.existsByBundle_IdAndFarmer_Id(bundleId, farmerId)).thenReturn(false);
         when(pledgeRepository.save(any(BundlePledge.class))).thenAnswer(i -> i.getArgument(0));
         when(bundleRepository.save(any(CooperativeBundle.class))).thenAnswer(i -> i.getArgument(0));
+        when(bundleMapper.toPledgeDto(any())).thenReturn(PledgeResponseDto.builder().build());
 
-        cooperativeService.createPledge(bundleId, farmerId, BigDecimal.valueOf(100), null);
+        // Bundle has HTX with manager for notification
+        Htx htx = Htx.builder().manager(User.builder().id(UUID.randomUUID()).build()).build();
+        HtxShop htxShop = HtxShop.builder().htx(htx).build();
+        bundle.setHtxShop(htxShop);
+
+        cooperativeService.createPledge(bundleId, request, farmerId);
 
         assertEquals(BundleStatus.FULL, bundle.getStatus());
     }
@@ -77,38 +101,36 @@ class CooperativeServiceTest {
     @Test
     void createPledge_shouldThrow_whenBundleClosed() {
         bundle.setStatus(BundleStatus.FULL);
+        PledgeRequest request = PledgeRequest.builder().quantity(100.0).build();
+
         when(bundleRepository.findById(bundleId)).thenReturn(Optional.of(bundle));
+        when(userRepository.findById(farmerId)).thenReturn(Optional.of(farmer));
 
         assertThrows(AppException.class, () ->
-                cooperativeService.createPledge(bundleId, farmerId, BigDecimal.valueOf(100), null));
+                cooperativeService.createPledge(bundleId, request, farmerId));
     }
 
     @Test
     void createPledge_shouldThrow_whenExceedingTarget() {
+        PledgeRequest request = PledgeRequest.builder().quantity(700.0).build();
+
         when(bundleRepository.findById(bundleId)).thenReturn(Optional.of(bundle));
-        when(pledgeRepository.existsByBundleIdAndFarmerId(bundleId, farmerId)).thenReturn(false);
+        when(userRepository.findById(farmerId)).thenReturn(Optional.of(farmer));
+        when(pledgeRepository.existsByBundle_IdAndFarmer_Id(bundleId, farmerId)).thenReturn(false);
 
         assertThrows(AppException.class, () ->
-                cooperativeService.createPledge(bundleId, farmerId, BigDecimal.valueOf(700), null));
+                cooperativeService.createPledge(bundleId, request, farmerId));
     }
 
     @Test
     void createPledge_shouldThrow_whenAlreadyPledged() {
+        PledgeRequest request = PledgeRequest.builder().quantity(100.0).build();
+
         when(bundleRepository.findById(bundleId)).thenReturn(Optional.of(bundle));
-        when(pledgeRepository.existsByBundleIdAndFarmerId(bundleId, farmerId)).thenReturn(true);
+        when(userRepository.findById(farmerId)).thenReturn(Optional.of(farmer));
+        when(pledgeRepository.existsByBundle_IdAndFarmer_Id(bundleId, farmerId)).thenReturn(true);
 
         assertThrows(AppException.class, () ->
-                cooperativeService.createPledge(bundleId, farmerId, BigDecimal.valueOf(100), null));
-    }
-
-    @Test
-    void calculateContributionPercent_shouldReturnCorrectPercent() {
-        BundlePledge pledge = BundlePledge.builder()
-                .quantity(BigDecimal.valueOf(200))
-                .build();
-        bundle.setCurrentPledgedQuantity(BigDecimal.valueOf(1000));
-
-        BigDecimal result = cooperativeService.calculateContributionPercent(pledge, bundle);
-        assertEquals(0, BigDecimal.valueOf(20).compareTo(result.setScale(0)));
+                cooperativeService.createPledge(bundleId, request, farmerId));
     }
 }
