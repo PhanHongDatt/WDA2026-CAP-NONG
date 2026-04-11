@@ -60,4 +60,7 @@ public class User extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "htx_id")
     private Htx htx;
+
+    @Column(name = "telegram_chat_id", length = 50)
+    private String telegramChatId;
 }

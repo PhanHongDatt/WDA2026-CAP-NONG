@@ -3,11 +3,10 @@ package com.capnong.service;
 import com.capnong.exception.AppException;
 import com.capnong.model.Review;
 import com.capnong.model.OrderItem;
-import com.capnong.model.SubOrder;
+import com.capnong.model.Order;
 import com.capnong.model.enums.OrderStatus;
 import com.capnong.repository.OrderItemRepository;
 import com.capnong.repository.ReviewRepository;
-import com.capnong.repository.SubOrderRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,14 +20,11 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final OrderItemRepository orderItemRepository;
-    private final SubOrderRepository subOrderRepository;
 
     public ReviewService(ReviewRepository reviewRepository,
-                         OrderItemRepository orderItemRepository,
-                         SubOrderRepository subOrderRepository) {
+                         OrderItemRepository orderItemRepository) {
         this.reviewRepository = reviewRepository;
         this.orderItemRepository = orderItemRepository;
-        this.subOrderRepository = subOrderRepository;
     }
 
     public Page<Review> getByProductId(UUID productId, Pageable pageable) {
@@ -41,10 +37,12 @@ public class ReviewService {
         OrderItem orderItem = orderItemRepository.findById(review.getOrderItemId())
                 .orElseThrow(() -> new AppException("Mục đơn hàng không tồn tại", HttpStatus.NOT_FOUND));
 
-        SubOrder subOrder = subOrderRepository.findById(orderItem.getSubOrderId())
-                .orElseThrow(() -> new AppException("Đơn hàng con không tồn tại", HttpStatus.NOT_FOUND));
+        Order order = orderItem.getOrder();
+        if (order == null) {
+            throw new AppException("Đơn hàng không tồn tại", HttpStatus.NOT_FOUND);
+        }
 
-        if (subOrder.getStatus() != OrderStatus.DELIVERED) {
+        if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new AppException("Chỉ đánh giá được khi đã nhận hàng", HttpStatus.BAD_REQUEST);
         }
 

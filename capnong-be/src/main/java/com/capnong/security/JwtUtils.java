@@ -98,14 +98,7 @@ public class JwtUtils {
     }
 
     private SecretKey getSigningKey() {
-        // Dùng UTF-8 bytes — tương thích cả base64 và plain text secrets
-        byte[] keyBytes = jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        // Pad nếu key ngắn hơn 256-bit (HMAC-SHA256 yêu cầu ≥ 32 bytes)
-        if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
-        }
+        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
