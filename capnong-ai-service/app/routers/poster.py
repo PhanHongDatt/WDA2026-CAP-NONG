@@ -5,7 +5,7 @@ from app.schemas.marketing_schema import (
     PosterImageRequest, PosterImageResponse,
 )
 from app.services.gemini_service import generate_poster_content, generate_poster_image
-from app.services.clipdrop_service import remove_background
+from app.services.rembg_service import remove_background
 
 router = APIRouter(prefix="/ai", tags=["AI Marketing"])
 

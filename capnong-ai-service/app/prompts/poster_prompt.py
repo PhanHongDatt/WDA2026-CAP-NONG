@@ -35,16 +35,19 @@ Trả về JSON hợp lệ, KHÔNG markdown:
 
 POSTER_IMAGE_PROMPT_TEMPLATE = """
 Create a Vietnamese agricultural product advertising poster.
-Product: {product_name}
+Product to feature: "{product_name}"
 {description_line}
 {price_line}
 {shop_line}
 {province_line}
 
 Style: Clean, modern Vietnamese farm produce poster. Vibrant colors.
-Show fresh produce prominently. Include product name in Vietnamese.
-The poster should look professional and suitable for social media marketing.
-Do NOT include any English text. All text must be in Vietnamese.
+Show fresh produce prominently. 
+IMPORTANT TYPOGRAPHY INSTRUCTIONS:
+- You must include the exact text "{product_name}" on the poster.
+- Render all text EXACTLY as provided, paying close attention to Vietnamese diacritics (tone marks).
+- Do NOT hallucinate or misspell words. Do NOT include any English text.
+- If you cannot render Vietnamese accents perfectly, use uppercase without accents.
 """
 
 

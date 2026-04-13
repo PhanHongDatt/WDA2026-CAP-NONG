@@ -183,45 +183,74 @@ async def generate_poster_image(
     shop_name: str | None = None,
 ) -> dict[str, Any]:
     """
-    Dùng Gemini image generation để tạo poster hoàn chỉnh.
-    Trả về base64 image nếu thành công.
-    Fallback: trả về lỗi nếu model không hỗ trợ image generation.
+    Dùng Gemini REST API trực tiếp để tạo poster ảnh.
+    SDK google-generativeai 0.7.x chưa hỗ trợ response_modalities,
+    nên gọi REST API qua httpx.
     """
+    import httpx
+
     prompt = build_poster_image_prompt(product_name, description, province,
                                        price_display, shop_name)
     try:
-        # Gemini 2.0 Flash supports image generation
-        model = genai.GenerativeModel(model_name="gemini-2.0-flash-exp")
-
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                response_modalities=["IMAGE", "TEXT"],
-            ),
+        api_url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"gemini-2.5-flash-image:generateContent?key={settings.gemini_api_key}"
         )
 
-        # Extract image from response parts
-        for part in response.candidates[0].content.parts:
-            if hasattr(part, "inline_data") and part.inline_data is not None:
-                image_data = part.inline_data.data
-                mime_type = part.inline_data.mime_type or "image/png"
-                return {
-                    "image_base64": base64.b64encode(image_data).decode("utf-8"),
-                    "mime_type": mime_type,
-                    "prompt_used": prompt,
-                    "fallback": False,
-                }
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "responseModalities": ["IMAGE", "TEXT"],
+                "temperature": 0.8,
+                "maxOutputTokens": 8192,
+            },
+        }
 
-        # No image in response — fallback
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(api_url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        # Extract image from response
+        candidates = data.get("candidates", [])
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            for part in parts:
+                inline_data = part.get("inlineData")
+                if inline_data and inline_data.get("data"):
+                    return {
+                        "image_base64": inline_data["data"],
+                        "mime_type": inline_data.get("mimeType", "image/png"),
+                        "prompt_used": prompt,
+                        "fallback": False,
+                    }
+
+        # No image in response
         logger.warning("Gemini did not return image data, falling back")
+        text_parts = []
+        if candidates:
+            for part in candidates[0].get("content", {}).get("parts", []):
+                if "text" in part:
+                    text_parts.append(part["text"])
+
         return {
             "image_base64": None,
             "mime_type": "image/png",
             "prompt_used": prompt,
             "fallback": True,
-            "error": "Model không trả về ảnh. Hãy dùng chế độ HTML template.",
+            "error": "Model không trả về ảnh. " + (" ".join(text_parts) if text_parts else "Hãy dùng chế độ HTML template."),
         }
 
+    except httpx.HTTPStatusError as e:
+        error_body = e.response.text[:300] if e.response else str(e)
+        logger.error(f"Gemini API HTTP error: {error_body}")
+        return {
+            "image_base64": None,
+            "mime_type": "image/png",
+            "prompt_used": prompt,
+            "fallback": True,
+            "error": f"Gemini API error: {error_body}",
+        }
     except Exception as e:
         logger.error(f"Poster image generation failed: {e}")
         return {
