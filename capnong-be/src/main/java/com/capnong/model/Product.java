@@ -72,6 +72,10 @@ public class Product extends BaseEntity {
     @Builder.Default
     private Integer totalReviews = 0;
 
+    /** Non-null khi product được tạo từ Bundle (virtual product cho wholesale) */
+    @Column(name = "bundle_id")
+    private java.util.UUID bundleId;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
     @Builder.Default

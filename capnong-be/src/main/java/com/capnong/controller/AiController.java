@@ -1,13 +1,18 @@
 package com.capnong.controller;
 
 import com.capnong.dto.request.AiRefineRequest;
+import com.capnong.dto.request.CaptionGenerateRequest;
+import com.capnong.dto.request.PosterGenerateRequest;
 import com.capnong.dto.response.AiRefineResponse;
+import com.capnong.dto.response.AiSessionResultDto;
 import com.capnong.dto.response.ApiResponse;
 import com.capnong.service.AiListingService;
+import com.capnong.service.AiMarketingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -19,22 +24,27 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
-@Tag(name = "AI Listing Assistant", description = "Trợ lý AI cho việc đăng sản phẩm")
+@Tag(name = "AI Assistant", description = "Trợ lý AI Marketing & Listing")
 public class AiController {
 
     private final AiListingService aiListingService;
+    private final AiMarketingService aiMarketingService;
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Voice-to-Product (existing)
+    // ═══════════════════════════════════════════════════════════════
 
     @PostMapping("/voice-session")
     @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
     @Operation(summary = "Tạo phiên Voice-to-Product",
-            description = "Tạo session AI và đẩy transcript vào hàng đợi Kafka để xử lý bất đồng bộ. Trả về sessionId để FE poll kết quả.")
+            description = "Tạo session AI và đẩy transcript vào hàng đợi Kafka để xử lý bất đồng bộ.")
     public ResponseEntity<ApiResponse<Map<String, Object>>> startVoiceSession(
             @RequestBody Map<String, String> request,
             Authentication authentication) {
 
         String transcript = request.get("transcript");
         String language = request.getOrDefault("language", "vi-VN");
-        String audioFileUrl = request.get("audioFileUrl"); // nullable
+        String audioFileUrl = request.get("audioFileUrl");
 
         UUID sessionId = aiListingService.startVoiceExtractionSession(
                 authentication.getName(), transcript, language, audioFileUrl);
@@ -52,7 +62,71 @@ public class AiController {
             Authentication authentication) {
 
         AiRefineResponse response = aiListingService.refineDescription(request, authentication.getName());
-
         return ResponseEntity.ok(ApiResponse.success("AI đã trau chuốt mô tả thành công", response));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  AI Caption Generator
+    // ═══════════════════════════════════════════════════════════════
+
+    @PostMapping("/caption")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "AI Caption Generator",
+            description = "Tạo 3 caption theo 3 phong cách (FUNNY, RUSTIC, PROFESSIONAL) + hashtags. "
+                    + "Trả về sessionId để FE poll kết quả qua GET /api/ai/sessions/{id}.")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> generateCaption(
+            @Valid @RequestBody CaptionGenerateRequest request,
+            Authentication authentication) {
+
+        UUID sessionId = aiMarketingService.startCaptionSession(request, authentication.getName());
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.success("Caption đang được tạo. Poll kết quả qua GET /api/ai/sessions/" + sessionId,
+                        Map.of("sessionId", sessionId, "status", "IN_PROGRESS")));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  AI Poster Generator
+    // ═══════════════════════════════════════════════════════════════
+
+    @PostMapping("/poster")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "AI Poster Generator",
+            description = "Tạo poster nông sản. Mode 'HTML' = tạo text content cho FE render template. "
+                    + "Mode 'AI_IMAGE' = Gemini sinh ảnh poster hoàn chỉnh. "
+                    + "Trả về sessionId để FE poll kết quả.")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> generatePoster(
+            @Valid @RequestBody PosterGenerateRequest request,
+            Authentication authentication) {
+
+        UUID sessionId = aiMarketingService.startPosterSession(request, authentication.getName());
+        String mode = request.getMode() != null ? request.getMode() : "HTML";
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.success("Poster đang được tạo (mode: " + mode + "). Poll kết quả qua GET /api/ai/sessions/" + sessionId,
+                        Map.of("sessionId", sessionId, "status", "IN_PROGRESS", "mode", mode)));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Session Polling (chung cho tất cả AI sessions)
+    // ═══════════════════════════════════════════════════════════════
+
+    @GetMapping("/sessions/{sessionId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Poll kết quả AI session",
+            description = "FE gọi endpoint này để kiểm tra trạng thái và lấy kết quả AI session. "
+                    + "Trả về status IN_PROGRESS/COMPLETED/FAILED + data tương ứng.")
+    public ResponseEntity<ApiResponse<AiSessionResultDto>> getSessionResult(
+            @PathVariable UUID sessionId) {
+
+        AiSessionResultDto result = aiMarketingService.getSessionResult(sessionId);
+
+        String message = switch (result.getStatus()) {
+            case "COMPLETED" -> "Kết quả đã sẵn sàng";
+            case "FAILED" -> "Xử lý thất bại";
+            default -> "Đang xử lý...";
+        };
+
+        return ResponseEntity.ok(ApiResponse.success(message, result));
     }
 }

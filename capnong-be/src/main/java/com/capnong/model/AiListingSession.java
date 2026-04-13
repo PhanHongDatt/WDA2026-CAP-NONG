@@ -37,4 +37,12 @@ public class AiListingSession extends BaseEntity {
     private Product product;
 
     private LocalDateTime completedAt;
+
+    /** JSON kết quả AI (caption/poster) — lưu toàn bộ response */
+    @Column(columnDefinition = "TEXT")
+    private String resultJson;
+
+    /** Thông báo lỗi nếu xử lý thất bại */
+    @Column(length = 500)
+    private String errorMessage;
 }

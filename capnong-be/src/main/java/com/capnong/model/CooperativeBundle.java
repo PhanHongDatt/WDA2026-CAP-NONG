@@ -2,6 +2,7 @@ package com.capnong.model;
 
 import com.capnong.model.enums.BundleStatus;
 import com.capnong.model.enums.ProductCategory;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -9,6 +10,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -20,8 +23,23 @@ public class CooperativeBundle {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "htx_shop_id", nullable = false)
-    private UUID htxShopId;
+    /* ─── Relationships ─── */
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "htx_shop_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private HtxShop htxShop;
+
+    @OneToMany(mappedBy = "bundle", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<BundlePledge> pledges = new ArrayList<>();
+
+    /** Product ảo được tạo từ Bundle — để buyer browse & checkout */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private Product product;
+
+    /* ─── Bundle Info ─── */
 
     @Enumerated(EnumType.STRING)
     @Column(name = "product_category", nullable = false, length = 20)

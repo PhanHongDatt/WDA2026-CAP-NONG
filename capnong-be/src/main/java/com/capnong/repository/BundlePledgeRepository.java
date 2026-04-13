@@ -11,9 +11,10 @@ import java.util.UUID;
 
 @Repository
 public interface BundlePledgeRepository extends JpaRepository<BundlePledge, UUID> {
-    List<BundlePledge> findByBundleId(UUID bundleId);
-    List<BundlePledge> findByBundleIdAndStatus(UUID bundleId, PledgeStatus status);
-    List<BundlePledge> findByFarmerIdAndStatus(UUID farmerId, PledgeStatus status);
-    Optional<BundlePledge> findByBundleIdAndFarmerId(UUID bundleId, UUID farmerId);
-    boolean existsByBundleIdAndFarmerId(UUID bundleId, UUID farmerId);
+    List<BundlePledge> findByBundle_Id(UUID bundleId);
+    List<BundlePledge> findByBundle_IdAndStatus(UUID bundleId, PledgeStatus status);
+    List<BundlePledge> findByBundle_IdAndStatusIn(UUID bundleId, List<PledgeStatus> statuses);
+    List<BundlePledge> findByFarmer_IdAndStatus(UUID farmerId, PledgeStatus status);
+    Optional<BundlePledge> findByBundle_IdAndFarmer_Id(UUID bundleId, UUID farmerId);
+    boolean existsByBundle_IdAndFarmer_Id(UUID bundleId, UUID farmerId);
 }

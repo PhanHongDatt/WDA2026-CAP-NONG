@@ -1,9 +1,13 @@
 package com.capnong.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "htx_shops")
@@ -26,4 +30,17 @@ public class HtxShop extends BaseEntity {
 
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
+
+    /**
+     * Shop entity tương ứng — dùng để tạo Product (Product.shop_id → shops.id).
+     * Được tạo tự động khi HTX_SHOP được tạo.
+     */
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "shop_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Shop shop;
+
+    @OneToMany(mappedBy = "htxShop")
+    @Builder.Default
+    private List<CooperativeBundle> bundles = new ArrayList<>();
 }

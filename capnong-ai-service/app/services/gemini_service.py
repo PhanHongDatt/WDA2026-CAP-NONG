@@ -1,5 +1,6 @@
 import json
 import re
+import base64
 import logging
 from typing import Any
 import google.generativeai as genai
@@ -7,6 +8,9 @@ from app.config import get_settings
 from app.prompts.voice_prompt import VOICE_TO_PRODUCT_SYSTEM_PROMPT, build_voice_prompt
 from app.prompts.refiner_prompt import REFINER_SYSTEM_PROMPT, build_refiner_prompt
 from app.prompts.caption_prompt import CAPTION_SYSTEM_PROMPT, build_caption_prompt
+from app.prompts.poster_prompt import (
+    POSTER_SYSTEM_PROMPT, build_poster_prompt, build_poster_image_prompt,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -69,6 +73,10 @@ def _extract_json(text: str) -> dict:
     raise ValueError(f"Không thể parse JSON từ response: {text[:200]}")
 
 
+# ═══════════════════════════════════════════════════
+#  Voice-to-Product
+# ═══════════════════════════════════════════════════
+
 async def extract_product_from_transcript(transcript: str) -> dict[str, Any]:
     """
     Gọi Gemini để trích xuất thông tin sản phẩm từ transcript.
@@ -96,6 +104,10 @@ async def extract_product_from_transcript(transcript: str) -> dict[str, Any]:
     raise RuntimeError("Tất cả attempts thất bại")
 
 
+# ═══════════════════════════════════════════════════
+#  AI Refiner
+# ═══════════════════════════════════════════════════
+
 async def refine_description(raw_desc: str, product_name: str | None = None) -> dict[str, Any]:
     """Gọi Gemini để chuẩn hoá mô tả sản phẩm."""
     model = genai.GenerativeModel(
@@ -108,7 +120,13 @@ async def refine_description(raw_desc: str, product_name: str | None = None) -> 
     return _extract_json(response.text)
 
 
-async def generate_captions(product_name: str, description: str) -> dict[str, Any]:
+# ═══════════════════════════════════════════════════
+#  Caption Generator v2
+# ═══════════════════════════════════════════════════
+
+async def generate_captions(product_name: str, description: str,
+                            province: str | None = None,
+                            style: str | None = None) -> dict[str, Any]:
     """Gọi Gemini để tạo 3 caption theo phong cách khác nhau."""
     model = genai.GenerativeModel(
         model_name=settings.gemini_model,
@@ -116,9 +134,129 @@ async def generate_captions(product_name: str, description: str) -> dict[str, An
             temperature=0.8,   # Cao hơn để caption creative hơn
             top_p=0.9,
             max_output_tokens=4096,
+            response_mime_type="application/json",
         ),
         system_instruction=CAPTION_SYSTEM_PROMPT,
     )
-    prompt = build_caption_prompt(product_name, description)
+    prompt = build_caption_prompt(product_name, description, province, style)
     response = model.generate_content(prompt)
     return _extract_json(response.text)
+
+
+# ═══════════════════════════════════════════════════
+#  Poster Content Generator
+# ═══════════════════════════════════════════════════
+
+async def generate_poster_content(
+    product_name: str,
+    description: str | None = None,
+    province: str | None = None,
+    price_display: str | None = None,
+    shop_name: str | None = None,
+    template: str = "FRESH_GREEN",
+) -> dict[str, Any]:
+    """Gọi Gemini để tạo nội dung text cho poster (FE sẽ render HTML)."""
+    model = genai.GenerativeModel(
+        model_name=settings.gemini_model,
+        generation_config=genai.types.GenerationConfig(
+            temperature=0.7,
+            max_output_tokens=2048,
+            response_mime_type="application/json",
+        ),
+        system_instruction=POSTER_SYSTEM_PROMPT,
+    )
+    prompt = build_poster_prompt(product_name, description, province,
+                                price_display, shop_name, template)
+    response = model.generate_content(prompt)
+    return _extract_json(response.text)
+
+
+# ═══════════════════════════════════════════════════
+#  Poster AI Image Generator (Gemini Imagen)
+# ═══════════════════════════════════════════════════
+
+async def generate_poster_image(
+    product_name: str,
+    description: str | None = None,
+    province: str | None = None,
+    price_display: str | None = None,
+    shop_name: str | None = None,
+) -> dict[str, Any]:
+    """
+    Dùng Gemini REST API trực tiếp để tạo poster ảnh.
+    SDK google-generativeai 0.7.x chưa hỗ trợ response_modalities,
+    nên gọi REST API qua httpx.
+    """
+    import httpx
+
+    prompt = build_poster_image_prompt(product_name, description, province,
+                                       price_display, shop_name)
+    try:
+        api_url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"gemini-2.5-flash-image:generateContent?key={settings.gemini_api_key}"
+        )
+
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "responseModalities": ["IMAGE", "TEXT"],
+                "temperature": 0.8,
+                "maxOutputTokens": 8192,
+            },
+        }
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(api_url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        # Extract image from response
+        candidates = data.get("candidates", [])
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            for part in parts:
+                inline_data = part.get("inlineData")
+                if inline_data and inline_data.get("data"):
+                    return {
+                        "image_base64": inline_data["data"],
+                        "mime_type": inline_data.get("mimeType", "image/png"),
+                        "prompt_used": prompt,
+                        "fallback": False,
+                    }
+
+        # No image in response
+        logger.warning("Gemini did not return image data, falling back")
+        text_parts = []
+        if candidates:
+            for part in candidates[0].get("content", {}).get("parts", []):
+                if "text" in part:
+                    text_parts.append(part["text"])
+
+        return {
+            "image_base64": None,
+            "mime_type": "image/png",
+            "prompt_used": prompt,
+            "fallback": True,
+            "error": "Model không trả về ảnh. " + (" ".join(text_parts) if text_parts else "Hãy dùng chế độ HTML template."),
+        }
+
+    except httpx.HTTPStatusError as e:
+        error_body = e.response.text[:300] if e.response else str(e)
+        logger.error(f"Gemini API HTTP error: {error_body}")
+        return {
+            "image_base64": None,
+            "mime_type": "image/png",
+            "prompt_used": prompt,
+            "fallback": True,
+            "error": f"Gemini API error: {error_body}",
+        }
+    except Exception as e:
+        logger.error(f"Poster image generation failed: {e}")
+        return {
+            "image_base64": None,
+            "mime_type": "image/png",
+            "prompt_used": prompt,
+            "fallback": True,
+            "error": str(e),
+        }
