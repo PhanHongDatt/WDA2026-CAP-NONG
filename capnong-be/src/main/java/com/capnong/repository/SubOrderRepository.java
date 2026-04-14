@@ -6,11 +6,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface SubOrderRepository extends JpaRepository<SubOrder, UUID> {
     List<SubOrder> findByOrderId(UUID orderId);
-    List<SubOrder> findByShopIdAndStatusOrderByCreatedAtDesc(UUID shopId, OrderStatus status);
-    List<SubOrder> findByShopIdOrderByCreatedAtDesc(UUID shopId);
+    List<SubOrder> findByShop_IdAndStatusOrderByCreatedAtDesc(UUID shopId, OrderStatus status);
+    List<SubOrder> findByShop_IdOrderByCreatedAtDesc(UUID shopId);
+    Optional<SubOrder> findByIdAndShop_Owner_Id(UUID subOrderId, UUID ownerId);
 }
