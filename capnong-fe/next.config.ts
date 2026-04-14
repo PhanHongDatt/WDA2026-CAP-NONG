@@ -61,6 +61,16 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // API proxy rewrites — dev: forwards /api/* to backend, prod: Nginx handles this
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/:path*`,
+      },
+    ];
+  },
+
   // Security + caching headers
   async headers() {
     return [
