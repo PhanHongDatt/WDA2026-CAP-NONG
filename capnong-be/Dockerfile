@@ -31,7 +31,7 @@ WORKDIR /app
 RUN addgroup -S capnong && adduser -S capnong -G capnong
 
 COPY --from=builder /build/target/*.jar app.jar
-RUN chown capnong:capnong app.jar
+RUN mkdir -p /app/logs && chown -R capnong:capnong /app
 
 USER capnong
 EXPOSE 8080
