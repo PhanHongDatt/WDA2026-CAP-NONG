@@ -1,6 +1,8 @@
 package com.capnong.model;
 
 import com.capnong.model.enums.OrderStatus;
+import com.capnong.model.enums.PaymentMethod;
+import com.capnong.model.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -61,11 +63,21 @@ public class Order extends BaseEntity {
     @Column(nullable = false, length = 20)
     private OrderStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false, length = 10)
+    @Builder.Default
+    private PaymentMethod paymentMethod = PaymentMethod.COD;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 10)
+    @Builder.Default
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
     @Column(name = "is_merged", nullable = false)
     @Builder.Default
     private Boolean isMerged = false;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<OrderItem> items = new ArrayList<>();
+    private List<SubOrder> subOrders = new ArrayList<>();
 }

@@ -12,6 +12,7 @@ public interface ShopRepository extends JpaRepository<Shop, UUID> {
     Optional<Shop> findBySlug(String slug);
     Optional<Shop> findByOwnerUsername(String username);
     // Navigate via Shop.owner.id
+    Optional<Shop> findByOwner_Id(UUID ownerId);
     boolean existsByOwner_Id(UUID ownerId);
     boolean existsBySlug(String slug);
 }

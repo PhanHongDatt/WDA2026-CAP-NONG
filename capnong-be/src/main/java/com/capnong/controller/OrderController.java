@@ -3,14 +3,17 @@ package com.capnong.controller;
 import java.util.UUID;
 
 import com.capnong.dto.request.CheckoutRequest;
-import com.capnong.dto.response.OrderResponse;
+import com.capnong.dto.request.UpdateSubOrderStatusRequest;
+import com.capnong.dto.response.ApiResponse;
+import com.capnong.dto.response.OrderResponseDto;
 import com.capnong.security.UserDetailsImpl;
 import com.capnong.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,8 +25,11 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @PostMapping("/checkout")
-    public ResponseEntity<OrderResponse> checkout(
+    /**
+     * POST /api/orders — Checkout: tạo đơn hàng từ giỏ.
+     */
+    @PostMapping
+    public ResponseEntity<ApiResponse<OrderResponseDto>> checkout(
             @RequestHeader(value = "Guest-Session-Id", required = false) String guestSessionId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @Valid @RequestBody CheckoutRequest request) {
@@ -33,18 +39,85 @@ public class OrderController {
             throw new IllegalArgumentException("Either User ID or Guest-Session-Id must be provided for checkout");
         }
 
-        return ResponseEntity.ok(orderService.checkout(guestSessionId, userId, request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Đặt hàng thành công",
+                        orderService.checkout(guestSessionId, userId, request)));
     }
 
-    @GetMapping("/my-orders")
+    /**
+     * GET /api/orders — Lịch sử đơn hàng của buyer.
+     */
+    @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<OrderResponse>> getMyOrders(
+    public ResponseEntity<ApiResponse<List<OrderResponseDto>>> getMyOrders(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        if (userDetails == null) {
-            return ResponseEntity.status(401).build();
-        }
+        return ResponseEntity.ok(ApiResponse.success("OK",
+                orderService.getMyOrders(userDetails.getId())));
+    }
 
-        return ResponseEntity.ok(orderService.getMyOrders(userDetails.getId()));
+    /**
+     * GET /api/orders/{orderId} — Chi tiết đơn hàng.
+     */
+    @GetMapping("/{orderId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<OrderResponseDto>> getOrderDetail(
+            @PathVariable UUID orderId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        return ResponseEntity.ok(ApiResponse.success("OK",
+                orderService.getOrderDetail(orderId, userDetails.getId())));
+    }
+
+    /**
+     * GET /api/orders/guest/{orderCode}?phone=... — Tra cứu đơn hàng cho khách vãng lai.
+     */
+    @GetMapping("/guest/{orderCode}")
+    public ResponseEntity<ApiResponse<OrderResponseDto>> getGuestOrder(
+            @PathVariable String orderCode,
+            @RequestParam String phone) {
+
+        return ResponseEntity.ok(ApiResponse.success("OK",
+                orderService.getGuestOrder(orderCode, phone)));
+    }
+
+    /**
+     * POST /api/orders/{orderId}/cancel — Buyer hủy đơn (chỉ khi tất cả sub-orders PENDING).
+     */
+    @PostMapping("/{orderId}/cancel")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> cancelOrder(
+            @PathVariable UUID orderId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        orderService.cancelOrder(orderId, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.success("Đã hủy đơn hàng"));
+    }
+
+    /**
+     * PATCH /api/orders/sub-orders/{subOrderId}/status — Farmer cập nhật trạng thái đơn con.
+     */
+    @PatchMapping("/sub-orders/{subOrderId}/status")
+    @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
+    public ResponseEntity<ApiResponse<Void>> updateSubOrderStatus(
+            @PathVariable UUID subOrderId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @Valid @RequestBody UpdateSubOrderStatusRequest request) {
+
+        orderService.updateSubOrderStatus(subOrderId, userDetails.getId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật trạng thái"));
+    }
+
+    /**
+     * GET /api/orders/seller?status=... — Farmer xem danh sách đơn con của mình.
+     */
+    @GetMapping("/seller")
+    @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
+    public ResponseEntity<ApiResponse<List<OrderResponseDto.SubOrderDto>>> getSellerSubOrders(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) String status) {
+
+        return ResponseEntity.ok(ApiResponse.success("OK",
+                orderService.getSellerSubOrders(userDetails.getId(), status)));
     }
 }
