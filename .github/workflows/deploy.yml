@@ -1,0 +1,51 @@
+name: CD - Deploy to AWS EC2
+
+on:
+  workflow_run:
+    workflows: ["CI - Build & Test"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy
+    # Only deploy if CI passed AND it was a push to main (not a PR)
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            echo "Starting deployment at $(date)..."
+
+            if [ ! -d "/opt/capnong/.git" ]; then
+              echo "Error: /opt/capnong is not a git repository."
+              echo "Please run './deploy.sh setup' on the EC2 host first."
+              exit 1
+            fi
+
+            cd /opt/capnong
+
+            # Reset local changes and pull latest
+            git fetch --all
+            git reset --hard origin/main
+
+            # Rebuild images and start containers
+            docker compose -f docker-compose.prod.yml build --no-cache
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Prune old images to prevent disk space issues
+            docker system prune -f
+
+            echo "Deployment completed at $(date)"

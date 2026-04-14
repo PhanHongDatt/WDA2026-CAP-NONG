@@ -42,7 +42,14 @@ capnong-fe/yarn-error.log*
 # ─── Docker ────────────────────────────────────
 docker-compose.override.yml
 
-# ─── Misc ──────────────────────────────────────
+# ─── Misc ──────────────────────────────────
 *.swp
 *.swo
 *~
+
+# ─── Terraform ─────────────────────────────
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/terraform.tfvars
+

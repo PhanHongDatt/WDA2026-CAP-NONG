@@ -17,6 +17,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Standalone output for Docker production builds
+  output: "standalone",
+
   // Disable x-powered-by header (security + smaller response)
   poweredByHeader: false,
 
