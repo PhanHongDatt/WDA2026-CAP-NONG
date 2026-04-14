@@ -7,14 +7,22 @@
 FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /build
 
-# Copy Maven wrapper + pom.xml for dependency caching
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+# Install Maven 3.9.9
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends wget && \
+    wget -q https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apache-maven-3.9.9-bin.tar.gz -O /tmp/maven.tar.gz && \
+    tar -xzf /tmp/maven.tar.gz -C /opt && \
+    ln -s /opt/apache-maven-3.9.9/bin/mvn /usr/local/bin/mvn && \
+    rm /tmp/maven.tar.gz && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy pom.xml first for dependency caching
+COPY pom.xml ./
+RUN mvn dependency:go-offline -B -q
 
 # Copy source and build
 COPY src/ src/
-RUN ./mvnw clean package -DskipTests -B
+RUN mvn clean package -DskipTests -B -q
 
 # === Stage 2: Runtime ===
 FROM eclipse-temurin:21-jre-alpine
