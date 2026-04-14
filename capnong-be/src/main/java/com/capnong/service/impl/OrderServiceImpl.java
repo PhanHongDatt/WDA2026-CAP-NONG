@@ -1,49 +1,50 @@
 package com.capnong.service.impl;
 
 import com.capnong.dto.request.CheckoutRequest;
-import com.capnong.dto.response.OrderResponse;
+import com.capnong.dto.request.UpdateSubOrderStatusRequest;
+import com.capnong.dto.response.InventoryConflictDto;
+import com.capnong.dto.response.OrderResponseDto;
+import com.capnong.dto.response.CartResponseDto;
+import com.capnong.dto.response.ShopResponseDto;
+import com.capnong.dto.response.UserSummaryDto;
+import com.capnong.exception.AppException;
 import com.capnong.exception.InsufficientStockException;
 import com.capnong.exception.ResourceNotFoundException;
-import com.capnong.mapper.OrderMapper;
 import com.capnong.model.*;
-import com.capnong.model.enums.OrderStatus;
-import com.capnong.repository.CartRepository;
-import com.capnong.repository.OrderRepository;
-import com.capnong.repository.ProductRepository;
-import com.capnong.repository.UserRepository;
-import com.capnong.service.AddressService;
-import com.capnong.service.CartService;
-import com.capnong.service.OrderService;
-import com.capnong.service.OtpService;
+import com.capnong.model.enums.*;
+import com.capnong.repository.*;
+import com.capnong.service.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
+    private static final BigDecimal FLAT_SHIPPING_FEE = new BigDecimal("30000");
+
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
+    private final SubOrderRepository subOrderRepository;
     private final UserRepository userRepository;
+    private final ShopRepository shopRepository;
     private final CartService cartService;
     private final OtpService otpService;
     private final AddressService addressService;
-    private final OrderMapper orderMapper;
+    private final OrderEventNotifier orderEventNotifier;
 
     @Override
     @Transactional
-    public OrderResponse checkout(String guestSessionId, UUID userId, CheckoutRequest checkoutRequest) {
+    public OrderResponseDto checkout(String guestSessionId, UUID userId, CheckoutRequest req) {
         Cart cart;
         User user = null;
 
@@ -53,88 +54,271 @@ public class OrderServiceImpl implements OrderService {
             user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         } else {
-            if (checkoutRequest.getGuestPhone() == null || checkoutRequest.getOtpCode() == null) {
+            // Guest checkout: requires OTP
+            if (req.getGuestPhone() == null || req.getOtpCode() == null) {
                 throw new IllegalArgumentException("Khách vãng lai cần nhập số điện thoại và mã OTP");
             }
-            if (checkoutRequest.getGuestName() == null || checkoutRequest.getStreetAddress() == null
-                    || checkoutRequest.getProvinceCode() == null) {
+            if (req.getGuestName() == null || req.getStreetAddress() == null || req.getProvinceCode() == null) {
                 throw new IllegalArgumentException("Khách vãng lai cần nhập họ tên, địa chỉ và tỉnh/thành phố");
             }
-
-            otpService.verifyOtp(checkoutRequest.getGuestPhone(), checkoutRequest.getOtpCode());
-
+            otpService.verifyOtp(req.getGuestPhone(), req.getOtpCode());
             cart = cartRepository.findByGuestSessionId(guestSessionId)
                     .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
         }
 
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
-            throw new IllegalArgumentException("Cart is empty");
+            throw new IllegalArgumentException("Giỏ hàng trống");
         }
 
-        String provinceName = addressService.getProvinceName(checkoutRequest.getProvinceCode());
-        String wardName = addressService.getWardName(checkoutRequest.getWardCode());
+        // Resolve address names
+        String provinceName = addressService.getProvinceName(req.getProvinceCode());
+        String wardName = addressService.getWardName(req.getWardCode());
 
-        Order order = Order.builder()
-                .orderNumber(UUID.randomUUID().toString())
-                .user(user)
-                .guestEmail(checkoutRequest.getGuestEmail())
-                .guestPhone(checkoutRequest.getGuestPhone())
-                .guestName(checkoutRequest.getGuestName())
-                .streetAddress(checkoutRequest.getStreetAddress())
-                .wardCode(checkoutRequest.getWardCode())
-                .wardName(wardName)
-                .provinceCode(checkoutRequest.getProvinceCode())
-                .provinceName(provinceName)
-                .orderNotes(checkoutRequest.getOrderNotes())
-                .status(OrderStatus.PENDING)
-                .isMerged(false)
-                .items(new ArrayList<>())
-                .build();
+        // ── Step 1: Group cart items by shop ──
+        Map<UUID, List<CartItem>> itemsByShop = cart.getItems().stream()
+                .collect(Collectors.groupingBy(ci -> ci.getProduct().getShop().getId()));
 
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        // ── Step 2: Lock products and check stock ──
+        List<InventoryConflictDto> conflicts = new ArrayList<>();
+        Map<UUID, Product> lockedProducts = new HashMap<>();
 
         for (CartItem cartItem : cart.getItems()) {
             Product product = productRepository.findByIdWithLock(cartItem.getProduct().getId())
-                    .orElseThrow(
-                            () -> new ResourceNotFoundException("Product not found: " + cartItem.getProduct().getId()));
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Product not found: " + cartItem.getProduct().getId()));
+            lockedProducts.put(product.getId(), product);
 
             if (product.getAvailableQuantity().compareTo(cartItem.getQuantity()) < 0) {
-                throw new InsufficientStockException("Not enough stock for product: " + product.getName() +
-                        ". Available: " + product.getAvailableQuantity() +
-                        ", Requested: " + cartItem.getQuantity());
+                conflicts.add(InventoryConflictDto.builder()
+                        .productId(product.getId())
+                        .productName(product.getName())
+                        .requestedQuantity(cartItem.getQuantity())
+                        .availableQuantity(product.getAvailableQuantity())
+                        .build());
             }
-
-            product.setAvailableQuantity(product.getAvailableQuantity().subtract(cartItem.getQuantity()));
-            productRepository.save(product);
-
-            OrderItem orderItem = OrderItem.builder()
-                    .order(order)
-                    .product(product)
-                    .quantity(cartItem.getQuantity())
-                    .pricePerUnit(product.getPricePerUnit())
-                    .build();
-
-            order.getItems().add(orderItem);
-            totalAmount = totalAmount.add(product.getPricePerUnit().multiply(cartItem.getQuantity()));
         }
 
-        order.setTotalAmount(totalAmount);
-        orderRepository.save(order);
+        // If any product insufficient → rollback (transactional) with 409
+        if (!conflicts.isEmpty()) {
+            throw new InsufficientStockException("Một số sản phẩm không đủ tồn kho", conflicts);
+        }
 
+        // ── Step 3: Create Order ──
+        PaymentMethod pm = req.getPaymentMethod() != null ? req.getPaymentMethod() : PaymentMethod.COD;
+
+        Order order = Order.builder()
+                .orderNumber(generateOrderCode())
+                .user(user)
+                .guestEmail(req.getGuestEmail())
+                .guestPhone(req.getGuestPhone())
+                .guestName(req.getGuestName())
+                .streetAddress(req.getStreetAddress())
+                .wardCode(req.getWardCode())
+                .wardName(wardName)
+                .provinceCode(req.getProvinceCode())
+                .provinceName(provinceName)
+                .orderNotes(req.getOrderNotes())
+                .status(OrderStatus.PENDING)
+                .paymentMethod(pm)
+                .paymentStatus(pm == PaymentMethod.COD ? PaymentStatus.PENDING : PaymentStatus.PENDING)
+                .isMerged(false)
+                .totalAmount(BigDecimal.ZERO)
+                .subOrders(new ArrayList<>())
+                .build();
+
+        BigDecimal grandTotal = BigDecimal.ZERO;
+
+        // ── Step 4: Create SubOrders per shop ──
+        for (Map.Entry<UUID, List<CartItem>> entry : itemsByShop.entrySet()) {
+            UUID shopId = entry.getKey();
+            List<CartItem> shopItems = entry.getValue();
+
+            Shop shop = shopRepository.findById(shopId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Shop not found: " + shopId));
+
+            SubOrder subOrder = SubOrder.builder()
+                    .order(order)
+                    .shop(shop)
+                    .status(OrderStatus.PENDING)
+                    .shippingFee(FLAT_SHIPPING_FEE)
+                    .subtotal(BigDecimal.ZERO)
+                    .items(new ArrayList<>())
+                    .build();
+
+            BigDecimal subtotal = BigDecimal.ZERO;
+
+            for (CartItem cartItem : shopItems) {
+                Product product = lockedProducts.get(cartItem.getProduct().getId());
+
+                // Deduct inventory
+                product.setAvailableQuantity(product.getAvailableQuantity().subtract(cartItem.getQuantity()));
+                // Auto-set OUT_OF_STOCK
+                if (product.getAvailableQuantity().compareTo(BigDecimal.ZERO) == 0) {
+                    product.setStatus(ProductStatus.OUT_OF_STOCK);
+                }
+                productRepository.save(product);
+
+                OrderItem orderItem = OrderItem.builder()
+                        .subOrder(subOrder)
+                        .product(product)
+                        .quantity(cartItem.getQuantity())
+                        .pricePerUnit(product.getPricePerUnit())
+                        .build();
+
+                subOrder.getItems().add(orderItem);
+                subtotal = subtotal.add(product.getPricePerUnit().multiply(cartItem.getQuantity()));
+            }
+
+            subOrder.setSubtotal(subtotal);
+            order.getSubOrders().add(subOrder);
+            grandTotal = grandTotal.add(subtotal).add(FLAT_SHIPPING_FEE);
+        }
+
+        order.setTotalAmount(grandTotal);
+        Order savedOrder = orderRepository.save(order);
+
+        // Clear cart after checkout
         cartService.clearCart(guestSessionId, userId);
 
-        return mapToOrderResponse(order);
+        // Fire notifications to farmers
+        orderEventNotifier.notifyNewOrder(savedOrder, savedOrder.getSubOrders());
+
+        return mapToOrderResponseDto(savedOrder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponseDto getOrderDetail(UUID orderId, UUID userId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng không tồn tại"));
+
+        // Verify ownership: buyer sees own orders
+        if (order.getUser() != null && !order.getUser().getId().equals(userId)) {
+            throw new AppException("Bạn không có quyền xem đơn hàng này", HttpStatus.FORBIDDEN);
+        }
+
+        return mapToOrderResponseDto(order);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponseDto getGuestOrder(String orderCode, String phone) {
+        Order order = orderRepository.findByOrderNumberAndGuestPhone(orderCode, phone)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
+        return mapToOrderResponseDto(order);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponseDto> getMyOrders(UUID userId) {
+        return orderRepository.findByUser_IdOrderByCreatedAtDesc(userId).stream()
+                .map(this::mapToOrderResponseDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponseDto.SubOrderDto> getSellerSubOrders(UUID sellerId, String status) {
+        // Find seller's shop
+        Shop shop = shopRepository.findByOwner_Id(sellerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa có gian hàng"));
+
+        List<SubOrder> subOrders;
+        if (status != null && !status.isBlank()) {
+            OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
+            subOrders = subOrderRepository.findByShop_IdAndStatusOrderByCreatedAtDesc(shop.getId(), orderStatus);
+        } else {
+            subOrders = subOrderRepository.findByShop_IdOrderByCreatedAtDesc(shop.getId());
+        }
+
+        return subOrders.stream()
+                .map(this::mapToSubOrderDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void cancelOrder(UUID orderId, UUID userId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Đơn hàng không tồn tại"));
+
+        // Verify buyer ownership
+        if (order.getUser() == null || !order.getUser().getId().equals(userId)) {
+            throw new AppException("Bạn không có quyền hủy đơn hàng này", HttpStatus.FORBIDDEN);
+        }
+
+        // Check ALL sub-orders are PENDING
+        boolean allPending = order.getSubOrders().stream()
+                .allMatch(so -> so.getStatus() == OrderStatus.PENDING);
+        if (!allPending) {
+            throw new AppException("Chỉ có thể hủy khi tất cả đơn con đang ở trạng thái PENDING",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        // Cancel all sub-orders + restore inventory
+        for (SubOrder subOrder : order.getSubOrders()) {
+            subOrder.setStatus(OrderStatus.CANCELLED);
+            subOrder.setCancelledBy(CancelledBy.BUYER);
+            subOrder.setCancelReason("Buyer hủy đơn");
+
+            restoreInventory(subOrder);
+
+            // Notify each farmer
+            orderEventNotifier.notifyCancellation(subOrder, order, CancelledBy.BUYER);
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+    }
+
+    @Override
+    @Transactional
+    public void updateSubOrderStatus(UUID subOrderId, UUID sellerId, UpdateSubOrderStatusRequest request) {
+        SubOrder subOrder = subOrderRepository.findByIdAndShop_Owner_Id(subOrderId, sellerId)
+                .orElseThrow(() -> new AppException("Không tìm thấy đơn con hoặc bạn không có quyền",
+                        HttpStatus.FORBIDDEN));
+
+        OrderStatus newStatus = request.getStatus();
+
+        // Validate cancel before SHIPPED
+        if (newStatus == OrderStatus.CANCELLED) {
+            if (subOrder.getStatus() == OrderStatus.SHIPPED || subOrder.getStatus() == OrderStatus.DELIVERED) {
+                throw new AppException("Không thể hủy đơn đã giao/đang giao", HttpStatus.BAD_REQUEST);
+            }
+            if (request.getCancelReason() == null || request.getCancelReason().isBlank()) {
+                throw new AppException("Vui lòng nhập lý do hủy đơn", HttpStatus.BAD_REQUEST);
+            }
+            subOrder.setCancelReason(request.getCancelReason());
+            subOrder.setCancelledBy(CancelledBy.SELLER);
+
+            // Restore inventory
+            restoreInventory(subOrder);
+        }
+
+        // Validate forward-only status transitions
+        validateStatusTransition(subOrder.getStatus(), newStatus);
+
+        subOrder.setStatus(newStatus);
+        subOrderRepository.save(subOrder);
+
+        // Get parent order for notification
+        Order order = orderRepository.findById(subOrder.getOrder().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (newStatus == OrderStatus.CANCELLED) {
+            orderEventNotifier.notifyCancellation(subOrder, order, CancelledBy.SELLER);
+        } else {
+            orderEventNotifier.notifyStatusChange(subOrder, order);
+        }
     }
 
     @Override
     @Transactional
     public void mergeGuestOrdersToUser(String phone, String email, UUID userId) {
-        if (userId == null)
-            return;
+        if (userId == null) return;
 
         List<Order> unmergedOrders = orderRepository.findUnmergedGuestOrders(phone, email);
-        if (unmergedOrders.isEmpty())
-            return;
+        if (unmergedOrders.isEmpty()) return;
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -161,37 +345,124 @@ public class OrderServiceImpl implements OrderService {
             orders = orderRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable);
         }
         return orders.map(this::mapToOrderResponse);
+    // ─── Helpers ───
+
+    private void restoreInventory(SubOrder subOrder) {
+        for (OrderItem item : subOrder.getItems()) {
+            Product product = productRepository.findByIdWithLock(item.getProduct().getId())
+                    .orElse(null);
+            if (product != null) {
+                product.setAvailableQuantity(product.getAvailableQuantity().add(item.getQuantity()));
+                if (product.getStatus() == ProductStatus.OUT_OF_STOCK
+                        && product.getAvailableQuantity().compareTo(BigDecimal.ZERO) > 0) {
+                    product.setStatus(ProductStatus.IN_SEASON); // Restore to in-season
+                }
+                productRepository.save(product);
+            }
+        }
     }
 
-    /**
-     * Order mapping is complex (nested items with null checks), so we keep it partially manual.
-     * OrderMapper handles individual OrderItem mapping.
-     */
-    private OrderResponse mapToOrderResponse(Order order) {
-        var itemResponses = (order.getItems() == null || order.getItems().isEmpty())
-                ? Collections.<com.capnong.dto.response.OrderItemResponse>emptyList()
-                : order.getItems().stream()
-                        .map(orderMapper::toOrderItemResponse)
-                        .collect(Collectors.toList());
+    private void validateStatusTransition(OrderStatus current, OrderStatus target) {
+        // Allowed forward transitions
+        Map<OrderStatus, List<OrderStatus>> allowed = Map.of(
+                OrderStatus.PENDING, List.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
+                OrderStatus.CONFIRMED, List.of(OrderStatus.PREPARING, OrderStatus.CANCELLED),
+                OrderStatus.PREPARING, List.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+                OrderStatus.SHIPPED, List.of(OrderStatus.DELIVERED)
+        );
 
-        return OrderResponse.builder()
+        List<OrderStatus> validTargets = allowed.getOrDefault(current, List.of());
+        if (!validTargets.contains(target)) {
+            throw new AppException(
+                    "Không thể chuyển từ " + current + " sang " + target, HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private String generateOrderCode() {
+        // Format: CN-YYYYMMDD-XXXXX (short, human-readable)
+        String datePart = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String randomPart = UUID.randomUUID().toString().substring(0, 5).toUpperCase();
+        return "CN-" + datePart + "-" + randomPart;
+    }
+
+    // ─── Mapping ───
+
+    private OrderResponseDto mapToOrderResponseDto(Order order) {
+        List<OrderResponseDto.SubOrderDto> subOrderDtos = order.getSubOrders() != null
+                ? order.getSubOrders().stream().map(this::mapToSubOrderDto).collect(Collectors.toList())
+                : List.of();
+
+        UserSummaryDto buyerDto = null;
+        if (order.getUser() != null) {
+            User u = order.getUser();
+            buyerDto = UserSummaryDto.builder()
+                    .id(u.getId())
+                    .fullName(u.getFullName())
+                    .phone(u.getPhone())
+                    .role(u.getRole().name())
+                    .avatarUrl(u.getAvatarUrl())
+                    .build();
+        }
+
+        OrderResponseDto.AddressDto addressDto = OrderResponseDto.AddressDto.builder()
+                .fullName(order.getGuestName() != null ? order.getGuestName()
+                        : (order.getUser() != null ? order.getUser().getFullName() : null))
+                .phone(order.getGuestPhone() != null ? order.getGuestPhone()
+                        : (order.getUser() != null ? order.getUser().getPhone() : null))
+                .street(order.getStreetAddress())
+                .district(order.getWardName())
+                .province(order.getProvinceName())
+                .build();
+
+        return OrderResponseDto.builder()
                 .id(order.getId())
-                .orderNumber(order.getOrderNumber())
-                .userId(order.getUser() != null ? order.getUser().getId() : null)
-                .guestEmail(order.getGuestEmail())
+                .orderCode(order.getOrderNumber())
+                .buyer(buyerDto)
                 .guestPhone(order.getGuestPhone())
-                .guestName(order.getGuestName())
-                .streetAddress(order.getStreetAddress())
-                .wardCode(order.getWardCode())
-                .wardName(order.getWardName())
-                .provinceCode(order.getProvinceCode())
-                .provinceName(order.getProvinceName())
-                .orderNotes(order.getOrderNotes())
-                .totalAmount(order.getTotalAmount())
-                .status(order.getStatus())
-                .isMerged(order.getIsMerged())
+                .subOrders(subOrderDtos)
+                .shippingAddress(addressDto)
+                .paymentMethod(order.getPaymentMethod().name())
+                .paymentStatus(order.getPaymentStatus().name())
+                .totalPrice(order.getTotalAmount().doubleValue())
                 .createdAt(order.getCreatedAt())
-                .items(itemResponses)
+                .build();
+    }
+
+    private OrderResponseDto.SubOrderDto mapToSubOrderDto(SubOrder subOrder) {
+        Shop shop = subOrder.getShop();
+        ShopResponseDto shopDto = shop != null ? ShopResponseDto.builder()
+                .id(shop.getId())
+                .slug(shop.getSlug())
+                .name(shop.getName())
+                .province(shop.getProvince())
+                .district(shop.getDistrict())
+                .avatarUrl(shop.getAvatarUrl())
+                .build() : null;
+
+        List<CartResponseDto.CartItemDto> itemDtos = subOrder.getItems() != null
+                ? subOrder.getItems().stream().map(item -> {
+                    Product p = item.getProduct();
+                    return CartResponseDto.CartItemDto.builder()
+                            .id(item.getId())
+                            .product(com.capnong.dto.response.ProductResponseDto.builder()
+                                    .id(p.getId())
+                                    .name(p.getName())
+                                    .pricePerUnit(p.getPricePerUnit().doubleValue())
+                                    .build())
+                            .quantity(item.getQuantity().doubleValue())
+                            .subtotal(item.getPricePerUnit().multiply(item.getQuantity()).doubleValue())
+                            .build();
+                }).collect(Collectors.toList())
+                : List.of();
+
+        return OrderResponseDto.SubOrderDto.builder()
+                .id(subOrder.getId())
+                .shop(shopDto)
+                .items(itemDtos)
+                .subtotal(subOrder.getSubtotal().doubleValue())
+                .status(subOrder.getStatus().name())
+                .cancelReason(subOrder.getCancelReason())
+                .cancelledBy(subOrder.getCancelledBy() != null ? subOrder.getCancelledBy().name() : null)
                 .build();
     }
 }

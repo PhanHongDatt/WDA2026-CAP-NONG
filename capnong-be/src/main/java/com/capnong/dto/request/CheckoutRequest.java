@@ -1,5 +1,6 @@
 package com.capnong.dto.request;
 
+import com.capnong.model.enums.PaymentMethod;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
@@ -22,4 +23,6 @@ public class CheckoutRequest {
     private String orderNotes;    // Ghi chú thêm
 
     private String otpCode;
+
+    private PaymentMethod paymentMethod; // COD or VIET_QR, default COD
 }

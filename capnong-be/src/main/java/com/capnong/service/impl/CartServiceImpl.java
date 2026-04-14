@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -82,6 +83,41 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
+    public CartResponse updateCartItem(String guestSessionId, UUID userId, UUID itemId, BigDecimal quantity) {
+        Cart cart = getExistingCart(guestSessionId, userId);
+
+        CartItem target = cart.getItems().stream()
+                .filter(item -> item.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found"));
+
+        if (quantity.compareTo(BigDecimal.ZERO) == 0) {
+            // Quantity = 0 means remove
+            cart.getItems().remove(target);
+        } else {
+            target.setQuantity(quantity);
+        }
+
+        cartRepository.save(cart);
+        return mapToCartResponse(cart);
+    }
+
+    @Override
+    @Transactional
+    public CartResponse removeCartItem(String guestSessionId, UUID userId, UUID itemId) {
+        Cart cart = getExistingCart(guestSessionId, userId);
+
+        boolean removed = cart.getItems().removeIf(item -> item.getId().equals(itemId));
+        if (!removed) {
+            throw new ResourceNotFoundException("Cart item not found");
+        }
+
+        cartRepository.save(cart);
+        return mapToCartResponse(cart);
+    }
+
+    @Override
+    @Transactional
     public void mergeGuestCartToUser(String guestSessionId, UUID userId) {
         if (guestSessionId == null || userId == null) return;
 
@@ -131,6 +167,16 @@ public class CartServiceImpl implements CartService {
         if (cart != null) {
             cart.getItems().clear();
             cartRepository.save(cart);
+        }
+    }
+
+    private Cart getExistingCart(String guestSessionId, UUID userId) {
+        if (userId != null) {
+            return cartRepository.findByUser_Id(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
+        } else {
+            return cartRepository.findByGuestSessionId(guestSessionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
         }
     }
 
