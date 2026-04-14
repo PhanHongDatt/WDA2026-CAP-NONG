@@ -12,7 +12,8 @@ public class ProductResponseDto {
     private String name;
     private String description;
     private String category;
-    private UnitResponseDto unit;
+    private String unitCode;
+    private String unitName;
     private Double pricePerUnit;
     private Double availableQuantity;
     private LocalDate harvestDate;

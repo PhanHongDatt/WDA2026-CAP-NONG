@@ -361,17 +361,24 @@ public class DataInitializer implements CommandLineRunner {
                                FarmingMethod farmingMethod, boolean pesticideFree,
                                String locationDetail, ProductStatus status,
                                LocalDate harvestDate, String imageUrl) {
+        Unit unit = unitRepository.findByCode(unitCode)
+                .orElseThrow(() -> new RuntimeException("Unit not found: " + unitCode));
+
         Product product = Product.builder()
                 .shop(shop)
                 .name(name)
                 .category(category)
                 .description(description)
-                .unitCode(unitCode)
+                .unit(unit)
                 .pricePerUnit(pricePerUnit)
                 .availableQuantity(availableQuantity)
                 .farmingMethod(farmingMethod)
                 .pesticideFree(pesticideFree)
                 .locationDetail(locationDetail)
+                .origin(name + " - " + locationDetail)
+                .minOrderQuantity(BigDecimal.valueOf(2)) // Default 2 units
+                .weight(BigDecimal.ONE)
+                .shelfLife("7 ngày")
                 .status(status)
                 .harvestDate(harvestDate)
                 .build();
@@ -389,3 +396,4 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 }
+

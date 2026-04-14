@@ -84,6 +84,9 @@ app:
     api-key: ${CLOUDINARY_API_KEY}
     api-secret: ${CLOUDINARY_API_SECRET}
 
+  ai-service:
+    url: ${AI_SERVICE_URL:http://localhost:8000}
+
 # ─── Logging (Dev) ──────────────────────────
 logging:
   level:
@@ -96,11 +99,6 @@ ai:
   service:
     base-url: http://localhost:8001
     timeout: 15000
-
-# ─── AI Marketing Lab ────────────────────────
-app:
-  ai-service:
-    url: ${AI_SERVICE_URL:http://localhost:8000}
 
 # ─── Kafka ───────────────────────────────────
 spring.kafka:

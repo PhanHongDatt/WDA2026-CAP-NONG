@@ -16,6 +16,8 @@ import com.capnong.service.CartService;
 import com.capnong.service.OrderService;
 import com.capnong.service.OtpService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -146,10 +148,19 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getMyOrders(UUID userId) {
-        return orderRepository.findByUser_Id(userId).stream()
-                .map(this::mapToOrderResponse)
-                .collect(Collectors.toList());
+    public Page<OrderResponse> getMyOrders(UUID userId, String status, Pageable pageable) {
+        Page<Order> orders;
+        if (status != null && !status.isBlank()) {
+            try {
+                OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
+                orders = orderRepository.findByUser_IdAndStatusOrderByCreatedAtDesc(userId, orderStatus, pageable);
+            } catch (IllegalArgumentException e) {
+                orders = orderRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable);
+            }
+        } else {
+            orders = orderRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable);
+        }
+        return orders.map(this::mapToOrderResponse);
     }
 
     /**

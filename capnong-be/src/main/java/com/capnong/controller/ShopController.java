@@ -1,13 +1,18 @@
 package com.capnong.controller;
 
+import com.capnong.dto.request.ProductFilterParams;
 import com.capnong.dto.request.ShopCreateRequest;
 import com.capnong.dto.response.ApiResponse;
+import com.capnong.dto.response.PagedResponse;
+import com.capnong.dto.response.ProductResponse;
 import com.capnong.dto.response.ShopResponse;
 import com.capnong.service.ProductService;
 import com.capnong.service.ShopService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -80,9 +85,13 @@ public class ShopController {
 
     @GetMapping("/{slug}/products")
     @Operation(summary = "Danh sách sản phẩm của gian hàng (public)",
-            description = "Hiển thị tất cả sản phẩm đang bán tại gian hàng.")
-    public ResponseEntity<ApiResponse<Object>> getShopProducts(@PathVariable String slug) {
-        var products = productService.getProductsByShopSlug(slug);
-        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", products));
+            description = "Phân trang + filter sản phẩm theo gian hàng slug.")
+    public ResponseEntity<ApiResponse<PagedResponse<ProductResponse>>> getShopProducts(
+            @PathVariable String slug,
+            @ModelAttribute ProductFilterParams filter,
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        filter.setShopSlug(slug);
+        var page = productService.searchProducts(filter, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", PagedResponse.from(page)));
     }
 }

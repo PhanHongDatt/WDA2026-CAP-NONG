@@ -6,7 +6,7 @@ import os
 print("Sending request to generate image...")
 req = urllib.request.Request(
     'http://127.0.0.1:8000/ai/poster-image',
-    data=b'{"price_display": "65.000d/kg", "product_name": "Xoai Cat Hoa Loc", "shop_name": "Vuon Tran Nong"}',
+    data=b'{"price_display": "65.000d/kg", "product_name": "Xoai Cat Hoa Loc", "shop_name": "Vuon Tran Nong", "mode": "AI_IMAGE"}',
     headers={'Content-Type': 'application/json'}
 )
 

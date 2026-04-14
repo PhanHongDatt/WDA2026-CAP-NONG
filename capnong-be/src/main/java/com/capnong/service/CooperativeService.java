@@ -44,6 +44,7 @@ public class CooperativeService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final ShopRepository shopRepository;
+    private final UnitRepository unitRepository;
     private final TelegramNotificationService telegramNotificationService;
     private final BundleMapper bundleMapper;
 
@@ -54,6 +55,7 @@ public class CooperativeService {
                               UserRepository userRepository,
                               ProductRepository productRepository,
                               ShopRepository shopRepository,
+                              UnitRepository unitRepository,
                               TelegramNotificationService telegramNotificationService,
                               BundleMapper bundleMapper) {
         this.bundleRepository = bundleRepository;
@@ -63,6 +65,7 @@ public class CooperativeService {
         this.userRepository = userRepository;
         this.productRepository = productRepository;
         this.shopRepository = shopRepository;
+        this.unitRepository = unitRepository;
         this.telegramNotificationService = telegramNotificationService;
         this.bundleMapper = bundleMapper;
     }
@@ -403,6 +406,11 @@ public class CooperativeService {
             shop = createShopForHtxShop(htxShop);
         }
 
+        // Resolve unit
+        Unit unit = unitRepository.findByCode(bundle.getUnitCode())
+                .orElseThrow(() -> new AppException(
+                        "Đơn vị tính không hợp lệ: " + bundle.getUnitCode(), HttpStatus.BAD_REQUEST));
+
         // Tạo virtual product
         Product product = Product.builder()
                 .shop(shop)
@@ -410,7 +418,7 @@ public class CooperativeService {
                 .description(bundle.getDescription() != null ? bundle.getDescription()
                         : "Sản phẩm gom đơn từ HTX " + htxShop.getName())
                 .category(bundle.getProductCategory())
-                .unitCode(bundle.getUnitCode())
+                .unit(unit)
                 .pricePerUnit(bundle.getPricePerUnit())
                 .availableQuantity(bundle.getCurrentPledgedQuantity())
                 .locationDetail(htxShop.getHtx().getProvince() + ", " + htxShop.getHtx().getDistrict())

@@ -19,6 +19,8 @@ public interface ProductMapper {
     @Mapping(target = "category", expression = "java(product.getCategory().name())")
     @Mapping(target = "status", expression = "java(product.getStatus().name())")
     @Mapping(target = "farmingMethod", expression = "java(product.getFarmingMethod().name())")
+    @Mapping(target = "unitCode", source = "unit.code")
+    @Mapping(target = "unitName", source = "unit.displayName")
     @Mapping(target = "images", source = "images", qualifiedByName = "mapImages")
     ProductResponse toProductResponse(Product product);
 

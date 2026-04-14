@@ -100,11 +100,11 @@ public class AiController {
             Authentication authentication) {
 
         UUID sessionId = aiMarketingService.startPosterSession(request, authentication.getName());
-        String mode = request.getMode() != null ? request.getMode() : "HTML";
 
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(ApiResponse.success("Poster đang được tạo (mode: " + mode + "). Poll kết quả qua GET /api/ai/sessions/" + sessionId,
-                        Map.of("sessionId", sessionId, "status", "IN_PROGRESS", "mode", mode)));
+                .body(ApiResponse.success(
+                        "Poster đang được tạo (mode: " + request.getMode() + "). Poll kết quả qua GET /api/ai/sessions/" + sessionId,
+                        Map.of("sessionId", sessionId, "status", "IN_PROGRESS", "mode", request.getMode())));
     }
 
     // ═══════════════════════════════════════════════════════════════

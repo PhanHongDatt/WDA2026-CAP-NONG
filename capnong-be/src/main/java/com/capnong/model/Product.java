@@ -35,8 +35,9 @@ public class Product extends BaseEntity {
     @Column(nullable = false, length = 20)
     private ProductCategory category;
 
-    @Column(nullable = false, length = 10)
-    private String unitCode;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_code", referencedColumnName = "code", nullable = false)
+    private Unit unit;
 
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal pricePerUnit;
@@ -59,6 +60,19 @@ public class Product extends BaseEntity {
 
     @Column(nullable = false)
     private String locationDetail;
+
+    @Column(columnDefinition = "TEXT")
+    private String origin;
+
+    @Column(name = "min_order_quantity", precision = 12, scale = 3)
+    @Builder.Default
+    private BigDecimal minOrderQuantity = BigDecimal.ONE;
+
+    @Column(name = "weight_per_unit", precision = 12, scale = 3)
+    private BigDecimal weight;
+
+    @Column(name = "shelf_life")
+    private String shelfLife;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
