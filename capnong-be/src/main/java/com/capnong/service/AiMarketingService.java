@@ -137,12 +137,9 @@ public class AiMarketingService {
 
         UUID sessionId = session.getId();
 
-        // Store request mode for later
-        String mode = request.getMode() != null ? request.getMode() : "HTML";
+        processPosterAsync(sessionId, request, request.getMode());
 
-        processPosterAsync(sessionId, request, mode);
-
-        log.info("Poster session started: {} (mode: {})", sessionId, mode);
+        log.info("Poster session started: {} (mode: {})", sessionId, request.getMode());
         return sessionId;
     }
 

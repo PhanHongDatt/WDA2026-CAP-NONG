@@ -37,4 +37,10 @@ public class ProductCreateRequest {
     private LocalDate availableFrom;
     private String farmingMethod;    // TRADITIONAL, ORGANIC, VIETGAP, GLOBALGAP
     private Boolean pesticideFree;
+
+    // Optional nice-to-have fields
+    private BigDecimal minOrderQuantity;
+    private BigDecimal weight;
+    private String origin;
+    private String shelfLife;
 }

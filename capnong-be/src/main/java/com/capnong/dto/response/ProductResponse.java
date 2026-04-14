@@ -19,17 +19,22 @@ public class ProductResponse {
     private String description;
     private String category;
     private String unitCode;
+    private String unitName;
     private BigDecimal pricePerUnit;
     private BigDecimal availableQuantity;
     private String locationDetail;
     private String status;
     private LocalDateTime createdAt;
 
-    // New fields
+    // Domain-specific
     private LocalDate harvestDate;
     private LocalDate availableFrom;
     private String farmingMethod;
     private Boolean pesticideFree;
+    private BigDecimal minOrderQuantity;
+    private BigDecimal weight;
+    private String origin;
+    private String shelfLife;
     private BigDecimal averageRating;
     private Integer totalReviews;
 

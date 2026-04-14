@@ -1,22 +1,25 @@
 package com.capnong.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.capnong.dto.request.CheckoutRequest;
 import com.capnong.dto.request.UpdateSubOrderStatusRequest;
 import com.capnong.dto.response.ApiResponse;
 import com.capnong.dto.response.OrderResponseDto;
+import com.capnong.dto.response.PagedResponse;
 import com.capnong.security.UserDetailsImpl;
 import com.capnong.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -49,11 +52,13 @@ public class OrderController {
      */
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<List<OrderResponseDto>>> getMyOrders(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+    public ResponseEntity<ApiResponse<PagedResponse<OrderResponseDto>>> getMyOrders(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) String status,
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
 
-        return ResponseEntity.ok(ApiResponse.success("OK",
-                orderService.getMyOrders(userDetails.getId())));
+        Page<OrderResponseDto> page = orderService.getMyOrders(userDetails.getId(), status, pageable);
+        return ResponseEntity.ok(ApiResponse.success("OK", PagedResponse.from(page)));
     }
 
     /**
@@ -117,7 +122,7 @@ public class OrderController {
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(required = false) String status) {
 
-        return ResponseEntity.ok(ApiResponse.success("OK",
+        return ResponseEntity.ok(ApiResponse.success("OK", 
                 orderService.getSellerSubOrders(userDetails.getId(), status)));
     }
 }

@@ -194,7 +194,7 @@ async def generate_poster_image(
     try:
         api_url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"gemini-2.5-flash-image:generateContent?key={settings.gemini_api_key}"
+            f"{settings.gemini_image_model}:generateContent?key={settings.gemini_api_key}"
         )
 
         payload = {
