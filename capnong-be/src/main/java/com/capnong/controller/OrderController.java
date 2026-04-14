@@ -1,13 +1,12 @@
 package com.capnong.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.capnong.dto.request.CheckoutRequest;
 import com.capnong.dto.request.UpdateSubOrderStatusRequest;
 import com.capnong.dto.response.ApiResponse;
 import com.capnong.dto.response.OrderResponseDto;
-import com.capnong.dto.response.ApiResponse;
-import com.capnong.dto.response.OrderResponse;
 import com.capnong.dto.response.PagedResponse;
 import com.capnong.security.UserDetailsImpl;
 import com.capnong.service.OrderService;
@@ -53,11 +52,13 @@ public class OrderController {
      */
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<List<OrderResponseDto>>> getMyOrders(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+    public ResponseEntity<ApiResponse<PagedResponse<OrderResponseDto>>> getMyOrders(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) String status,
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
 
-        return ResponseEntity.ok(ApiResponse.success("OK",
-                orderService.getMyOrders(userDetails.getId())));
+        Page<OrderResponseDto> page = orderService.getMyOrders(userDetails.getId(), status, pageable);
+        return ResponseEntity.ok(ApiResponse.success("OK", PagedResponse.from(page)));
     }
 
     /**
@@ -90,10 +91,6 @@ public class OrderController {
      */
     @PostMapping("/{orderId}/cancel")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<PagedResponse<OrderResponse>>> getMyOrders(
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestParam(required = false) String status,
-            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
     public ResponseEntity<ApiResponse<Void>> cancelOrder(
             @PathVariable UUID orderId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -125,7 +122,7 @@ public class OrderController {
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(required = false) String status) {
 
-        Page<OrderResponse> page = orderService.getMyOrders(userDetails.getId(), status, pageable);
-        return ResponseEntity.ok(ApiResponse.success("OK", PagedResponse.from(page)));
+        return ResponseEntity.ok(ApiResponse.success("OK", 
+                orderService.getSellerSubOrders(userDetails.getId(), status)));
     }
 }

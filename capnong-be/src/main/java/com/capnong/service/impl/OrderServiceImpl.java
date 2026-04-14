@@ -208,13 +208,7 @@ public class OrderServiceImpl implements OrderService {
         return mapToOrderResponseDto(order);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<OrderResponseDto> getMyOrders(UUID userId) {
-        return orderRepository.findByUser_IdOrderByCreatedAtDesc(userId).stream()
-                .map(this::mapToOrderResponseDto)
-                .collect(Collectors.toList());
-    }
+    // getMyOrders list method removed in favor of paginated version.
 
     @Override
     @Transactional(readOnly = true)
@@ -332,7 +326,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getMyOrders(UUID userId, String status, Pageable pageable) {
+    public Page<OrderResponseDto> getMyOrders(UUID userId, String status, Pageable pageable) {
         Page<Order> orders;
         if (status != null && !status.isBlank()) {
             try {
@@ -344,7 +338,9 @@ public class OrderServiceImpl implements OrderService {
         } else {
             orders = orderRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable);
         }
-        return orders.map(this::mapToOrderResponse);
+        return orders.map(this::mapToOrderResponseDto);
+    }
+
     // ─── Helpers ───
 
     private void restoreInventory(SubOrder subOrder) {

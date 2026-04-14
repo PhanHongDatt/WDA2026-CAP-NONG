@@ -14,10 +14,9 @@ public interface OrderService {
     OrderResponseDto checkout(String guestSessionId, UUID userId, CheckoutRequest checkoutRequest);
     OrderResponseDto getOrderDetail(UUID orderId, UUID userId);
     OrderResponseDto getGuestOrder(String orderCode, String phone);
-    List<OrderResponseDto> getMyOrders(UUID userId);
+    Page<OrderResponseDto> getMyOrders(UUID userId, String status, Pageable pageable);
     List<OrderResponseDto.SubOrderDto> getSellerSubOrders(UUID sellerId, String status);
     void cancelOrder(UUID orderId, UUID userId);
     void updateSubOrderStatus(UUID subOrderId, UUID sellerId, UpdateSubOrderStatusRequest request);
     void mergeGuestOrdersToUser(String phone, String email, UUID userId);
-    Page<OrderResponse> getMyOrders(UUID userId, String status, Pageable pageable);
 }
