@@ -17,6 +17,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Standalone output for Docker production builds
+  output: "standalone",
+
   // Disable x-powered-by header (security + smaller response)
   poweredByHeader: false,
 
@@ -56,6 +59,16 @@ const nextConfig: NextConfig = {
         hostname: "**",
       },
     ],
+  },
+
+  // API proxy rewrites — dev: forwards /api/* to backend, prod: Nginx handles this
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/:path*`,
+      },
+    ];
   },
 
   // Security + caching headers
