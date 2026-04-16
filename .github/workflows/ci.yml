@@ -66,4 +66,4 @@ jobs:
       - name: Run Pytest
         run: |
           cd capnong-ai-service
-          pytest -v
+          PYTHONPATH=. pytest -v
