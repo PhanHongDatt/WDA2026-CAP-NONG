@@ -80,6 +80,7 @@ async def gen_poster_image(request: PosterImageRequest) -> PosterImageResponse:
             province=request.province,
             price_display=request.price_display,
             shop_name=request.shop_name,
+            image_model=request.image_model,
         )
         return PosterImageResponse(**result)
     except Exception as e:

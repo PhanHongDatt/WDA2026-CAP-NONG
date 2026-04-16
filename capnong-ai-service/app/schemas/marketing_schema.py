@@ -109,13 +109,15 @@ class PosterImageRequest(BaseModel):
     price_display: Optional[str] = None
     shop_name: Optional[str] = None
     image_url: Optional[str] = None  # ảnh sản phẩm (optional)
+    image_model: Optional[str] = None  # model gen ảnh: gemini-2.5-flash-image, imagen-4.0-generate-001, etc.
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "product_name": "Xoài Cát Hòa Lộc",
                 "price_display": "65.000đ/kg",
-                "shop_name": "Vườn Trần Nông"
+                "shop_name": "Vườn Trần Nông",
+                "image_model": "gemini-2.5-flash-image"
             }
         }
     }
@@ -124,6 +126,8 @@ class PosterImageRequest(BaseModel):
 class PosterImageResponse(BaseModel):
     image_base64: Optional[str] = None
     mime_type: str = "image/png"
-    prompt_used: str
+    prompt_used: str = ""
+    original_prompt: Optional[str] = None
+    model_used: Optional[str] = None
     fallback: bool = False
     error: Optional[str] = None

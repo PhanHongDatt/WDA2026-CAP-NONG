@@ -23,4 +23,10 @@ public class PosterGenerateRequest {
     @NotBlank(message = "mode là bắt buộc: HTML hoặc AI_IMAGE")
     @Pattern(regexp = "HTML|AI_IMAGE", message = "mode chỉ chấp nhận: HTML hoặc AI_IMAGE")
     private String mode;
+
+    /**
+     * Model gen ảnh (chỉ dùng cho AI_IMAGE mode).
+     * Ví dụ: gemini-2.5-flash-image, gemini-3.1-flash-image-preview, imagen-4.0-generate-001
+     */
+    private String imageModel;
 }

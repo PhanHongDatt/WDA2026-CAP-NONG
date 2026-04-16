@@ -81,10 +81,10 @@ services:
       redis:
         condition: service_healthy
     environment:
-      # Spring datasource
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Spring datasource (cloud DB override)
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/${POSTGRES_DB}}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-${POSTGRES_USER}}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${POSTGRES_PASSWORD}}
       # Redis
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
@@ -92,17 +92,25 @@ services:
       # JWT
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      # Supabase OAuth
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
       # Google Gemini AI
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       # Telegram Bot
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       # Kafka
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # Cloudinary
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
       # Spring profile
       SPRING_PROFILES_ACTIVE: dev
+      # AI Service (Python FastAPI)
+      AI_SERVICE_URL: http://ai-service:8001
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_PORT:-8080}:9999"
       - "5005:5005"
     volumes:
       - ./capnong-be/src:/app/src
@@ -122,6 +130,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Cạp Nông}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
       WATCHPACK_POLLING: "true"
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -129,6 +139,26 @@ services:
       - ./capnong-fe:/app
       - /app/node_modules
       - /app/.next
+    networks:
+      - capnong-network
+
+  # ─── AI Service (Python FastAPI + Gemini) ─────
+  ai-service:
+    build:
+      context: ./capnong-ai-service
+      dockerfile: Dockerfile
+    container_name: capnong-ai-service
+    restart: unless-stopped
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: gemini-2.5-flash
+      GEMINI_IMAGE_MODEL: gemini-2.5-flash-image
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      APP_ENV: development
+      LOG_LEVEL: INFO
+      ALLOWED_ORIGINS: "http://localhost:3000,http://backend:9999"
+    ports:
+      - "8000:8001"
     networks:
       - capnong-network
 

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/lib/safe-image";
 import Link from "next/link";
 import { ChevronRight, Users, Package, ShoppingBag, ShieldCheck, Leaf } from "lucide-react";
 import type { Shop } from "@/types/shop";
@@ -43,7 +43,7 @@ export default function FarmCard({ shop }: FarmCardProps) {
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-50 dark:bg-background-light flex-shrink-0 border border-gray-100 dark:border-border">
           {shop.avatar_url ? (
-            <Image
+            <SafeImage
               src={shop.avatar_url}
               alt={shop.name}
               width={48}

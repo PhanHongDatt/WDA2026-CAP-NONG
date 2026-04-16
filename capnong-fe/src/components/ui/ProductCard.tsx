@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/lib/safe-image";
 import Link from "next/link";
 import { Heart, ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -54,14 +54,13 @@ export default function ProductCard({
       {/* Image Container */}
       <Link href={`/products/${product.slug}`} className="block relative">
         <div className="aspect-square bg-gray-50 dark:bg-background-light overflow-hidden rounded-t-2xl">
-          <Image
+          <SafeImage
             src={product.images[0]}
             alt={product.name}
             width={400}
             height={400}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            placeholder="blur"
             blurDataURL={shimmer(400, 400)}
           />
         </div>

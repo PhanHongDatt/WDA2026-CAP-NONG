@@ -34,20 +34,22 @@ Trả về JSON hợp lệ, KHÔNG markdown:
 """
 
 POSTER_IMAGE_PROMPT_TEMPLATE = """
-Create a Vietnamese agricultural product advertising poster.
-Product to feature: "{product_name}"
+Square 1:1 commercial food photography poster of fresh Vietnamese agricultural product "{product_name}".
 {description_line}
 {price_line}
 {shop_line}
 {province_line}
 
-Style: Clean, modern Vietnamese farm produce poster. Vibrant colors.
-Show fresh produce prominently. 
-IMPORTANT TYPOGRAPHY INSTRUCTIONS:
-- You must include the exact text "{product_name}" on the poster.
-- Render all text EXACTLY as provided, paying close attention to Vietnamese diacritics (tone marks).
-- Do NOT hallucinate or misspell words. Do NOT include any English text.
-- If you cannot render Vietnamese accents perfectly, use uppercase without accents.
+CRITICAL REQUIREMENTS:
+- Aspect ratio: MUST be 1:1 SQUARE (equal width and height)
+- The HERO subject is REAL fresh "{product_name}" (the actual fruit/vegetable/grain), photographed in appetizing commercial food photography style
+- NEVER show: cosmetics, skincare, juice, beverages, processed food, houses, cars, people, or any non-agricultural items
+- The fresh produce must occupy 40-60% of the poster, center-frame
+- Include Vietnamese text "{product_name}" prominently on the poster, wrapped in double quotes for correct diacritics
+- Background: clean white studio OR Vietnamese tropical farm/garden (lush green leaves, wooden crates)
+- Color palette: natural greens, warm earth tones, vibrant fruit colors
+- Lighting: high-key, appetizing, with soft shadows
+- Layout: modern square social media marketing poster for farm-to-table e-commerce
 """
 
 

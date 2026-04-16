@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore } from "react";
+import { useState, useEffect, useRef } from "react";
 
 /* ─── Types ─── */
 export type ConnectionQuality = "4g" | "3g" | "2g" | "slow-2g" | "offline" | "unknown";
@@ -30,6 +30,7 @@ interface NetworkInformation {
 
 function getConnection(): NetworkInformation | undefined {
   if (typeof navigator === "undefined") return undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
 }
 
@@ -49,35 +50,71 @@ function getSnapshot(): NetworkInfo {
   };
 }
 
+/** Debounce delay before declaring offline (ms) — prevents SW-induced flicker */
+const OFFLINE_DEBOUNCE_MS = 2000;
+
 /**
- * useNetwork — Network-aware hook
+ * useNetwork — Network-aware hook with debounced offline detection
+ * 
+ * Prevents rapid online↔offline toggling caused by Service Worker
+ * intercepting failed requests and triggering browser offline events.
  * 
  * Ref: web.dev/adaptive-serving-based-on-network-quality
  * Ref: developer.mozilla.org/en-US/docs/Web/API/NetworkInformation
- * 
- * Usage:
- *   const { isOnline, quality, isSlow, saveData } = useNetwork();
- *   if (isSlow) → load low-res images, skip animations, show cached data
- *   if (!isOnline) → show offline banner
  */
 export function useNetwork(): NetworkInfo & { isSlow: boolean } {
-  const [info, setInfo] = useState<NetworkInfo>(getSnapshot);
+  const [info, setInfo] = useState<NetworkInfo>(() => ({
+    ...getSnapshot(),
+    isOnline: true, // Assume online initially to prevent flash
+  }));
+  const offlineTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const update = () => setInfo(getSnapshot());
+    const handleOnline = () => {
+      // Clear pending offline timer — we're back online
+      if (offlineTimer.current) {
+        clearTimeout(offlineTimer.current);
+        offlineTimer.current = null;
+      }
+      setInfo(getSnapshot());
+    };
 
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
+    const handleOffline = () => {
+      // Debounce offline: wait 2s before declaring offline
+      // This prevents SW-induced micro-disconnects from flashing the banner
+      if (offlineTimer.current) clearTimeout(offlineTimer.current);
+      offlineTimer.current = setTimeout(() => {
+        // Double-check: still offline after debounce?
+        if (!navigator.onLine) {
+          setInfo(getSnapshot());
+        }
+      }, OFFLINE_DEBOUNCE_MS);
+    };
+
+    const handleConnectionChange = () => {
+      // Connection quality change (3G→4G etc) — update immediately
+      if (navigator.onLine) {
+        setInfo(getSnapshot());
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
     const conn = getConnection();
-    conn?.addEventListener("change", update);
+    conn?.addEventListener("change", handleConnectionChange);
 
-    // Initial sync
-    update();
+    // Initial sync (only if actually offline after mount)
+    if (!navigator.onLine) {
+      offlineTimer.current = setTimeout(() => {
+        if (!navigator.onLine) setInfo(getSnapshot());
+      }, OFFLINE_DEBOUNCE_MS);
+    }
 
     return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
-      conn?.removeEventListener("change", update);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      conn?.removeEventListener("change", handleConnectionChange);
+      if (offlineTimer.current) clearTimeout(offlineTimer.current);
     };
   }, []);
 

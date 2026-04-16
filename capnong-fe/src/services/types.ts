@@ -50,6 +50,18 @@ export interface ProductSearchParams {
   minPrice?: number;
   maxPrice?: number;
   keyword?: string;
+  /** Tỉnh/thành */
+  province?: string;
+  /** Phương pháp canh tác: ORGANIC, TRADITIONAL, ... */
+  farmingMethod?: string;
+  /** Không thuốc trừ sâu */
+  pesticideFree?: boolean;
+  /** Shop ID filter */
+  shopId?: string;
+  /** Shop slug filter */
+  shopSlug?: string;
+  /** Sort: "pricePerUnit,asc" | "createdAt,desc" | ... */
+  sort?: string;
   page?: number;
   size?: number;
 }
@@ -103,6 +115,7 @@ export interface ICartService {
 /* ─── Orders ───────────────────────────────────── */
 
 export interface IOrderService {
+  /** POST /api/orders — Checkout */
   checkout(data: {
     guestEmail?: string;
     guestPhone?: string;
@@ -113,7 +126,18 @@ export interface IOrderService {
     orderNotes?: string;
     otpCode?: string;
   }): Promise<unknown>;
-  getMyOrders(): Promise<unknown[]>;
+  /** GET /api/orders — Lịch sử đơn hàng (paginated) */
+  getMyOrders(status?: string, page?: number, size?: number): Promise<unknown>;
+  /** GET /api/orders/{orderId} — Chi tiết đơn hàng */
+  getOrderDetail(orderId: string): Promise<unknown>;
+  /** GET /api/orders/guest/{orderCode}?phone=... */
+  getGuestOrder(orderCode: string, phone: string): Promise<unknown>;
+  /** POST /api/orders/{orderId}/cancel */
+  cancelOrder(orderId: string): Promise<void>;
+  /** GET /api/orders/seller — Farmer xem đơn con */
+  getSellerSubOrders(status?: string): Promise<unknown[]>;
+  /** PATCH /api/orders/sub-orders/{subOrderId}/status */
+  updateSubOrderStatus(subOrderId: string, status: string): Promise<void>;
 }
 
 /* ─── Shops ─────────────────────────────────────── */

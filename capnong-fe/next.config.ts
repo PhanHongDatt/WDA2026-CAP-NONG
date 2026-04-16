@@ -35,8 +35,15 @@ const nextConfig: NextConfig = {
     },
   },
 
-  // Image optimization — auto-convert to AVIF/WebP
+  // Fix Turbopack workspace root detection — user home has a stray package-lock.json
+  turbopack: {
+    root: ".",
+  },
+
+  // Image optimization — custom loader bypasses Turbopack workspace root config bug
   images: {
+    loader: "custom",
+    loaderFile: "./src/lib/image-loader.ts",
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31536000, // 1 year cache for optimized images
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
@@ -46,6 +53,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
         pathname: "/aida-public/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "source.unsplash.com",
       },
       {
         protocol: "http",

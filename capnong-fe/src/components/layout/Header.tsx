@@ -172,10 +172,10 @@ export default function Header() {
                 >
                   {/* Avatar circle */}
                   <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
-                    {user.full_name.charAt(0)}
+                    {(user.full_name || user.email || "U").charAt(0).toUpperCase()}
                   </div>
                   <span className="text-sm font-medium text-gray-700 dark:text-foreground max-w-[120px] truncate">
-                    {user.full_name}
+                    {user.full_name || user.email || "Người dùng"}
                   </span>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </button>
@@ -185,10 +185,10 @@ export default function Header() {
                   <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-xl shadow-lg py-2 z-50">
                     {/* User info */}
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-border">
-                      <p className="font-medium text-gray-900 dark:text-foreground">{user.full_name}</p>
-                      <p className="text-sm text-gray-500 dark:text-foreground-muted">{user.phone}</p>
+                      <p className="font-medium text-gray-900 dark:text-foreground">{user.full_name || user.email || "Người dùng"}</p>
+                      <p className="text-sm text-gray-500 dark:text-foreground-muted">{user.phone || user.email || ""}</p>
                       <span className="inline-block mt-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-primary-50 dark:bg-primary-dark text-primary">
-                        {user.role.replace("_", " ")}
+                        {(user.role || "USER").replace("_", " ")}
                       </span>
                     </div>
 
@@ -321,11 +321,11 @@ export default function Header() {
                   {/* User info */}
                   <div className="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-border">
                     <div className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center font-bold">
-                      {user?.full_name.charAt(0)}
+                      {(user?.full_name || user?.email || "U").charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium dark:text-foreground">{user?.full_name}</p>
-                      <p className="text-xs text-gray-500 dark:text-foreground-muted uppercase">{user?.role.replace("_", " ")}</p>
+                      <p className="font-medium dark:text-foreground">{user?.full_name || user?.email || "Người dùng"}</p>
+                      <p className="text-xs text-gray-500 dark:text-foreground-muted uppercase">{(user?.role || "USER").replace("_", " ")}</p>
                     </div>
                   </div>
 

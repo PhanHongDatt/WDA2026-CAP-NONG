@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/lib/safe-image";
 import Link from "next/link";
 import { Zap, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -87,7 +87,7 @@ export default function FlashDeal() {
                 >
                   {/* Image */}
                   <div className="relative aspect-square rounded-lg overflow-hidden mb-2 bg-gray-50">
-                    <Image
+                    <SafeImage
                       src={deal.images[0]}
                       alt={deal.name}
                       fill

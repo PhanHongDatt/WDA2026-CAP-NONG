@@ -157,6 +157,7 @@ public class AiMarketingService {
                 if (request.getProvince() != null) body.put("province", request.getProvince());
                 if (request.getPriceDisplay() != null) body.put("price_display", request.getPriceDisplay());
                 if (request.getShopName() != null) body.put("shop_name", request.getShopName());
+                if (request.getImageModel() != null) body.put("image_model", request.getImageModel());
 
                 String url = aiServiceUrl + "/ai/poster-image";
                 String imageResult = callAiService(url, body);

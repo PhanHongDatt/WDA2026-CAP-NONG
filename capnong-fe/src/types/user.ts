@@ -47,19 +47,20 @@ export interface RegisterRequest {
 }
 
 /**
- * BE AuthResponse (camelCase — Jackson default):
- * { accessToken, refreshToken, type, expiresIn, username, phone, email, role }
+ * BE AuthResponse (snake_case — Jackson SNAKE_CASE config):
+ * { access_token, refresh_token, type, expires_in, username, phone, email, role, shop_slug }
  * → Flat, KHÔNG có nested user object
  */
 export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
+  access_token: string;
+  refresh_token: string;
   type: string;           // "Bearer"
-  expiresIn: number;
+  expires_in: number;
   username: string;
   phone: string;
   email?: string;
   role: string;
+  shop_slug?: string;
 }
 
 // ─── Guest Checkout ───
@@ -97,9 +98,13 @@ export interface UserProfileResponse {
   username: string;
   phone: string;
   email?: string;
-  fullName: string;
-  avatarUrl?: string;
+  full_name: string;
+  avatar_url?: string;
   role: string;
   active: boolean;
-  createdAt: string;
+  created_at: string;
+  // BE may also send camelCase in some endpoints — handle both
+  fullName?: string;
+  avatarUrl?: string;
+  createdAt?: string;
 }

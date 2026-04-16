@@ -76,15 +76,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Init: Restore session on mount
+   * - Nếu USE_MOCK=true → chỉ restore từ localStorage (không gọi API)
    * - Nếu có token → gọi /users/me để verify + lấy profile mới nhất
    * - Nếu token hết hạn → auto-refresh (do Axios interceptor xử lý)
    * - Nếu fail hoàn toàn → clear session
    */
   useEffect(() => {
+    const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
     const restoreSession = async () => {
+      // Mock mode: chỉ load từ localStorage, KHÔNG gọi API
+      // Tránh timeout loop khi BE chưa chạy
+      if (USE_MOCK) {
+        const stored = localStorage.getItem("capnong-user");
+        if (stored) {
+          try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
+        }
+        setIsLoading(false);
+        return;
+      }
+
       const token = authService.getToken();
       if (!token) {
-        // Fallback: load từ localStorage (cho mock mode hoặc offline)
+        // Fallback: load từ localStorage (cho offline)
         const stored = localStorage.getItem("capnong-user");
         if (stored) {
           try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
@@ -98,7 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = await userService.getProfile();
         setUser(profile);
       } catch {
-        // Token invalid + refresh failed → clear everything
+        // Token invalid + refresh failed → clear everything silently
+        // Không throw → tránh ErrorBoundary bắt → tránh loop
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         localStorage.removeItem("capnong-user");

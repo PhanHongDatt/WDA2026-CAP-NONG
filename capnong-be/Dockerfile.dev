@@ -8,7 +8,9 @@ FROM eclipse-temurin:21-jdk
 WORKDIR /app
 
 # Install Maven
-RUN apt-get update && \
+RUN sed -i 's/archive.ubuntu.com/mirror.kku.ac.th/g' /etc/apt/sources.list.d/ubuntu.sources || true && \
+    sed -i 's/security.ubuntu.com/mirror.kku.ac.th/g' /etc/apt/sources.list.d/ubuntu.sources || true && \
+    apt-get update && \
     apt-get install -y maven && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -26,5 +28,6 @@ COPY src/ src/
 EXPOSE 8080 5005
 
 # Run Spring Boot with hot reload and remote debugging enabled
-CMD ["mvn", "spring-boot:run", \
+CMD ["mvn", "spring-boot:run", "-Dmaven.test.skip=true", \
      "-Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"]
+

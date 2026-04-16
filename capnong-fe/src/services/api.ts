@@ -16,7 +16,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 8000, // 8s — đủ cho API bình thường, tránh SW hiểu nhầm offline
 });
 
 /* ─── Request Interceptor ─── */
@@ -95,8 +95,8 @@ api.interceptors.response.use(
           refreshToken,
         });
 
-        const newToken = res.data.data?.accessToken || res.data.accessToken;
-        const newRefresh = res.data.data?.refreshToken || res.data.refreshToken;
+        const newToken = res.data.data?.access_token || res.data.data?.accessToken || res.data.access_token || res.data.accessToken;
+        const newRefresh = res.data.data?.refresh_token || res.data.data?.refreshToken || res.data.refresh_token || res.data.refreshToken;
 
         if (newToken) {
           localStorage.setItem('access_token', newToken);
@@ -108,12 +108,13 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         processQueue(refreshError, null);
-        // Refresh failed → clear tokens, redirect login
+        // Refresh failed → clear tokens silently
+        // Không redirect cứng → tránh page flash giữa trang bình thường và login
+        // AuthContext sẽ detect user=null và handle UI phù hợp
         if (typeof window !== 'undefined') {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('capnong-user');
-          window.location.href = '/login';
         }
         return Promise.reject(refreshError);
       } finally {

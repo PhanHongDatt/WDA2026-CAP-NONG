@@ -31,17 +31,17 @@ export const apiAuthService: IAuthService = {
     const authData = res.data.data;
 
     // Lưu tokens
-    localStorage.setItem("access_token", authData.accessToken);
-    if (authData.refreshToken) {
-      localStorage.setItem("refresh_token", authData.refreshToken);
+    localStorage.setItem("access_token", authData.access_token);
+    if (authData.refresh_token) {
+      localStorage.setItem("refresh_token", authData.refresh_token);
     }
 
     // Gọi /users/me để lấy full profile (BE AuthResponse thiếu id, fullName, avatarUrl, ...)
     const user = await fetchUserProfile(authData);
 
     return {
-      access_token: authData.accessToken,
-      refresh_token: authData.refreshToken,
+      access_token: authData.access_token,
+      refresh_token: authData.refresh_token,
       user,
     };
   },
@@ -64,23 +64,23 @@ export const apiAuthService: IAuthService = {
         identifier: data.phone || data.email,
         username: data.username || data.phone,
         password: data.password,
-        fullName: data.full_name,
+        full_name: data.full_name,
         otp: data.otp || "", // OTP from register form
         role: data.role,
       }
     );
     const authData = res.data.data;
 
-    localStorage.setItem("access_token", authData.accessToken);
-    if (authData.refreshToken) {
-      localStorage.setItem("refresh_token", authData.refreshToken);
+    localStorage.setItem("access_token", authData.access_token);
+    if (authData.refresh_token) {
+      localStorage.setItem("refresh_token", authData.refresh_token);
     }
 
     const user = await fetchUserProfile(authData);
 
     return {
-      access_token: authData.accessToken,
-      refresh_token: authData.refreshToken,
+      access_token: authData.access_token,
+      refresh_token: authData.refresh_token,
       user,
     };
   },
@@ -128,7 +128,7 @@ export async function forgotPassword(identifier: string): Promise<void> {
  * Đặt lại mật khẩu
  */
 export async function resetPassword(identifier: string, otp: string, newPassword: string): Promise<void> {
-  await api.post("/api/auth/reset-password", { identifier, otp, newPassword });
+  await api.post("/api/auth/reset-password", { identifier, otp, new_password: newPassword });
 }
 
 /* ─── Helper: Fetch full profile sau login ─── */
@@ -138,14 +138,14 @@ async function fetchUserProfile(authData: BEAuthResponse): Promise<User> {
     const p = profileRes.data.data;
     return {
       id: String(p.id),
-      full_name: p.fullName || "",
+      full_name: p.full_name || p.fullName || "",
       username: p.username,
       phone: p.phone || "",
       email: p.email,
       role: p.role as User["role"],
-      avatar_url: p.avatarUrl,
+      avatar_url: p.avatar_url || p.avatarUrl,
       is_banned: !(p.active ?? true),
-      created_at: p.createdAt || new Date().toISOString(),
+      created_at: p.created_at || p.createdAt || new Date().toISOString(),
     };
   } catch {
     // Fallback: build user từ AuthResponse (thiếu một số field)

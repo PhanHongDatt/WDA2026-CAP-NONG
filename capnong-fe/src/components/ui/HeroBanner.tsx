@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/lib/safe-image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -68,14 +68,13 @@ export default function HeroBanner() {
                   i === current ? "opacity-100 z-10" : "opacity-0 z-0"
                 }`}
               >
-                <Image
+                <SafeImage
                   src={b.src}
                   alt={b.alt}
                   fill
                   sizes="(max-width: 1024px) 100vw, 75vw"
                   className="object-cover"
                   priority={i === 0}
-                  {...(i === 0 ? { fetchPriority: "high" as const } : { loading: "lazy" })}
                 />
               </Link>
             ))}
@@ -121,12 +120,11 @@ export default function HeroBanner() {
                 href={b.href}
                 className="relative flex-1 rounded-xl overflow-hidden group/side"
               >
-                <Image
+                <SafeImage
                   src={b.src}
                   alt={b.alt}
                   fill
                   sizes="280px"
-                  loading="lazy"
                   className="object-cover group-hover/side:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

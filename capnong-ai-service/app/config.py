@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     gemini_api_key: str
     gemini_model: str = "gemini-2.5-flash"
     gemini_image_model: str = "gemini-2.5-flash-image"
+    xai_api_key: str = ""  # Grok image generation (xAI)
     app_env: str = "development"
     log_level: str = "INFO"
     allowed_origins: str = "http://localhost:3000"
