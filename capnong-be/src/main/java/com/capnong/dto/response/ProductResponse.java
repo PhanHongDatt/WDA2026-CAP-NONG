@@ -37,6 +37,7 @@ public class ProductResponse {
     private String shelfLife;
     private BigDecimal averageRating;
     private Integer totalReviews;
+    private Integer totalSold;
 
     // Images
     private List<ProductImageResponse> images;

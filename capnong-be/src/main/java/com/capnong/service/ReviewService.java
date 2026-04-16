@@ -3,6 +3,7 @@ package com.capnong.service;
 import com.capnong.dto.request.ReviewCreateRequest;
 import com.capnong.exception.AppException;
 import com.capnong.model.Review;
+import com.capnong.model.Order;
 import com.capnong.model.OrderItem;
 import com.capnong.model.Product;
 import com.capnong.model.SubOrder;
@@ -21,7 +22,7 @@ import java.math.RoundingMode;
 import java.util.UUID;
 
 @Service
-public class ReviewService {
+public class ReviewService implements IReviewService {
 
     private final ReviewRepository reviewRepository;
     private final OrderItemRepository orderItemRepository;
@@ -38,10 +39,12 @@ public class ReviewService {
         this.orderEventNotifier = orderEventNotifier;
     }
 
+    @Override
     public Page<Review> getByProductId(UUID productId, Pageable pageable) {
         return reviewRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
     }
 
+    @Override
     @Transactional
     public Review createReview(UUID authorId, ReviewCreateRequest request) {
         // Verify order item exists
@@ -55,6 +58,13 @@ public class ReviewService {
         }
         if (subOrder.getStatus() != OrderStatus.DELIVERED) {
             throw new AppException("Chỉ đánh giá được khi đã nhận hàng", HttpStatus.BAD_REQUEST);
+        }
+
+        // Verify the authenticated user is the buyer who owns this order
+        Order parentOrder = subOrder.getOrder();
+        if (parentOrder == null || parentOrder.getUser() == null
+                || !parentOrder.getUser().getId().equals(authorId)) {
+            throw new AppException("Bạn không có quyền đánh giá mục đơn hàng này", HttpStatus.FORBIDDEN);
         }
 
         // Check if already reviewed this order item
@@ -86,6 +96,7 @@ public class ReviewService {
         return saved;
     }
 
+    @Override
     @Transactional
     public Review addSellerReply(UUID reviewId, UUID sellerId, String reply) {
         Review review = reviewRepository.findById(reviewId)
@@ -101,23 +112,21 @@ public class ReviewService {
 
     /**
      * Cập nhật averageRating và totalReviews trên Product (denormalized).
+     * Sử dụng aggregate query thay vì load toàn bộ review vào memory.
      */
     private void updateProductRating(UUID productId) {
-        Page<Review> allReviews = reviewRepository.findByProductIdOrderByCreatedAtDesc(
-                productId, Pageable.unpaged());
+        Object[] stats = reviewRepository.getProductRatingStats(productId);
+        if (stats == null || stats[0] == null) return;
 
-        long count = allReviews.getTotalElements();
-        if (count == 0) return;
+        Double avg = ((Number) stats[0]).doubleValue();
+        Long count = ((Number) stats[1]).longValue();
 
-        double sum = allReviews.getContent().stream()
-                .mapToInt(r -> r.getRating().intValue())
-                .sum();
-        BigDecimal avg = BigDecimal.valueOf(sum / count).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal averageRating = BigDecimal.valueOf(avg).setScale(2, RoundingMode.HALF_UP);
 
         Product product = productRepository.findById(productId).orElse(null);
         if (product != null) {
-            product.setAverageRating(avg);
-            product.setTotalReviews((int) count);
+            product.setAverageRating(averageRating);
+            product.setTotalReviews(count.intValue());
             productRepository.save(product);
         }
     }

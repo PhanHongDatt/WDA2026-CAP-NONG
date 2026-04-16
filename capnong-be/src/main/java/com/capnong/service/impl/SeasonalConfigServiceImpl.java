@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -156,12 +157,12 @@ public class SeasonalConfigServiceImpl implements SeasonalConfigService {
         LocalDate today = LocalDate.now();
         List<Product> activeProducts = productRepository.findAllActive();
 
-        int updated = 0;
+        List<Product> toUpdate = new ArrayList<>();
         for (Product product : activeProducts) {
             // Không dynamic update cho HIDDEN products
             if (product.getStatus() == ProductStatus.HIDDEN) continue;
 
-            // Lấy province từ shop
+            // Lấy province từ shop (đã JOIN FETCH, không N+1)
             String province = product.getShop().getProvince();
 
             ProductStatus newStatus = calculateProductStatus(
@@ -176,12 +177,15 @@ public class SeasonalConfigServiceImpl implements SeasonalConfigService {
             if (product.getStatus() != newStatus) {
                 log.info("Product {} status: {} → {}", product.getId(), product.getStatus(), newStatus);
                 product.setStatus(newStatus);
-                productRepository.save(product);
-                updated++;
+                toUpdate.add(product);
             }
         }
 
-        log.info("Seasonal status update completed: {}/{} products updated", updated, activeProducts.size());
+        if (!toUpdate.isEmpty()) {
+            productRepository.saveAll(toUpdate);
+        }
+
+        log.info("Seasonal status update completed: {}/{} products updated", toUpdate.size(), activeProducts.size());
     }
 
     // ─── Helpers ────────────────────────────────────────

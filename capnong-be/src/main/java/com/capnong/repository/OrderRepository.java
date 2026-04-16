@@ -18,12 +18,28 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     List<Order> findByUser_Id(UUID userId);
 
-    Page<Order> findByUser_IdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+    @Query(value = "SELECT o FROM Order o " +
+            "LEFT JOIN FETCH o.subOrders so " +
+            "LEFT JOIN FETCH so.items i " +
+            "LEFT JOIN FETCH i.product p " +
+            "LEFT JOIN FETCH so.shop s " +
+            "LEFT JOIN FETCH o.user " +
+            "WHERE o.user.id = :userId",
+            countQuery = "SELECT count(o) FROM Order o WHERE o.user.id = :userId")
+    Page<Order> findByUserIdWithDetails(@Param("userId") UUID userId, Pageable pageable);
 
-    Page<Order> findByUser_IdAndStatusOrderByCreatedAtDesc(UUID userId, OrderStatus status, Pageable pageable);
+    @Query(value = "SELECT o FROM Order o " +
+            "LEFT JOIN FETCH o.subOrders so " +
+            "LEFT JOIN FETCH so.items i " +
+            "LEFT JOIN FETCH i.product p " +
+            "LEFT JOIN FETCH so.shop s " +
+            "LEFT JOIN FETCH o.user " +
+            "WHERE o.user.id = :userId AND o.status = :status",
+            countQuery = "SELECT count(o) FROM Order o WHERE o.user.id = :userId AND o.status = :status")
+    Page<Order> findByUserIdAndStatusWithDetails(@Param("userId") UUID userId, @Param("status") OrderStatus status, Pageable pageable);
 
     @Query("SELECT o FROM Order o WHERE (o.guestPhone = :phone OR o.guestEmail = :email) AND o.user IS NULL")
-    List<Order> findByUser_IdOrderByCreatedAtDesc(UUID userId);
+    List<Order> findGuestOrdersByPhoneOrEmail(@Param("phone") String phone, @Param("email") String email);
 
     Optional<Order> findByOrderNumber(String orderNumber);
 
