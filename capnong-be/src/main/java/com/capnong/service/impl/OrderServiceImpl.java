@@ -212,22 +212,20 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponseDto.SubOrderDto> getSellerSubOrders(UUID sellerId, String status) {
+    public Page<OrderResponseDto.SubOrderDto> getSellerSubOrders(UUID sellerId, String status, Pageable pageable) {
         // Find seller's shop
         Shop shop = shopRepository.findByOwner_Id(sellerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa có gian hàng"));
 
-        List<SubOrder> subOrders;
+        Page<SubOrder> subOrders;
         if (status != null && !status.isBlank()) {
             OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
-            subOrders = subOrderRepository.findByShop_IdAndStatusOrderByCreatedAtDesc(shop.getId(), orderStatus);
+            subOrders = subOrderRepository.findByShop_IdAndStatusOrderByCreatedAtDesc(shop.getId(), orderStatus, pageable);
         } else {
-            subOrders = subOrderRepository.findByShop_IdOrderByCreatedAtDesc(shop.getId());
+            subOrders = subOrderRepository.findByShop_IdOrderByCreatedAtDesc(shop.getId(), pageable);
         }
 
-        return subOrders.stream()
-                .map(this::mapToSubOrderDto)
-                .collect(Collectors.toList());
+        return subOrders.map(this::mapToSubOrderDto);
     }
 
     @Override
@@ -295,15 +293,40 @@ public class OrderServiceImpl implements OrderService {
         subOrder.setStatus(newStatus);
         subOrderRepository.save(subOrder);
 
-        // Get parent order for notification
-        Order order = orderRepository.findById(subOrder.getOrder().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        // Parent order is already loaded via lazy proxy — no need to re-fetch
+        Order order = subOrder.getOrder();
 
         if (newStatus == OrderStatus.CANCELLED) {
             orderEventNotifier.notifyCancellation(subOrder, order, CancelledBy.SELLER);
         } else {
             orderEventNotifier.notifyStatusChange(subOrder, order);
         }
+
+        // Increment totalSold on products when sub-order is delivered
+        if (newStatus == OrderStatus.DELIVERED) {
+            List<Product> productsToUpdate = new java.util.ArrayList<>();
+            for (OrderItem item : subOrder.getItems()) {
+                Product product = productRepository.findById(item.getProduct().getId()).orElse(null);
+                if (product != null) {
+                    product.setTotalSold(
+                            (product.getTotalSold() != null ? product.getTotalSold() : 0)
+                                    + item.getQuantity().intValue());
+                    productsToUpdate.add(product);
+                }
+            }
+            if (!productsToUpdate.isEmpty()) {
+                productRepository.saveAll(productsToUpdate);
+            }
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponseDto.SubOrderDto getSellerSubOrderDetail(UUID subOrderId, UUID sellerId) {
+        SubOrder subOrder = subOrderRepository.findByIdAndShop_Owner_Id(subOrderId, sellerId)
+                .orElseThrow(() -> new AppException("Không tìm thấy đơn con hoặc bạn không có quyền",
+                        HttpStatus.FORBIDDEN));
+        return mapToSubOrderDto(subOrder);
     }
 
     @Override
@@ -331,12 +354,12 @@ public class OrderServiceImpl implements OrderService {
         if (status != null && !status.isBlank()) {
             try {
                 OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
-                orders = orderRepository.findByUser_IdAndStatusOrderByCreatedAtDesc(userId, orderStatus, pageable);
+                orders = orderRepository.findByUserIdAndStatusWithDetails(userId, orderStatus, pageable);
             } catch (IllegalArgumentException e) {
-                orders = orderRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable);
+                orders = orderRepository.findByUserIdWithDetails(userId, pageable);
             }
         } else {
-            orders = orderRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable);
+            orders = orderRepository.findByUserIdWithDetails(userId, pageable);
         }
         return orders.map(this::mapToOrderResponseDto);
     }

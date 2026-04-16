@@ -86,6 +86,10 @@ public class Product extends BaseEntity {
     @Builder.Default
     private Integer totalReviews = 0;
 
+    @Column(name = "total_sold")
+    @Builder.Default
+    private Integer totalSold = 0;
+
     /** Non-null khi product được tạo từ Bundle (virtual product cho wholesale) */
     @Column(name = "bundle_id")
     private java.util.UUID bundleId;

@@ -27,6 +27,6 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
 
     List<Product> findByShopId(UUID shopId);
 
-    @Query("SELECT p FROM Product p WHERE p.status <> 'HIDDEN' AND p.deleted = false")
+    @Query("SELECT p FROM Product p JOIN FETCH p.shop WHERE p.status <> 'HIDDEN' AND p.deleted = false")
     List<Product> findAllActive();
 }

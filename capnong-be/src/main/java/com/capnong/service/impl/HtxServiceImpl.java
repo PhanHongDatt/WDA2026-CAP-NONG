@@ -17,6 +17,8 @@ import com.capnong.model.enums.Role;
 import com.capnong.repository.HtxJoinRequestRepository;
 import com.capnong.repository.HtxRepository;
 import com.capnong.repository.UserRepository;
+import com.capnong.repository.BundlePledgeRepository;
+import com.capnong.model.enums.PledgeStatus;
 import com.capnong.service.HtxService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -34,6 +36,7 @@ public class HtxServiceImpl implements HtxService {
     private final HtxRepository htxRepository;
     private final HtxJoinRequestRepository joinRequestRepository;
     private final UserRepository userRepository;
+    private final BundlePledgeRepository pledgeRepository;
     private final HtxMapper htxMapper;
     private final UserMapper userMapper;
 
@@ -233,7 +236,12 @@ public class HtxServiceImpl implements HtxService {
             throw new AppException("Bạn không phải thành viên HTX nào", HttpStatus.BAD_REQUEST);
         }
 
-        // TODO: Kiểm tra pledge trong Bundle OPEN/CONFIRMED khi implement Bundle module
+        // Kiểm tra pledge trong Bundle OPEN/CONFIRMED
+        long activePledges = pledgeRepository.countByFarmer_IdAndStatus(member.getId(), PledgeStatus.ACTIVE);
+        if (activePledges > 0) {
+            throw new AppException("Bạn đang có cam kết (pledge) đang hoạt động trong Bundle. "
+                    + "Hãy rút cam kết trước khi rời HTX.", HttpStatus.BAD_REQUEST);
+        }
 
         member.setHtx(null);
         member.setRole(Role.FARMER);
@@ -260,7 +268,12 @@ public class HtxServiceImpl implements HtxService {
             throw new AppException("Bạn không thể xóa chính mình khỏi HTX", HttpStatus.BAD_REQUEST);
         }
 
-        // TODO: Kiểm tra pledge trong Bundle khi implement Bundle module
+        // Kiểm tra pledge trong Bundle
+        long activePledges = pledgeRepository.countByFarmer_IdAndStatus(member.getId(), PledgeStatus.ACTIVE);
+        if (activePledges > 0) {
+            throw new AppException("Thành viên này đang có cam kết (pledge) đang hoạt động trong Bundle. "
+                    + "Không thể xóa khỏi HTX lưu lượng chưa giải quyết.", HttpStatus.BAD_REQUEST);
+        }
 
         member.setHtx(null);
         member.setRole(Role.FARMER);

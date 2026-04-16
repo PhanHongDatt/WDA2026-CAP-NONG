@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  *  5. Scheduler auto-expire bundles quá deadline
  */
 @Service
-public class CooperativeService {
+public class CooperativeService implements ICooperativeService {
 
     private static final Logger logger = LoggerFactory.getLogger(CooperativeService.class);
 
@@ -74,6 +74,7 @@ public class CooperativeService {
     //  QUERY
     // ═══════════════════════════════════════════════════════════════
 
+    @Override
     @Transactional(readOnly = true)
     public List<BundleResponseDto> getOpenBundles() {
         return bundleRepository.findByStatus(BundleStatus.OPEN).stream()
@@ -81,12 +82,14 @@ public class CooperativeService {
                 .collect(Collectors.toList());
     }
 
+    @Override
     @Transactional(readOnly = true)
     public BundleResponseDto getBundleById(UUID bundleId) {
         CooperativeBundle bundle = findBundleOrThrow(bundleId);
         return bundleMapper.toBundleDto(bundle, true);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<BundleResponseDto> getShopBundles(UUID htxShopId) {
         return bundleRepository.findByHtxShop_IdOrderByCreatedAtDesc(htxShopId).stream()
@@ -94,6 +97,7 @@ public class CooperativeService {
                 .collect(Collectors.toList());
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<PledgeResponseDto> getMyPledges(UUID farmerId) {
         return pledgeRepository.findByFarmer_IdAndStatus(farmerId, PledgeStatus.ACTIVE).stream()
@@ -108,6 +112,7 @@ public class CooperativeService {
     /**
      * 1. Tạo Bundle mới trong HTX_SHOP.
      */
+    @Override
     @Transactional
     public BundleResponseDto createBundle(BundleCreateRequest request, UUID managerId) {
         // Verify manager owns an HTX
@@ -159,6 +164,7 @@ public class CooperativeService {
     /**
      * 2. Cancel Bundle (chỉ OPEN/FULL → CANCELLED).
      */
+    @Override
     @Transactional
     public BundleResponseDto cancelBundle(UUID bundleId, UUID managerId) {
         CooperativeBundle bundle = findBundleOrThrow(bundleId);
@@ -174,7 +180,6 @@ public class CooperativeService {
         List<BundlePledge> activePledges = pledgeRepository.findByBundle_IdAndStatus(bundleId, PledgeStatus.ACTIVE);
         for (BundlePledge pledge : activePledges) {
             pledge.setStatus(PledgeStatus.EXPIRED);
-            pledgeRepository.save(pledge);
 
             telegramNotificationService.notify(
                     pledge.getFarmer().getId(),
@@ -184,6 +189,7 @@ public class CooperativeService {
                             + "Cam kết **" + pledge.getQuantity() + " " + bundle.getUnitCode() + "** của bạn đã được giải phóng."
             );
         }
+        pledgeRepository.saveAll(activePledges);
 
         bundleRepository.save(bundle);
         logger.info("Bundle {} cancelled by manager {}", bundleId, managerId);
@@ -194,6 +200,7 @@ public class CooperativeService {
      * 3. ⭐ Confirm Bundle — Core business logic.
      *    Tính contribution_percent, estimated_revenue, tạo virtual Product.
      */
+    @Override
     @Transactional
     public BundleResponseDto confirmBundle(UUID bundleId, UUID managerId) {
         CooperativeBundle bundle = findBundleOrThrow(bundleId);
@@ -253,6 +260,7 @@ public class CooperativeService {
     /**
      * Farmer đăng ký pledge vào Bundle.
      */
+    @Override
     @Transactional
     public PledgeResponseDto createPledge(UUID bundleId, PledgeRequest request, UUID farmerId) {
         CooperativeBundle bundle = findBundleOrThrow(bundleId);
@@ -319,6 +327,7 @@ public class CooperativeService {
     /**
      * Farmer rút pledge (chỉ khi Bundle còn OPEN).
      */
+    @Override
     @Transactional
     public void withdrawPledge(UUID pledgeId, UUID farmerId) {
         BundlePledge pledge = pledgeRepository.findById(pledgeId)
@@ -358,20 +367,21 @@ public class CooperativeService {
      * Chuyển OPEN/FULL bundles quá deadline → EXPIRED.
      * Gọi bởi BundleScheduler mỗi ngày lúc 00:00.
      */
+    @Override
     @Transactional
     public int expireOpenBundles() {
         List<BundleStatus> expirable = List.of(BundleStatus.OPEN, BundleStatus.FULL);
         List<CooperativeBundle> expired = bundleRepository.findByStatusInAndDeadlineBefore(expirable, LocalDate.now());
 
+        List<BundlePledge> allPledgesToExpire = new java.util.ArrayList<>();
+
         for (CooperativeBundle bundle : expired) {
             bundle.setStatus(BundleStatus.EXPIRED);
-            bundleRepository.save(bundle);
 
             // Expire all active pledges
             List<BundlePledge> activePledges = pledgeRepository.findByBundle_IdAndStatus(bundle.getId(), PledgeStatus.ACTIVE);
             for (BundlePledge pledge : activePledges) {
                 pledge.setStatus(PledgeStatus.EXPIRED);
-                pledgeRepository.save(pledge);
 
                 telegramNotificationService.notify(
                         pledge.getFarmer().getId(),
@@ -382,9 +392,13 @@ public class CooperativeService {
                                 + "** của bạn đã được giải phóng."
                 );
             }
+            allPledgesToExpire.addAll(activePledges);
 
             logger.info("Bundle {} expired (deadline: {})", bundle.getId(), bundle.getDeadline());
         }
+
+        if (!expired.isEmpty()) bundleRepository.saveAll(expired);
+        if (!allPledgesToExpire.isEmpty()) pledgeRepository.saveAll(allPledgesToExpire);
 
         return expired.size();
     }
