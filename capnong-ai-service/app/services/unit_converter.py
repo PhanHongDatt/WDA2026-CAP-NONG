@@ -99,7 +99,7 @@ def convert_to_kg(value: float, unit: str) -> Optional[ConversionResult]:
 
     note = ""
     if norm not in ("kg", "ky", "ký", "kilo"):
-        note = f"Đã quy đổi {value} {unit} → {converted:g} kg"
+        note = f"Đã quy đổi {value:g} {unit} → {converted:g} kg"
 
     return ConversionResult(
         converted_value=converted,

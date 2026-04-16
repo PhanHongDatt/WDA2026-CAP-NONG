@@ -206,6 +206,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         short sortOrder = (short) currentCount;
+        List<ProductImage> newImages = new java.util.ArrayList<>();
         for (MultipartFile file : files) {
             String url = cloudinaryService.uploadImage(file, "capnong/products/" + productId);
             ProductImage image = ProductImage.builder()
@@ -213,8 +214,9 @@ public class ProductServiceImpl implements ProductService {
                     .url(url)
                     .sortOrder(sortOrder++)
                     .build();
-            productImageRepository.save(image);
+            newImages.add(image);
         }
+        productImageRepository.saveAll(newImages);
 
         Product refreshed = productRepository.findById(productId).orElseThrow();
         return productMapper.toProductResponse(refreshed);

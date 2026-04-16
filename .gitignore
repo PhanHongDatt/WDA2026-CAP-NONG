@@ -28,7 +28,6 @@ capnong-be/*.jar
 capnong-be/*.war
 capnong-be/.mvn/wrapper/maven-wrapper.jar
 *.log
-*.txt
 
 # ─── Node.js / Next.js ────────────────────────
 capnong-fe/node_modules/
@@ -42,7 +41,14 @@ capnong-fe/yarn-error.log*
 # ─── Docker ────────────────────────────────────
 docker-compose.override.yml
 
-# ─── Misc ──────────────────────────────────────
+# ─── Misc ──────────────────────────────────
 *.swp
 *.swo
 *~
+
+# ─── Terraform ─────────────────────────────
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/terraform.tfvars
+

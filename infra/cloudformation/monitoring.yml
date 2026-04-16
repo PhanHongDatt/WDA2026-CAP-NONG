@@ -1,0 +1,173 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cạp Nông - CloudWatch Monitoring & Metrics for Learner Lab EC2 Environment'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: capnong
+    Description: Base name for all resources
+
+  AlertEmail:
+    Type: String
+    Description: Email address to notify on Alarms
+
+  EC2InstanceId:
+    Type: String
+    Description: EC2 instance ID (from terraform output ec2_instance_id)
+
+  RDSInstanceIdentifier:
+    Type: String
+    Description: RDS DB instance identifier (e.g. capnong-postgres)
+    Default: capnong-postgres
+
+Resources:
+  # ─── SNS Topic for Alerts ───────────────────────
+  SystemAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub "${ProjectName}-alerts"
+      TopicName: !Sub "${ProjectName}-alerts"
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref AlertEmail
+      Protocol: email
+      TopicArn: !Ref SystemAlertsTopic
+
+  # ─── EC2 Alarms ──────────────────────────────────
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-ec2-high-cpu"
+      AlarmDescription: "Scale-up or investigate if CPU > 85% for 10 minutes"
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SystemAlertsTopic
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref EC2InstanceId
+
+  # ─── RDS Free Tier Alarms ────────────────────────
+  HighRDSConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-rds-high-connections"
+      AlarmDescription: "Alert if DB Connections approach Postgres T3.Micro limit"
+      MetricName: DatabaseConnections
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 75
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SystemAlertsTopic
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RDSInstanceIdentifier
+
+  HighRDSCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-rds-high-cpu"
+      AlarmDescription: "Alert if RDS CPU > 80%"
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SystemAlertsTopic
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RDSInstanceIdentifier
+
+  # ─── CloudWatch Dashboard ────────────────────────
+  MonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${ProjectName}-monitoring-dashboard"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/EC2", "CPUUtilization", "InstanceId", "${EC2InstanceId}" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "EC2 Docker Host - CPU",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/EC2", "NetworkIn", "InstanceId", "${EC2InstanceId}" ],
+                  [ ".", "NetworkOut", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "EC2 Network Traffic",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "${RDSInstanceIdentifier}" ],
+                  [ ".", "CPUUtilization", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "RDS PostgreSQL Health",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+Outputs:
+  DashboardURL:
+    Description: URL to the CloudWatch Dashboard
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${MonitoringDashboard}"
+
+  DeployCommand:
+    Description: AWS CLI command to deploy this stack
+    Value: !Sub >
+      aws cloudformation deploy
+      --template-file infra/cloudformation/monitoring.yml
+      --stack-name ${ProjectName}-monitoring
+      --parameter-overrides
+        AlertEmail=your@email.com
+        EC2InstanceId=i-xxxxxxxxxxxxxxxxx
+        RDSInstanceIdentifier=${ProjectName}-postgres
+      --region us-east-1

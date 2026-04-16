@@ -48,9 +48,12 @@ public class ProductSpecification {
                 }
             }
 
+            // Lazy-init shop join — reuse cho province, shopSlug, shopId
+            Join<Product, Shop> shopJoin = null;
+
             // Province (join Shop)
             if (params.getProvince() != null && !params.getProvince().isBlank()) {
-                Join<Product, Shop> shopJoin = root.join("shop", JoinType.LEFT);
+                shopJoin = root.join("shop", JoinType.LEFT);
                 predicates.add(cb.equal(shopJoin.get("province"), params.getProvince()));
             }
 
@@ -90,9 +93,11 @@ public class ProductSpecification {
                 predicates.add(cb.equal(root.get("shop").get("id"), params.getShopId()));
             }
 
-            // Shop slug
+            // Shop slug (reuse existing join if available)
             if (params.getShopSlug() != null && !params.getShopSlug().isBlank()) {
-                Join<Product, Shop> shopJoin = root.join("shop", JoinType.LEFT);
+                if (shopJoin == null) {
+                    shopJoin = root.join("shop", JoinType.LEFT);
+                }
                 predicates.add(cb.equal(shopJoin.get("slug"), params.getShopSlug()));
             }
 

@@ -17,4 +17,5 @@ public interface BundlePledgeRepository extends JpaRepository<BundlePledge, UUID
     List<BundlePledge> findByFarmer_IdAndStatus(UUID farmerId, PledgeStatus status);
     Optional<BundlePledge> findByBundle_IdAndFarmer_Id(UUID bundleId, UUID farmerId);
     boolean existsByBundle_IdAndFarmer_Id(UUID bundleId, UUID farmerId);
+    long countByFarmer_IdAndStatus(UUID farmerId, PledgeStatus status);
 }

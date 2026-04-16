@@ -1,9 +1,11 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    gemini_api_key: str
+    model_config = SettingsConfigDict(env_file=".env")
+
+    gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
     gemini_image_model: str = "gemini-2.5-flash-image"
     xai_api_key: str = ""  # Grok image generation (xAI)
@@ -24,9 +26,6 @@ class Settings(BaseSettings):
     @property
     def has_clipdrop(self) -> bool:
         return bool(self.clipdrop_api_key)
-
-    class Config:
-        env_file = ".env"
 
 
 @lru_cache()

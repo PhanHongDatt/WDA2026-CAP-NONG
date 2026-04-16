@@ -1,0 +1,36 @@
+# ============================================
+# Cạp Nông — Terraform Variables (Example)
+# Copy to terraform.tfvars and fill in values
+# ============================================
+
+# ─── General ─────────────────────────────────
+aws_region   = "us-east-1"
+environment  = "prod"
+project_name = "capnong"
+
+# ─── Networking ──────────────────────────────
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidr   = "10.0.1.0/24"
+private_subnet_cidrs = ["10.0.2.0/24", "10.0.3.0/24"]
+availability_zones   = ["us-east-1a", "us-east-1b"]
+
+# ─── EC2 ─────────────────────────────────────
+ec2_instance_type = "t3.medium"        # 2 vCPU, 4GB RAM
+ec2_key_name      = "your-key-name"    # ⚠️ CHANGE THIS
+ec2_volume_size   = 30                 # GB
+
+# ─── RDS ─────────────────────────────────────
+db_instance_class = "db.t3.micro"      # Free Tier
+db_name           = "capnong_prod"
+db_username       = "capnong"
+db_password       = "your-db-password" # ⚠️ CHANGE THIS (min 8 chars)
+db_storage_size   = 20                 # GB
+
+# ─── Domain ──────────────────────────────────
+domain_name = ""                       # e.g. "capnong.vn"
+
+# ─── Security ────────────────────────────────
+ssh_allowed_cidr = "0.0.0.0/0"        # ⚠️ Restrict to your IP: "1.2.3.4/32"
+
+# ─── IAM ─────────────────────────────────────
+iam_instance_profile = "LabInstanceProfile"  # Learner Lab default

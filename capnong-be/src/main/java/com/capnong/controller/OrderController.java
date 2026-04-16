@@ -1,6 +1,5 @@
 package com.capnong.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import com.capnong.dto.request.CheckoutRequest;
@@ -114,15 +113,29 @@ public class OrderController {
     }
 
     /**
-     * GET /api/orders/seller?status=... — Farmer xem danh sách đơn con của mình.
+     * GET /api/orders/seller?status=...&page=0&size=20 — Farmer xem danh sách đơn con (phân trang).
      */
     @GetMapping("/seller")
     @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
-    public ResponseEntity<ApiResponse<List<OrderResponseDto.SubOrderDto>>> getSellerSubOrders(
+    public ResponseEntity<ApiResponse<Page<OrderResponseDto.SubOrderDto>>> getSellerSubOrders(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            Pageable pageable) {
 
         return ResponseEntity.ok(ApiResponse.success("OK", 
-                orderService.getSellerSubOrders(userDetails.getId(), status)));
+                orderService.getSellerSubOrders(userDetails.getId(), status, pageable)));
+    }
+
+    /**
+     * GET /api/orders/sub-orders/{subOrderId} — Farmer xem chi tiết 1 đơn con.
+     */
+    @GetMapping("/sub-orders/{subOrderId}")
+    @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
+    public ResponseEntity<ApiResponse<OrderResponseDto.SubOrderDto>> getSellerSubOrderDetail(
+            @PathVariable UUID subOrderId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        return ResponseEntity.ok(ApiResponse.success("OK",
+                orderService.getSellerSubOrderDetail(subOrderId, userDetails.getId())));
     }
 }
