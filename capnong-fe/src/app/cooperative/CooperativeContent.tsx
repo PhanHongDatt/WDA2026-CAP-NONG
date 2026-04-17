@@ -37,6 +37,8 @@ const MOCK_ACTIVE_HTX = [
   { id: "htx-003", name: "HTX Cam Hà Giang", province: "Hà Giang", members: 10, manager: "Lê Văn C" },
 ];
 
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 export default function CooperativeContent() {
   const { user, isLoggedIn } = useAuth();
   const isFarmerOnly = user?.role === "FARMER";
@@ -51,8 +53,8 @@ export default function CooperativeContent() {
   const [pledgedPools, setPledgedPools] = useState<Set<number>>(new Set());
 
   /* ─── API-first fetch for bundles + HTX list ─── */
-  const [pools, setPools] = useState(POOLS);
-  const [activeHtx, setActiveHtx] = useState(MOCK_ACTIVE_HTX);
+  const [pools, setPools] = useState(USE_MOCK ? POOLS : []);
+  const [activeHtx, setActiveHtx] = useState(USE_MOCK ? MOCK_ACTIVE_HTX : []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -75,7 +77,10 @@ export default function CooperativeContent() {
         })));
       }
     } catch {
-      // keep mock
+      if (USE_MOCK) {
+        setPools(POOLS);
+        setActiveHtx(MOCK_ACTIVE_HTX);
+      }
     }
   }, []);
 

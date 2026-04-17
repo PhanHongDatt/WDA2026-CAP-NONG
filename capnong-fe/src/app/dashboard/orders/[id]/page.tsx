@@ -50,10 +50,12 @@ const MOCK_ORDER = {
   note: "Giao buổi sáng, gọi trước khi giao.",
 };
 
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 export default function SellerOrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
-  const [order, setOrder] = useState(MOCK_ORDER);
+  const [order, setOrder] = useState(USE_MOCK ? MOCK_ORDER : null as typeof MOCK_ORDER | null);
   const [sellerNote, setSellerNote] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -88,11 +90,23 @@ export default function SellerOrderDetailPage() {
             note: found.orderNotes || "",
           });
         }
-      } catch { /* keep mock */ }
+      } catch {
+        if (USE_MOCK && !order) { setOrder(MOCK_ORDER); }
+      }
       setLoading(false);
     }
     fetchOrder();
   }, [orderId]);
+
+  if (!order) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center text-foreground-muted">
+        <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
+        <p>Không tìm thấy đơn hàng</p>
+        <Link href="/dashboard/orders" className="text-primary text-sm mt-2 inline-block hover:underline">← Quay lại</Link>
+      </div>
+    );
+  }
 
   const subtotal = order.items.reduce((s, i) => s + i.price * i.qty, 0);
   const total = subtotal + order.shipping_fee;
@@ -102,7 +116,7 @@ export default function SellerOrderDetailPage() {
   const handleAdvance = async () => {
     if (!ns) return;
     // Optimistic
-    setOrder((prev) => ({ ...prev, status: ns.next }));
+    setOrder((prev) => prev ? ({ ...prev, status: ns.next }) : prev);
     try {
       // If BE has status update endpoint — call it
       const api = (await import("@/services/api")).default;

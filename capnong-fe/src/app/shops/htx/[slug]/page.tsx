@@ -65,14 +65,16 @@ const MOCK_BUNDLES = [
   },
 ];
 
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 export default function HtxShopPage() {
   const params = useParams();
   const slug = params.slug as string;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [htx, setHtx] = useState<any>(MOCK_HTX);
+  const [htx, setHtx] = useState<any>(USE_MOCK ? MOCK_HTX : null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [bundles, setBundles] = useState<any[]>(MOCK_BUNDLES);
+  const [bundles, setBundles] = useState<any[]>(USE_MOCK ? MOCK_BUNDLES : []);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -86,19 +88,19 @@ export default function HtxShopPage() {
       if (htxDetail) {
         setHtx({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          name: (htxDetail as any).name || MOCK_HTX.name,
+          name: (htxDetail as any).name || "—",
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          province: (htxDetail as any).province || MOCK_HTX.province,
+          province: (htxDetail as any).province || "—",
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          members: (htxDetail as any).memberCount || (htxDetail as any).members || MOCK_HTX.members,
+          members: (htxDetail as any).memberCount || (htxDetail as any).members || 0,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          manager: (htxDetail as any).managerName || MOCK_HTX.manager,
+          manager: (htxDetail as any).managerName || "—",
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          description: (htxDetail as any).description || MOCK_HTX.description,
+          description: (htxDetail as any).description || "",
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          rating: (htxDetail as any).rating || MOCK_HTX.rating,
+          rating: (htxDetail as any).rating || 0,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          total_orders: (htxDetail as any).totalOrders || MOCK_HTX.total_orders,
+          total_orders: (htxDetail as any).totalOrders || 0,
         });
       }
       if (Array.isArray(apiBundles) && apiBundles.length > 0) {
@@ -117,7 +119,7 @@ export default function HtxShopPage() {
         setBundles(mapped);
       }
     } catch {
-      /* keep mock data */
+      if (USE_MOCK) { setHtx(MOCK_HTX); setBundles(MOCK_BUNDLES); }
     } finally {
       setLoading(false);
     }
@@ -141,7 +143,7 @@ export default function HtxShopPage() {
           <ArrowLeft className="w-5 h-5 text-foreground-muted" />
         </Link>
         <div>
-          <h1 className="text-2xl font-black text-foreground">{htx.name}</h1>
+          <h1 className="text-2xl font-black text-foreground">{htx?.name || "HTX"}</h1>
           <p className="text-sm text-foreground-muted">Gian hàng HTX — Đơn sỉ / Bundle</p>
         </div>
       </div>
@@ -153,13 +155,13 @@ export default function HtxShopPage() {
             🏛️
           </div>
           <div className="flex-1 space-y-2">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">{htx.name}</h2>
-            <p className="text-sm text-gray-600 dark:text-foreground-muted">{htx.description}</p>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-foreground">{htx?.name || "HTX"}</h2>
+            <p className="text-sm text-gray-600 dark:text-foreground-muted">{htx?.description || ""}</p>
             <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-foreground-muted">
-              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {htx.province}</span>
-              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {htx.members} thành viên</span>
-              <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-400" /> {htx.rating}</span>
-              <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {htx.total_orders} đơn hoàn thành</span>
+              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {htx?.province || "—"}</span>
+              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {htx?.members || 0} thành viên</span>
+              <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-400" /> {htx?.rating || 0}</span>
+              <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {htx?.total_orders || 0} đơn hoàn thành</span>
             </div>
           </div>
         </div>

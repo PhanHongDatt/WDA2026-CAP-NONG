@@ -3,12 +3,12 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import ProductCard from "@/components/ui/ProductCard";
 import FarmCard from "@/components/ui/FarmCard";
-import CoopPoolSection from "@/components/ui/CoopPoolSection";
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryGrid from "@/components/ui/CategoryGrid";
 import FlashDeal from "@/components/ui/FlashDeal";
 import { productService, shopService } from "@/services";
-import { MOCK_COOP_POOL } from "@/lib/mock-data";
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
 export const metadata: Metadata = {
   title: "Trang Chủ",
@@ -62,11 +62,17 @@ export default async function HomePage() {
     productService.getNewProducts(),
     shopService.getFeaturedShops().then(async (result) => {
       if (result && result.length > 0) return result;
-      const { MOCK_SHOPS } = await import("@/lib/mock-data");
-      return MOCK_SHOPS;
+      if (USE_MOCK) {
+        const { MOCK_SHOPS } = await import("@/lib/mock-data");
+        return MOCK_SHOPS;
+      }
+      return [];
     }).catch(async () => {
-      const { MOCK_SHOPS } = await import("@/lib/mock-data");
-      return MOCK_SHOPS;
+      if (USE_MOCK) {
+        const { MOCK_SHOPS } = await import("@/lib/mock-data");
+        return MOCK_SHOPS;
+      }
+      return [];
     }),
   ]);
   return (
@@ -159,10 +165,8 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* SECTION: Cooperative Pool — chỉ hiện cho HTX members/managers */}
-        <div className="cv-auto">
-          <CoopPoolSection pool={MOCK_COOP_POOL} />
-        </div>
+        {/* SECTION: Cooperative Pool — hiện khi có API gom đơn thật */}
+        {/* TODO: Tích hợp API /api/bundles/open khi sẵn sàng */}
 
         {/* SECTION: Featured Farms — giống hình tham khảo carousel */}
         <section className="mb-12 relative">

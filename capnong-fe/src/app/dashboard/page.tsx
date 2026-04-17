@@ -45,6 +45,15 @@ const REVENUE_DATA = [
   { label: "T12", value: 6100000 },
 ];
 
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
+const EMPTY_STATS = [
+  { label: "Đơn hàng", value: "—", icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
+  { label: "Sản phẩm", value: "—", icon: ShoppingCart, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
+  { label: "Doanh thu", value: "—", icon: TrendingUp, color: "text-success bg-green-50 dark:bg-green-900/30" },
+  { label: "Đánh giá", value: "—", icon: Star, color: "text-warning bg-yellow-50 dark:bg-yellow-900/30" },
+];
+
 function DashboardContent() {
   const { user, isHtxManager } = useAuth();
   const displayName = user?.full_name || "Nhà vườn";
@@ -52,8 +61,8 @@ function DashboardContent() {
     ? `Tổng quan hợp tác xã${user?.htx_name ? " — " + user.htx_name : ""}`
     : "Tổng quan hoạt động gian hàng của bạn";
 
-  const [stats, setStats] = useState(STATS);
-  const [recentOrders, setRecentOrders] = useState(RECENT_ORDERS);
+  const [stats, setStats] = useState(USE_MOCK ? STATS : EMPTY_STATS);
+  const [recentOrders, setRecentOrders] = useState(USE_MOCK ? RECENT_ORDERS : []);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -84,7 +93,9 @@ function DashboardContent() {
           statusColor: o.status === "DELIVERED" ? "text-success bg-green-50" : o.status === "SHIPPED" ? "text-primary bg-primary-50" : "text-info bg-blue-50",
         })));
       }
-    } catch { /* keep mock */ }
+    } catch {
+      if (USE_MOCK) { setStats(STATS); setRecentOrders(RECENT_ORDERS); }
+    }
   }, []);
 
   useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
@@ -122,7 +133,7 @@ function DashboardContent() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {STATS.map((stat) => (
+        {stats.map((stat) => (
           <div
             key={stat.label}
             className="bg-white dark:bg-surface border border-border rounded-xl p-5 flex items-center gap-4 shadow-sm"
@@ -168,7 +179,7 @@ function DashboardContent() {
               </Link>
             </div>
             <div className="divide-y divide-border">
-              {RECENT_ORDERS.map((order) => (
+              {recentOrders.map((order) => (
                 <div
                   key={order.id}
                   className="px-5 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors"

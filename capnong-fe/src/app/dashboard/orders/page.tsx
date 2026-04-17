@@ -73,9 +73,11 @@ const INITIAL_ORDERS: {
  * /dashboard/orders — UC-24, 25, 26
  * Seller: xem & xác nhận đơn hàng, cập nhật trạng thái, xem doanh thu
  */
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 export default function OrderManagementPage() {
   const [activeFilter, setActiveFilter] = useState("all");
-  const [orders, setOrders] = useState(INITIAL_ORDERS);
+  const [orders, setOrders] = useState(USE_MOCK ? INITIAL_ORDERS : []);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -102,7 +104,7 @@ export default function OrderManagementPage() {
         setOrders(mapped);
       }
     } catch {
-      /* keep mock */
+      if (USE_MOCK) { setOrders(INITIAL_ORDERS); }
     } finally {
       setLoadingData(false);
     }

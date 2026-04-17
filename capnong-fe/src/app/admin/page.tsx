@@ -127,12 +127,14 @@ function roleLabel(role: string) {
 /* ═══════════════════════════════════════════════ */
 /*  ADMIN PAGE CONTENT                             */
 /* ═══════════════════════════════════════════════ */
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 function AdminContent() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("htx");
-  const [htxRequests, setHtxRequests] = useState(MOCK_HTX_REQUESTS);
-  const [users, setUsers] = useState(MOCK_USERS);
-  const [seasonalConfig, setSeasonalConfig] = useState(MOCK_SEASONAL_CONFIG);
+  const [htxRequests, setHtxRequests] = useState(USE_MOCK ? MOCK_HTX_REQUESTS : []);
+  const [users, setUsers] = useState(USE_MOCK ? MOCK_USERS : []);
+  const [seasonalConfig, setSeasonalConfig] = useState(USE_MOCK ? MOCK_SEASONAL_CONFIG : []);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [userPage, setUserPage] = useState(1);
@@ -156,7 +158,7 @@ function AdminContent() {
         })));
       }
     } catch {
-      // API unavailable → keep mock
+      if (USE_MOCK) { setUsers(MOCK_USERS); }
     }
   }, []);
 
@@ -179,7 +181,9 @@ function AdminContent() {
           status: (h.status || "PENDING") as HtxStatus,
         })));
       }
-    } catch { /* keep mock */ }
+    } catch {
+      if (USE_MOCK) { setHtxRequests(MOCK_HTX_REQUESTS); }
+    }
   }, []);
 
   useEffect(() => { fetchUsers(); fetchHtxRequests(); }, [fetchUsers, fetchHtxRequests]);

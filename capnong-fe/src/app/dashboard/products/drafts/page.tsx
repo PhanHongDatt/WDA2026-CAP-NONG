@@ -32,8 +32,10 @@ const MOCK_DRAFTS = [
 /**
  * /dashboard/products/drafts — Quản lý sản phẩm nháp
  */
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 export default function ProductDraftsPage() {
-  const [drafts, setDrafts] = useState(MOCK_DRAFTS);
+  const [drafts, setDrafts] = useState(USE_MOCK ? MOCK_DRAFTS : []);
 
   // Load real drafts from localStorage (saved by "Lưu nháp" in new product page)
   useEffect(() => {

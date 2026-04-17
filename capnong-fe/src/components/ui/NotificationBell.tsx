@@ -50,6 +50,8 @@ function timeAgo(dateStr: string) {
  * UC-38: Nhận & đọc thông báo in-app
  * Gọi API thật → fallback mock nếu BE chưa lên
  */
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 export default function NotificationBell() {
   const { isLoggedIn } = useAuth();
   const [open, setOpen] = useState(false);
@@ -72,14 +74,16 @@ export default function NotificationBell() {
         created_at: n.createdAt,
         is_read: n.isRead,
       }));
-      setNotifications(mapped.length > 0 ? mapped : MOCK_NOTIFICATIONS);
+      setNotifications(mapped.length > 0 ? mapped : (USE_MOCK ? MOCK_NOTIFICATIONS : []));
       setUnreadCount(result.unreadCount || mapped.filter((n) => !n.is_read).length);
       setLoaded(true);
     } catch {
-      // API unavailable → use mock
+      // API unavailable → use mock only when USE_MOCK is enabled
       if (!loaded) {
-        setNotifications(MOCK_NOTIFICATIONS);
-        setUnreadCount(MOCK_NOTIFICATIONS.filter((n) => !n.is_read).length);
+        if (USE_MOCK) {
+          setNotifications(MOCK_NOTIFICATIONS);
+          setUnreadCount(MOCK_NOTIFICATIONS.filter((n) => !n.is_read).length);
+        }
         setLoaded(true);
       }
     }

@@ -149,14 +149,16 @@ function pledgeStatusBadge(status: PledgeStatus) {
   }
 }
 
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 /* ═════════════════════════════════════════ */
 function CoopManageContent() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ManageTab>("overview");
-  const [joinRequests, setJoinRequests] = useState(MOCK_JOIN_REQUESTS);
-  const [members, setMembers] = useState(MOCK_MEMBERS);
-  const [bundles, setBundles] = useState<Bundle[]>(MOCK_BUNDLES);
-  const [seasonalConfig, setSeasonalConfig] = useState(MOCK_SEASONAL);
+  const [joinRequests, setJoinRequests] = useState(USE_MOCK ? MOCK_JOIN_REQUESTS : []);
+  const [members, setMembers] = useState(USE_MOCK ? MOCK_MEMBERS : []);
+  const [bundles, setBundles] = useState<Bundle[]>(USE_MOCK ? MOCK_BUNDLES : []);
+  const [seasonalConfig, setSeasonalConfig] = useState(USE_MOCK ? MOCK_SEASONAL : []);
   const [showNewBundle, setShowNewBundle] = useState(false);
   const [expandedBundle, setExpandedBundle] = useState<string | null>(null);
 
@@ -175,7 +177,10 @@ function CoopManageContent() {
         setJoinRequests(apiJoinReqs as typeof MOCK_JOIN_REQUESTS);
       }
     } catch {
-      // API unavailable → keep mock data
+      if (USE_MOCK) {
+        setBundles(MOCK_BUNDLES);
+        setJoinRequests(MOCK_JOIN_REQUESTS);
+      }
     }
   }, []);
 
