@@ -167,12 +167,13 @@ export async function generatePosterContent(data: {
   if (USE_MOCK) {
     await new Promise(r => setTimeout(r, 2000));
     if (data.mode === "AI_IMAGE") {
+       const randomId = Math.floor(Math.random() * 1000);
        const mockImages = [
          "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80",
-         "https://images.unsplash.com/photo-1518843875459-f738682238a6?auto=format&fit=crop&w=800&q=80",
-         "https://images.unsplash.com/photo-1596484552993-9c8846c92af3?auto=format&fit=crop&w=800&q=80",
-         "https://images.unsplash.com/photo-1574316075678-b118b532fe46?auto=format&fit=crop&w=800&q=80",
-         "https://images.unsplash.com/photo-1571115177098-24def5108bf2?auto=format&fit=crop&w=800&q=80"
+         `https://picsum.photos/seed/veggies${randomId}/800/800`,
+         `https://picsum.photos/seed/fruits${randomId}/800/800`,
+         `https://picsum.photos/seed/farm${randomId}/800/800`,
+         `https://picsum.photos/seed/harvest${randomId}/800/800`
        ];
        const randomImageUrl = mockImages[Math.floor(Math.random() * mockImages.length)];
        
