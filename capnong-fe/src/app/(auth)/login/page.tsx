@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Leaf, Loader2, Eye, EyeOff, CheckCircle2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { login: contextLogin } = useAuth();
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -130,12 +132,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const { authService } = await import("@/services");
-      const result = await authService.login(identifier, password);
-
-      if (result.user) {
-        localStorage.setItem("capnong-user", JSON.stringify(result.user));
-      }
+      await contextLogin(identifier, password);
 
       // Merge guest cart after login
       try {
