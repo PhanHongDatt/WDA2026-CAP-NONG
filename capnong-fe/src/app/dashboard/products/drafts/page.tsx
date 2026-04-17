@@ -17,7 +17,7 @@ const MOCK_DRAFTS = [
     id: "draft-1",
     name: "Sầu Riêng Ri6 — Đồng Nai",
     price: 150000,
-    image: "/images/products/sau-rieng.jpg",
+    image: "/images/products/sau-rieng.png",
     updated_at: "22/03/2026 14:30",
   },
   {

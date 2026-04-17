@@ -203,9 +203,16 @@ export default async function HomePage() {
             <div className="w-20 h-0.5 bg-primary mx-auto mt-2" />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 product-grid-section">
-            {[...seasonalProducts, ...newProducts].map((product) => (
-              <ProductCard key={`suggest-${product.id}`} product={product} />
-            ))}
+            {(() => {
+              const seen = new Set<string>();
+              return [...seasonalProducts, ...newProducts].filter((p) => {
+                if (seen.has(p.id)) return false;
+                seen.add(p.id);
+                return true;
+              }).map((product) => (
+                <ProductCard key={`suggest-${product.id}`} product={product} />
+              ));
+            })()}
           </div>
         </section>
       </main>

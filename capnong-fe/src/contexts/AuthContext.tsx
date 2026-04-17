@@ -127,6 +127,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Restore view mode
     const mode = localStorage.getItem("capnong-view-mode");
     if (mode === "SELL" || mode === "BUY") setViewMode(mode);
+
+    // Listen for auth changes from other components (e.g., Google OAuth login)
+    const handleAuthChanged = () => {
+      const stored = localStorage.getItem("capnong-user");
+      if (stored) {
+        try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener("auth-changed", handleAuthChanged);
+    return () => window.removeEventListener("auth-changed", handleAuthChanged);
   }, []);
 
   // Persist user to localStorage

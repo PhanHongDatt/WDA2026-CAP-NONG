@@ -48,8 +48,8 @@ const MOCK_BUYER_ORDERS: {
     seller_name: "Vườn Xoài Bác Ba",
     seller_phone: "0912***678",
     items: [
-      { name: "Xoài Cát Hòa Lộc", qty: 2, price: 95000, image_url: "/images/products/xoai.jpg" },
-      { name: "Cam Sành Hà Giang", qty: 3, price: 45000, image_url: "/images/products/cam.jpg" },
+      { name: "Xoài Cát Hòa Lộc", qty: 2, price: 95000, image_url: "/images/products/xoai-cat.png" },
+      { name: "Cam Sành Hà Giang", qty: 3, price: 45000, image_url: "/images/products/cam-sanh.png" },
     ],
     shipping_address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
   },
@@ -61,7 +61,7 @@ const MOCK_BUYER_ORDERS: {
     seller_name: "HTX Cam Sành Hà Giang",
     seller_phone: "0934***654",
     items: [
-      { name: "Cam Sành Hà Giang", qty: 10, price: 45000, image_url: "/images/products/cam.jpg" },
+      { name: "Cam Sành Hà Giang", qty: 10, price: 45000, image_url: "/images/products/cam-sanh.png" },
     ],
     shipping_address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
   },
@@ -73,7 +73,7 @@ const MOCK_BUYER_ORDERS: {
     seller_name: "Vườn Xoài Bác Ba",
     seller_phone: "0912***678",
     items: [
-      { name: "Xoài Cát Hòa Lộc", qty: 1, price: 95000, image_url: "/images/products/xoai.jpg" },
+      { name: "Xoài Cát Hòa Lộc", qty: 1, price: 95000, image_url: "/images/products/xoai-cat.png" },
     ],
     shipping_address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
     cancel_reason: "Người mua yêu cầu hủy — đặt nhầm sản phẩm",
@@ -83,11 +83,12 @@ const MOCK_BUYER_ORDERS: {
 function BuyerOrderContent() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
-  const [orders, setOrders] = useState(MOCK_BUYER_ORDERS);
+  const [orders, setOrders] = useState<typeof MOCK_BUYER_ORDERS>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  /* Fetch real orders from API, fallback to mock */
+  /* Fetch real orders from API, fallback to mock only if USE_MOCK=true */
   const fetchOrders = useCallback(async () => {
+    const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
     setLoadingOrders(true);
     try {
       const { orderService } = await import("@/services");
@@ -112,12 +113,17 @@ function BuyerOrderContent() {
         }));
         setOrders(mapped);
         setExpandedId(mapped[0]?.id || null);
-      } else {
+      } else if (USE_MOCK) {
+        setOrders(MOCK_BUYER_ORDERS);
         setExpandedId(MOCK_BUYER_ORDERS[0]?.id || null);
       }
+      // else: keep empty — "Không có đơn hàng nào"
     } catch {
-      /* keep mock data */
-      setExpandedId(MOCK_BUYER_ORDERS[0]?.id || null);
+      if (USE_MOCK) {
+        setOrders(MOCK_BUYER_ORDERS);
+        setExpandedId(MOCK_BUYER_ORDERS[0]?.id || null);
+      }
+      // else: keep empty
     } finally {
       setLoadingOrders(false);
     }

@@ -68,7 +68,8 @@ app:
 
   # ─── Supabase OAuth ───────────────────────────
   supabase:
-    jwt-secret: ${SUPABASE_JWT_SECRET:}
+    url: ${NEXT_PUBLIC_SUPABASE_URL:}
+    anon-key: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:}
 
   # ─── Google Gemini AI ────────────────────────
   gemini:

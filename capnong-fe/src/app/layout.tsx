@@ -119,6 +119,7 @@ export default function RootLayout({
         {/* Anti-FOUC: Apply dark mode BEFORE first paint to prevent white flash
             Ref: web.dev/prefers-color-scheme — "blocking script" pattern */}
         <script
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('capnong-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}var f=localStorage.getItem('capnong-font-size');if(f){document.documentElement.classList.add('font-'+f)}}catch(e){}})()`,
           }}

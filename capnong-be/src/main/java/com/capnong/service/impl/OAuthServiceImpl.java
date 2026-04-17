@@ -10,10 +10,6 @@ import com.capnong.security.JwtUtils;
 import com.capnong.security.UserDetailsImpl;
 import com.capnong.service.OAuthService;
 import com.capnong.service.RefreshTokenService;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,8 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import javax.crypto.SecretKey;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -39,8 +33,11 @@ public class OAuthServiceImpl implements OAuthService {
     private final JwtUtils jwtUtils;
     private final RefreshTokenService refreshTokenService;
 
-    @Value("${app.supabase.jwt-secret}")
-    private String supabaseJwtSecret;
+    @Value("${app.supabase.url}")
+    private String supabaseUrl;
+
+    @Value("${app.supabase.anon-key}")
+    private String supabaseAnonKey;
 
     @Override
     @Transactional
@@ -150,36 +147,58 @@ public class OAuthServiceImpl implements OAuthService {
 
     private Map<String, String> parseSupabaseToken(String supabaseToken) {
         try {
-            SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(supabaseJwtSecret));
-            Claims claims = Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(supabaseToken)
-                    .getPayload();
+            // Verify token via Supabase REST API — no JWT secret needed
+            java.net.http.HttpClient httpClient = java.net.http.HttpClient.newHttpClient();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(supabaseUrl + "/auth/v1/user"))
+                    .header("Authorization", "Bearer " + supabaseToken)
+                    .header("apikey", supabaseAnonKey)
+                    .GET()
+                    .build();
 
-            String sub = claims.getSubject();
+            java.net.http.HttpResponse<String> response = httpClient.send(request,
+                    java.net.http.HttpResponse.BodyHandlers.ofString());
 
-            @SuppressWarnings("unchecked")
-            Map<String, Object> userMetadata = (Map<String, Object>) claims.get("user_metadata");
+            if (response.statusCode() != 200) {
+                logger.error("Supabase API trả về status: {} body: {}", response.statusCode(), response.body());
+                throw new AppException("Supabase token không hợp lệ hoặc đã hết hạn", HttpStatus.UNAUTHORIZED);
+            }
 
-            String email = userMetadata != null ? (String) userMetadata.get("email") : claims.get("email", String.class);
-            String fullName = userMetadata != null ? (String) userMetadata.get("full_name") : null;
-            String avatarUrl = userMetadata != null ? (String) userMetadata.get("avatar_url") : null;
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode user = mapper.readTree(response.body());
 
-            if (email == null) {
+            String sub = user.has("id") ? user.get("id").asText() : "";
+            String email = "";
+            String fullName = "";
+            String avatarUrl = "";
+
+            // Extract from user_metadata
+            if (user.has("user_metadata") && !user.get("user_metadata").isNull()) {
+                com.fasterxml.jackson.databind.JsonNode meta = user.get("user_metadata");
+                email = meta.has("email") ? meta.get("email").asText("") : "";
+                fullName = meta.has("full_name") ? meta.get("full_name").asText("") : "";
+                avatarUrl = meta.has("avatar_url") ? meta.get("avatar_url").asText("") : "";
+            }
+
+            // Fallback email from top-level
+            if (email.isEmpty() && user.has("email")) {
+                email = user.get("email").asText("");
+            }
+
+            if (email.isEmpty()) {
                 throw new AppException("Token không chứa thông tin email", HttpStatus.BAD_REQUEST);
             }
 
             return Map.of(
                     "sub", sub,
-                    "email", email != null ? email : "",
-                    "fullName", fullName != null ? fullName : "",
-                    "avatarUrl", avatarUrl != null ? avatarUrl : ""
+                    "email", email,
+                    "fullName", fullName,
+                    "avatarUrl", avatarUrl
             );
         } catch (AppException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Lỗi khi giải mã Supabase token: {}", e.getMessage());
+            logger.error("Lỗi khi xác thực Supabase token: {}", e.getMessage());
             throw new AppException("Supabase token không hợp lệ hoặc đã hết hạn", HttpStatus.UNAUTHORIZED);
         }
     }
