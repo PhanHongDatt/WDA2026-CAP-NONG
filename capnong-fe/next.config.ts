@@ -45,6 +45,7 @@ const nextConfig: NextConfig = {
 
   // Image optimization — custom loader bypasses Turbopack workspace root config bug
   images: {
+    unoptimized: true,
     loader: "custom",
     loaderFile: "./src/lib/image-loader.ts",
     formats: ["image/avif", "image/webp"],
@@ -79,6 +80,10 @@ const nextConfig: NextConfig = {
   // API proxy rewrites — dev: forwards /api/* to backend, prod: Nginx handles this
   async rewrites() {
     return [
+      {
+        source: "/api/ai/:path*",
+        destination: `${process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_AI_API_URL || "http://localhost:8000"}/api/:path*`,
+      },
       {
         source: "/api/:path*",
         destination: `${process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/:path*`,

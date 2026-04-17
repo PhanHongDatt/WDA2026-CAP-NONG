@@ -40,9 +40,31 @@ export function normalizeProduct(raw: any): Product {
   if (!raw) return raw;
 
   // Extract image URLs from BE's image objects
-  const images: string[] = Array.isArray(raw.images)
-    ? raw.images.map((img: any) => (typeof img === "string" ? img : img.url || ""))
+  let images: string[] = Array.isArray(raw.images)
+    ? raw.images.map((img: any) => (typeof img === "string" ? img : img.url || "")).filter(Boolean)
     : [];
+
+  // 🎀 FALLBACK MOCK DATA HÌNH ẢNH (Theo yêu cầu: chỉ minh họa bằng mockdata khi API không có hình)
+  if (images.length === 0) {
+    const defaultPlaceholder = "https://images.unsplash.com/photo-1595853035070-59a39fe84ee3?auto=format&fit=crop&w=400&q=80";
+    
+    // Use a pool of high-quality Unsplash agriculture images instead of loremflickr
+    const mockImages = [
+      "https://images.unsplash.com/photo-1595853035070-59a39fe84ee3?w=400&q=80", // Tomato
+      "https://images.unsplash.com/photo-1519996529931-28324d5a6396?w=400&q=80", // Farm veg
+      "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&q=80", // Pumpkin/Orange
+      "https://images.unsplash.com/photo-1557844352-761f2565b576?w=400&q=80", // Vegetables
+      "https://images.unsplash.com/photo-1550828520-4cb496926fc9?w=400&q=80", // Oranges
+      "https://images.unsplash.com/photo-1528825871115-3581a5387919?w=400&q=80", // Bananas
+      "https://images.unsplash.com/photo-1596422846543-74c6c21eec4f?w=400&q=80", // Coffee beans
+      "https://images.unsplash.com/photo-1628152528751-2f88ebbc22b7?w=400&q=80"  // Durian/Jackfruit lookalike
+    ];
+    
+    // Pick consistently based on id
+    const seedNum = raw.id ? String(raw.id).charCodeAt(0) + String(raw.id).charCodeAt(raw.id.length - 1 || 0) : 0;
+    const index = seedNum % mockImages.length;
+    images = [mockImages[index]];
+  }
 
   return {
     id: String(raw.id || ""),

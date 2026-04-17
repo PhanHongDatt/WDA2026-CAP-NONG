@@ -4,7 +4,7 @@
 # ============================================
 
 server:
-  port: 9999
+  port: ${SERVER_PORT:8080}
 
 # ─── Spring Core ───────────────────────────────
 spring:
@@ -34,6 +34,12 @@ spring:
     properties:
       hibernate:
         format_sql: true
+    defer-datasource-initialization: false
+
+  # ─── Disable data.sql init (use manual migration) ──
+  sql:
+    init:
+      mode: never
 
   # ─── Redis ─────────────────────────────────
   data:
@@ -104,6 +110,10 @@ ai:
 # ─── Kafka ───────────────────────────────────
 spring.kafka:
   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  admin:
+    fail-fast: false
+  listener:
+    auto-startup: ${KAFKA_LISTENER_AUTO_STARTUP:false}
   consumer:
     group-id: capnong-ai-group
     auto-offset-reset: earliest

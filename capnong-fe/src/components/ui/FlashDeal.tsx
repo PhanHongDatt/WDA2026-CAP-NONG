@@ -7,6 +7,7 @@ import { Zap, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { productService } from "@/services";
 import type { Product } from "@/types/product";
+import { MOCK_FLASH_DEALS } from "@/lib/mock-data";
 
 function useCountdown(hours: number) {
   const [seconds, setSeconds] = useState(hours * 3600);
@@ -35,7 +36,13 @@ export default function FlashDeal() {
   const [deals, setDeals] = useState<Product[]>([]);
 
   useEffect(() => {
-    productService.getFlashDeals().then(setDeals);
+    productService.getFlashDeals().then((result) => {
+      if (result && result.length > 0) {
+        setDeals(result);
+      } else {
+        setDeals(MOCK_FLASH_DEALS.slice(0, 8));
+      }
+    });
   }, []);
 
   return (
@@ -88,6 +95,7 @@ export default function FlashDeal() {
                   {/* Image */}
                   <div className="relative aspect-square rounded-lg overflow-hidden mb-2 bg-gray-50">
                     <SafeImage
+                      /* Cache Buster */
                       src={deal.images[0]}
                       alt={deal.name}
                       fill

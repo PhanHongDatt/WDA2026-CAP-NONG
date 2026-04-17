@@ -7,7 +7,6 @@ import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryGrid from "@/components/ui/CategoryGrid";
 import FlashDeal from "@/components/ui/FlashDeal";
 import { productService, shopService } from "@/services";
-import { MOCK_SEASONAL_PRODUCTS, MOCK_NEW_PRODUCTS, MOCK_SHOPS } from "@/lib/mock-data";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
@@ -59,21 +58,30 @@ const jsonLd = {
 
 export default async function HomePage() {
   const [seasonalProducts, newProducts, shops] = await Promise.all([
-    productService.getSeasonalProducts().then((result) => {
-      // If the backend API returns an empty list, forcibly inject mock data to ensure the UI is not empty
+    productService.getSeasonalProducts().then(async (result) => {
       if (result && result.length > 0) return result;
+      const { MOCK_SEASONAL_PRODUCTS } = await import("@/lib/mock-data");
       return MOCK_SEASONAL_PRODUCTS;
-    }).catch(() => MOCK_SEASONAL_PRODUCTS),
-    
-    productService.getNewProducts().then((result) => {
+    }).catch(async () => {
+      const { MOCK_SEASONAL_PRODUCTS } = await import("@/lib/mock-data");
+      return MOCK_SEASONAL_PRODUCTS;
+    }),
+    productService.getNewProducts().then(async (result) => {
       if (result && result.length > 0) return result;
+      const { MOCK_NEW_PRODUCTS } = await import("@/lib/mock-data");
       return MOCK_NEW_PRODUCTS;
-    }).catch(() => MOCK_NEW_PRODUCTS),
-    
-    shopService.getFeaturedShops().then((result) => {
+    }).catch(async () => {
+      const { MOCK_NEW_PRODUCTS } = await import("@/lib/mock-data");
+      return MOCK_NEW_PRODUCTS;
+    }),
+    shopService.getFeaturedShops().then(async (result) => {
       if (result && result.length > 0) return result;
+      const { MOCK_SHOPS } = await import("@/lib/mock-data");
       return MOCK_SHOPS;
-    }).catch(() => MOCK_SHOPS),
+    }).catch(async () => {
+      const { MOCK_SHOPS } = await import("@/lib/mock-data");
+      return MOCK_SHOPS;
+    }),
   ]);
   return (
     <>
@@ -160,29 +168,7 @@ export default async function HomePage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 product-grid-section" suppressHydrationWarning>
             {seasonalProducts.map((product) => (
-              <ProductCard key={`seasonal-${product.id}`} product={product} variant="seasonal" />
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-12 relative">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
-                Sản phẩm mới
-              </h2>
-            </div>
-            <Link
-              href="/catalog?sort=new"
-              className="text-sm text-primary font-semibold flex items-center gap-1 hover:underline shrink-0"
-            >
-              Xem tất cả <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 product-grid-section" suppressHydrationWarning>
-            {newProducts.map((product) => (
-              <ProductCard key={`new-${product.id}`} product={product} variant="latest" />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         </section>

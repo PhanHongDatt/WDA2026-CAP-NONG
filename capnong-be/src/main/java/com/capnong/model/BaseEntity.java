@@ -48,7 +48,7 @@ public abstract class BaseEntity {
     @Column(name = "updated_by")
     private String updatedBy;
 
-    @Column(nullable = false)
+    @Column(name = "deleted", nullable = false, columnDefinition = "boolean default false")
     @lombok.Builder.Default
     private Boolean deleted = false;
 

@@ -63,7 +63,7 @@ export default function Header() {
   return (
     <>
       {/* Top Utility Bar */}
-      <div className="bg-primary-dark text-white py-2 px-4">
+      <div className="bg-primary-dark text-white py-2 px-4" suppressHydrationWarning>
         <div className="max-w-7xl mx-auto flex justify-between items-center text-sm">
           <div className="flex items-center space-x-2">
             <span>Hotline:</span>

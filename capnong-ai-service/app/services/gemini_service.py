@@ -292,6 +292,11 @@ async def generate_poster_image(
         product_name, description, province, price_display, shop_name
     )
 
+    # Fallback: if enhanced prompt is too short, use the detailed template prompt
+    if len(enhanced_prompt) < 150:
+        logger.warning(f"Enhanced prompt too short ({len(enhanced_prompt)} chars), using detailed template instead")
+        enhanced_prompt = original_prompt
+
     # Step 2: Generate image
     try:
         if model_type == "imagen":
@@ -452,7 +457,6 @@ async def _generate_with_grok(
         "model": model_id,
         "prompt": prompt,
         "n": 1,
-        "size": "1024x1024",
         "response_format": "b64_json",
     }
 

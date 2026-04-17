@@ -15,6 +15,13 @@ import type { Shop } from "@/types/shop";
 export function normalizeShop(raw: any): Shop {
   if (!raw) return raw;
 
+  // 🎀 FALLBACK MOCK DATA HÌNH ẢNH
+  const avatar = raw.avatarUrl ?? raw.avatar_url;
+  const cover = raw.coverUrl ?? raw.cover_url;
+  const seed = (raw.id || raw.name || "shop").toString().substring(0, 5);
+  const mockAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&backgroundColor=e8f5e9`;
+  const mockCover = `https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80`;
+
   return {
     id: String(raw.id || ""),
     slug: raw.slug || "",
@@ -25,8 +32,8 @@ export function normalizeShop(raw: any): Shop {
     description: raw.description || undefined,
     years_experience: raw.yearsExperience ?? raw.years_experience ?? undefined,
     farm_area_m2: raw.farmAreaM2 ?? raw.farm_area_m2 ?? undefined,
-    avatar_url: raw.avatarUrl ?? raw.avatar_url ?? undefined,
-    cover_url: raw.coverUrl ?? raw.cover_url ?? undefined,
+    avatar_url: avatar || mockAvatar,
+    cover_url: cover || mockCover,
     owner: raw.owner || {
       id: String(raw.ownerId || ""),
       full_name: raw.ownerFullName || raw.ownerUsername || "",

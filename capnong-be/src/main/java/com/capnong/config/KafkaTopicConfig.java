@@ -1,14 +1,17 @@
 package com.capnong.config;
 
 import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 
 /**
  * Tạo Kafka topics tự động khi ứng dụng khởi động.
+ * Chỉ kích hoạt khi Kafka listener được bật (spring.kafka.listener.auto-startup=true).
  */
 @Configuration
+@ConditionalOnProperty(name = "spring.kafka.listener.auto-startup", havingValue = "true", matchIfMissing = false)
 public class KafkaTopicConfig {
 
     @Bean

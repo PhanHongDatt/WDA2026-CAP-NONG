@@ -22,7 +22,8 @@ import org.hibernate.annotations.SQLRestriction;
 @AllArgsConstructor
 @SuperBuilder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password"})
-@SQLRestriction("deleted = false")
+@SQLRestriction("is_deleted = false")
+@AttributeOverride(name = "deleted", column = @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false"))
 public class User extends BaseEntity {
 
     @Column(unique = true, length = 50)
@@ -43,12 +44,16 @@ public class User extends BaseEntity {
     private String avatarUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'BUYER'")
     private Role role;
 
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")
     @Builder.Default
     private Boolean active = true;
+
+    @Column(name = "is_email_verified", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean isEmailVerified = false;
 
     @Column(name = "google_id", unique = true)
     private String googleId;

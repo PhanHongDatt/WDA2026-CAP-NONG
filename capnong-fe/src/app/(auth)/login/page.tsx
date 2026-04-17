@@ -46,7 +46,6 @@ export default function LoginPage() {
             // Send Supabase token to BE (snake_case — Jackson global strategy)
             const api = (await import("@/services/api")).default;
             const res = await api.post<{
-              success: boolean;
               message: string;
               data: {
                 status: string;

@@ -54,6 +54,7 @@ export default function ProductCard({
       {/* Image Container */}
       <Link href={`/products/${product.slug}`} className="block relative">
         <div className="aspect-square bg-gray-50 dark:bg-background-light overflow-hidden rounded-t-2xl">
+          {/* Cache buster */}
           <SafeImage
             src={product.images[0]}
             alt={product.name}

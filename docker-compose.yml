@@ -11,15 +11,15 @@ services:
     container_name: capnong-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-capnong_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-capnong}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-capnong123}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-capnong} -d ${POSTGRES_DB:-capnong_dev}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,13 +32,13 @@ services:
     image: redis:7-alpine
     container_name: capnong-redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: redis-server --requirepass ${REDIS_PASSWORD:-capnong123}
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-capnong123}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -82,9 +82,9 @@ services:
         condition: service_healthy
     environment:
       # Spring datasource (local postgres container)
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-capnong_dev}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-capnong}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-capnong123}
       # Redis
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379

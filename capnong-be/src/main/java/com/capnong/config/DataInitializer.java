@@ -29,7 +29,7 @@ import java.util.List;
  * Mật khẩu mặc định: Password123!
  */
 @Component
-@Profile("dev")
+@Profile("seed")
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 

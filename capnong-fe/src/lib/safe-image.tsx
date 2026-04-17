@@ -26,29 +26,30 @@ interface SafeImageProps {
   style?: React.CSSProperties;
 }
 
-/** Green SVG placeholder shown when image fails to load */
-function Placeholder({ alt, className, style }: { alt: string; className?: string; style?: React.CSSProperties }) {
+function Placeholder({ alt, className, style, fill }: { alt: string; className?: string; style?: React.CSSProperties; fill?: boolean }) {
+  // Use a simple hash of the alt text to pick a consistent local fallback image
+  const fallbackImages = [
+    "/images/banners/banner-traicay.png",
+    "/images/banners/banner-dalat.png",
+    "/images/banners/banner-gomdon.png",
+  ];
+  
+  const hash = Array.from(alt || "unknown").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const src = fallbackImages[hash % fallbackImages.length];
+
   return (
-    <div
+    <img
+      src={src}
+      /* Cache Buster 3x */
+      alt={`${alt} (Fallback)`}
       className={className}
       style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#e8f5e9",
-        color: "#66bb6a",
-        fontSize: "0.65rem",
-        fontWeight: 600,
-        textAlign: "center",
-        padding: "4px",
-        width: "100%",
-        height: "100%",
+        width: fill ? "100%" : (style?.width || "100%"),
+        height: fill ? "100%" : (style?.height || "100%"),
         ...style,
+        objectFit: "cover",
       }}
-      title={alt}
-    >
-      🌿
-    </div>
+    />
   );
 }
 
@@ -57,7 +58,7 @@ export function SafeImage({ src, alt, width, height, className, blurDataURL, pri
 
   // If src is empty/null or errored → show placeholder
   if (!src || error) {
-    return <Placeholder alt={alt} className={className} style={fill ? { position: "absolute", inset: 0, objectFit: "cover", ...style } : style} />;
+    return <Placeholder alt={alt} className={className} style={fill ? { position: "absolute", inset: 0, objectFit: "cover", ...style } : style} fill={fill} />;
   }
 
   // External URLs — use native <img> to bypass Next.js hostname validation
