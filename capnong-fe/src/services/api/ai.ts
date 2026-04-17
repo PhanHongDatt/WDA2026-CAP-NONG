@@ -170,10 +170,10 @@ export async function generatePosterContent(data: {
        const randomId = Math.floor(Math.random() * 1000);
        const mockImages = [
          "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80",
-         `https://picsum.photos/seed/veggies${randomId}/800/800`,
-         `https://picsum.photos/seed/fruits${randomId}/800/800`,
-         `https://picsum.photos/seed/farm${randomId}/800/800`,
-         `https://picsum.photos/seed/harvest${randomId}/800/800`
+         `https://loremflickr.com/800/800/vegetables,harvest/all?random=${randomId}1`,
+         `https://loremflickr.com/800/800/fruit,farm/all?random=${randomId}2`,
+         `https://loremflickr.com/800/800/agriculture,crop/all?random=${randomId}3`,
+         `https://loremflickr.com/800/800/orange,orchard/all?random=${randomId}4`
        ];
        const randomImageUrl = mockImages[Math.floor(Math.random() * mockImages.length)];
        
