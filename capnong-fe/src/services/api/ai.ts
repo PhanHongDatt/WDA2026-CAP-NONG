@@ -16,7 +16,7 @@
  */
 import api from "../api";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+const USE_MOCK = false; // Forced to using actual API since user requested real generation
 
 /* ─── Refine Description (sync) ─── */
 export interface RefineResult {
