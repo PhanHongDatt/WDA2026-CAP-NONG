@@ -167,27 +167,47 @@ export async function generatePosterContent(data: {
   if (USE_MOCK) {
     await new Promise(r => setTimeout(r, 2000));
     if (data.mode === "AI_IMAGE") {
-       const randomId = Math.floor(Math.random() * 1000);
-       const mockImages = [
-         "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80",
-         `https://loremflickr.com/800/800/vegetables,harvest/all?random=${randomId}1`,
-         `https://loremflickr.com/800/800/fruit,farm/all?random=${randomId}2`,
-         `https://loremflickr.com/800/800/agriculture,crop/all?random=${randomId}3`,
-         `https://loremflickr.com/800/800/orange,orchard/all?random=${randomId}4`
-       ];
-       const randomImageUrl = mockImages[Math.floor(Math.random() * mockImages.length)];
+       const productName = (data.productName || "").toLowerCase();
+       let keyword = "agriculture,crop,harvest";
        
+       if (productName.includes("cam") || productName.includes("quýt") || productName.includes("bưởi")) {
+         keyword = "orange,fruit,citrus";
+       } else if (productName.includes("bí") || productName.includes("bầu") || productName.includes("mướp")) {
+         keyword = "pumpkin,squash,vegetable";
+       } else if (productName.includes("thịt") || productName.includes("chả") || productName.includes("gà") || productName.includes("bò")) {
+         keyword = "raw,meat,butcher";
+       } else if (productName.includes("dưa hấu")) {
+         keyword = "watermelon,fruit";
+       } else if (productName.includes("xoài")) {
+         keyword = "mango,fruit";
+       } else if (productName.includes("chuối")) {
+         keyword = "banana,fruit";
+       } else if (productName.includes("cà phê") || productName.includes("coffee")) {
+         keyword = "coffee,beans";
+       } else if (productName.includes("sầu riêng")) {
+         keyword = "durian,fruit";
+       } else if (productName.includes("cà chua")) {
+         keyword = "tomato,vegetable";
+       } else if (productName.includes("rau") || productName.includes("cải") || productName.includes("xà lách") || productName.includes("hành")) {
+         keyword = "vegetables,farm,fresh";
+       } else if (productName.includes("trái cây") || productName.includes("hoa quả")) {
+         keyword = "fruits,market";
+       }
+       
+       const randomId = Math.floor(Math.random() * 1000);
+       const randomImageUrl = `https://loremflickr.com/800/800/${keyword}/all?random=${randomId}`;
+
        return {
-          templateId: data.templateId || "FRESH_GREEN",
-          headline: `🔥 Demo Poster: ${data.productName}`,
-          tagline: "Sản phẩm được tạo từ AI Demo",
-          priceDisplay: data.pricePerUnit ? `${data.pricePerUnit.toLocaleString("vi-VN")}đ/${data.unitCode || "kg"}` : "",
-          badgeTexts: ["Mock AI Image", "Mới nhất", data.imageModel || "Nano Banana"],
-          shopDisplay: data.shopName,
-          ctaText: "Mua Ngay",
-          colorScheme: { primary: "#22c55e", accent: "#f59e0b", textOnPrimary: "#ffffff" },
-          imageUrl: data.bgRemovedImageUrl || randomImageUrl,
-          promptUsed: `Mock prompt for AI_IMAGE mode using model ${data.imageModel || 'Default'}`
+         templateId: data.templateId || "FRESH_GREEN",
+         headline: `🔥 Demo Poster: ${data.productName}`,
+         tagline: "Sản phẩm AI Generate Demo",
+         priceDisplay: data.pricePerUnit ? `${data.pricePerUnit.toLocaleString("vi-VN")}đ/${data.unitCode || "kg"}` : "",
+         badgeTexts: ["Mock AI Image", "Mới nhất", data.imageModel || "Nano Banana"],
+         shopDisplay: data.shopName,
+         ctaText: "Mua Ngay",
+         colorScheme: { primary: "#22c55e", accent: "#f59e0b", textOnPrimary: "#ffffff" },
+         imageUrl: data.bgRemovedImageUrl || randomImageUrl,
+         promptUsed: `Mock prompt for AI_IMAGE mode using model ${data.imageModel || 'Default'}`
        };
     }
     return {
