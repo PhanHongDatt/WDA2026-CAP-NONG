@@ -89,6 +89,7 @@ export default async function HomePage() {
             ].map((item) => (
               <div
                 key={item.title}
+                suppressHydrationWarning
                 className={`${item.gradient} relative overflow-visible rounded-2xl p-5 pt-10 text-center shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-300`}
               >
                 {/* Icon — nhô lên trên viền card */}

@@ -16,6 +16,8 @@
  */
 import api from "../api";
 
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 /* ─── Refine Description (sync) ─── */
 export interface RefineResult {
   refinedText: string;
@@ -23,6 +25,12 @@ export interface RefineResult {
 }
 
 export async function refineDescription(rawText: string, productName?: string): Promise<RefineResult> {
+  if (USE_MOCK) {
+    return {
+      refinedText: `✨ (Mock AI) Đã trau chuốt:\n${rawText}\n\nSản phẩm ${productName || "nông sản"} đạt chuẩn chất lượng cao.`,
+      changesSummary: "Đã sửa lỗi chính tả và thêm các từ khóa nổi bật.",
+    };
+  }
   const res = await api.post("/api/ai/refine-description", { rawText, productName });
   return res.data.data || res.data;
 }
@@ -92,6 +100,15 @@ export async function generateCaptions(data: {
   province?: string;
   style: CaptionStyle;
 }): Promise<CaptionResult[]> {
+  if (USE_MOCK) {
+    await new Promise(r => setTimeout(r, 1500));
+    return [
+      { style: "FUNNY", text: `Trời đánh tránh bữa ăn, nhưng ${data.productName} ngon quá thì phải ăn liền! Mua ngay từ ${data.province || "Cạp Nông"} nào anh em ơi 🤣`, hashtags: ["#ngon", "#dacsan"] },
+      { style: "RUSTIC", text: `Đậm đà hương vị quê hương. ${data.productName} được trồng với tình yêu và mồ hôi của người nông dân.`, hashtags: ["#nongsanviet", "#sach"] },
+      { style: "PROFESSIONAL", text: `${data.productName} - Giải pháp dinh dưỡng hoàn hảo cho sức khỏe gia đình bạn. Đạt tiêu chuẩn chất lượng.`, hashtags: ["#suckhoe", "#chatluongcao"] },
+    ];
+  }
+
   const res = await api.post("/api/ai/caption", data);
   const sessionData = res.data.data || res.data;
 
@@ -147,6 +164,34 @@ export async function generatePosterContent(data: {
   mode?: "HTML" | "AI_IMAGE";
   imageModel?: string;
 }): Promise<PosterContent> {
+  if (USE_MOCK) {
+    await new Promise(r => setTimeout(r, 2000));
+    if (data.mode === "AI_IMAGE") {
+       return {
+          templateId: data.templateId || "FRESH_GREEN",
+          headline: `🔥 Demo Poster: ${data.productName}`,
+          tagline: "Sản phẩm được tạo từ AI Demo",
+          priceDisplay: data.pricePerUnit ? `${data.pricePerUnit.toLocaleString("vi-VN")}đ/${data.unitCode || "kg"}` : "",
+          badgeTexts: ["Mock AI Image", "Mới nhất"],
+          shopDisplay: data.shopName,
+          ctaText: "Mua Ngay",
+          colorScheme: { primary: "#22c55e", accent: "#f59e0b", textOnPrimary: "#ffffff" },
+          imageUrl: data.bgRemovedImageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80",
+          promptUsed: "Mock prompt for AI_IMAGE mode"
+       };
+    }
+    return {
+      templateId: data.templateId || "FRESH_GREEN",
+      headline: `🔥 Flash Sale: ${data.productName}`,
+      tagline: "Đạt chuẩn VietGAP, tươi ngon mỗi ngày!",
+      priceDisplay: data.pricePerUnit ? `${data.pricePerUnit.toLocaleString("vi-VN")}đ/${data.unitCode || "kg"}` : "",
+      badgeTexts: data.pesticideFree ? ["Không thuốc trừ sâu", "Hữu cơ"] : ["Đặc sản"],
+      shopDisplay: `Từ nhà vườn ${data.shopName}`,
+      ctaText: "MUA NGAY - GIAO NHANH 2H",
+      colorScheme: { primary: "#22c55e", accent: "#f59e0b", textOnPrimary: "#ffffff" }
+    };
+  }
+
   // BE nhận snake_case
   const body: Record<string, unknown> = {
     product_name: data.productName,
