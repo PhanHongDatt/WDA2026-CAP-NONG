@@ -167,17 +167,26 @@ export async function generatePosterContent(data: {
   if (USE_MOCK) {
     await new Promise(r => setTimeout(r, 2000));
     if (data.mode === "AI_IMAGE") {
+       const mockImages = [
+         "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80",
+         "https://images.unsplash.com/photo-1518843875459-f738682238a6?auto=format&fit=crop&w=800&q=80",
+         "https://images.unsplash.com/photo-1596484552993-9c8846c92af3?auto=format&fit=crop&w=800&q=80",
+         "https://images.unsplash.com/photo-1574316075678-b118b532fe46?auto=format&fit=crop&w=800&q=80",
+         "https://images.unsplash.com/photo-1571115177098-24def5108bf2?auto=format&fit=crop&w=800&q=80"
+       ];
+       const randomImageUrl = mockImages[Math.floor(Math.random() * mockImages.length)];
+       
        return {
           templateId: data.templateId || "FRESH_GREEN",
           headline: `🔥 Demo Poster: ${data.productName}`,
           tagline: "Sản phẩm được tạo từ AI Demo",
           priceDisplay: data.pricePerUnit ? `${data.pricePerUnit.toLocaleString("vi-VN")}đ/${data.unitCode || "kg"}` : "",
-          badgeTexts: ["Mock AI Image", "Mới nhất"],
+          badgeTexts: ["Mock AI Image", "Mới nhất", data.imageModel || "Nano Banana"],
           shopDisplay: data.shopName,
           ctaText: "Mua Ngay",
           colorScheme: { primary: "#22c55e", accent: "#f59e0b", textOnPrimary: "#ffffff" },
-          imageUrl: data.bgRemovedImageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80",
-          promptUsed: "Mock prompt for AI_IMAGE mode"
+          imageUrl: data.bgRemovedImageUrl || randomImageUrl,
+          promptUsed: `Mock prompt for AI_IMAGE mode using model ${data.imageModel || 'Default'}`
        };
     }
     return {
