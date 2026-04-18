@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useAuth } from "@/contexts/AuthContext";
+
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
   ArrowLeft,

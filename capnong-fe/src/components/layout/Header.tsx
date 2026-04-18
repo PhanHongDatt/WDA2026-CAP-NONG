@@ -37,7 +37,7 @@ export default function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const { user, isLoggedIn, isFarmer, isHtxMember, isHtxManager, isAdmin, loginAs, logout } = useAuth();
+  const { user, isLoggedIn, isFarmer, isHtxMember, isHtxManager, isAdmin, loginAs: _loginAs, logout } = useAuth(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
   const handleSearch = () => {
     const q = searchQuery.trim();

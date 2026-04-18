@@ -10,7 +10,7 @@ import {
   Star,
   MapPin,
   Clock,
-  ShieldCheck,
+
   MessageCircle,
   BookOpen,
 } from "lucide-react";
