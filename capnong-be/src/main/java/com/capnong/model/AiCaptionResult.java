@@ -36,8 +36,9 @@ public class AiCaptionResult {
     @Column(name = "caption_text", nullable = false, columnDefinition = "TEXT")
     private String captionText;
 
-    @Column(columnDefinition = "TEXT[]")
-    private String hashtags;
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.ARRAY)
+    @Column(columnDefinition = "text[]")
+    private java.util.List<String> hashtags;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

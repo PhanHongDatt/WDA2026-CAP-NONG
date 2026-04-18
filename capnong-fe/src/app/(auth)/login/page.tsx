@@ -104,8 +104,10 @@ export default function LoginPage() {
             showToast("error", `Lỗi xác thực Google: ${msg}`);
           } finally {
             setGoogleLoading(false);
-            // Clean URL hash
-            window.history.replaceState(null, "", window.location.pathname);
+            // Clean URL hash before Next.js navigation takes over to avoid race conditions
+            if (window.location.hash.includes("access_token")) {
+              window.history.replaceState(null, "", window.location.pathname);
+            }
           }
         }
       );
@@ -166,8 +168,14 @@ export default function LoginPage() {
       });
       if (error) throw error;
       // User sẽ được redirect sang Google → quay lại /login với hash token
-    } catch {
-      showToast("error", "Không thể kết nối Google. Vui lòng thử lại.");
+    } catch (err: any) {
+      // Provide a fallback direct redirect to bypass crypto limitations in gotrue-js
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://qpzhehhjzniegbcpzqqt.supabase.co";
+      const redirectUrl = `${window.location.origin}/login`;
+      window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`;
+      
+      showToast("error", "Lỗi Supabase JS: Đang chuyển hướng bằng fallback...");
+      console.error(err);
       setLoading(false);
     }
   };

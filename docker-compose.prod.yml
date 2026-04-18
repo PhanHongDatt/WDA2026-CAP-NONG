@@ -68,6 +68,9 @@ services:
     build:
       context: ./capnong-fe
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     container_name: capnong-frontend
     restart: unless-stopped
     depends_on:
@@ -75,6 +78,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: https://${DOMAIN_NAME:-localhost}/api
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Cạp Nông}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s

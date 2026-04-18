@@ -121,7 +121,8 @@ export default function RootLayout({
         <script
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('capnong-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}var f=localStorage.getItem('capnong-font-size');if(f){document.documentElement.classList.add('font-'+f)}}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('capnong-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}var f=localStorage.getItem('capnong-font-size');if(f){document.documentElement.classList.add('font-'+f)}}catch(e){}})();
+            if(!window.crypto){window.crypto={}}if(!window.crypto.randomUUID){window.crypto.randomUUID=function(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)})}}`,
           }}
         />
       </head>
