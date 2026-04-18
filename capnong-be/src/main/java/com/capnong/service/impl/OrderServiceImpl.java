@@ -123,7 +123,7 @@ public class OrderServiceImpl implements OrderService {
                 .paymentStatus(pm == PaymentMethod.COD ? PaymentStatus.PENDING : PaymentStatus.PENDING)
                 .isMerged(false)
                 .totalAmount(BigDecimal.ZERO)
-                .subOrders(new ArrayList<>())
+                .subOrders(new LinkedHashSet<>())
                 .build();
 
         BigDecimal grandTotal = BigDecimal.ZERO;
@@ -142,7 +142,7 @@ public class OrderServiceImpl implements OrderService {
                     .status(OrderStatus.PENDING)
                     .shippingFee(FLAT_SHIPPING_FEE)
                     .subtotal(BigDecimal.ZERO)
-                    .items(new ArrayList<>())
+                    .items(new LinkedHashSet<>())
                     .build();
 
             BigDecimal subtotal = BigDecimal.ZERO;

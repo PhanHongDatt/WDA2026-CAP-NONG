@@ -23,12 +23,16 @@ export const apiCartService: ICartService = {
       const res = await api.get("/api/cart");
       const data = res.data.data || res.data;
       // Normalize BE CartItemResponse → FE CartItem
-      return (data.items || data || []).map((item: Record<string, unknown>) => ({
+      return (data.items || data || []).map((item: any) => ({
         id: String(item.id),
-        productId: String(item.productId || ""),
-        productName: (item.productName || "") as string,
         quantity: Number(item.quantity || 0),
-        pricePerUnit: Number(item.pricePerUnit || 0),
+        product: {
+          id: String(item.product_id || ""),
+          name: (item.product_name || "") as string,
+          price_per_unit: Number(item.price_per_unit || 0),
+          images: item.image_url ? [item.image_url] : [],
+          shop: { name: (item.shop_name || "") as string },
+        }
       }));
     } catch {
       return [];
@@ -37,20 +41,23 @@ export const apiCartService: ICartService = {
 
   async addItem(productId: string, quantity: number): Promise<void> {
     await api.post("/api/cart/items", {
-      productId,
+      product_id: productId,
       quantity,
     });
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("cartUpdated"));
   },
 
   async updateItem(itemId: string, quantity: number): Promise<void> {
     await api.put(`/api/cart/items/${itemId}`, {
       quantity,
     });
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("cartUpdated"));
   },
 
   async removeItem(itemId: string): Promise<void> {
     try {
       await api.delete(`/api/cart/items/${itemId}`);
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("cartUpdated"));
     } catch {
       // Silently ignore — item might not exist
     }
@@ -59,6 +66,7 @@ export const apiCartService: ICartService = {
   async clearCart(): Promise<void> {
     const items = await this.getCart();
     await Promise.all(items.map((item) => this.removeItem(item.id)));
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("cartUpdated"));
   },
 
   async getItemCount(): Promise<number> {

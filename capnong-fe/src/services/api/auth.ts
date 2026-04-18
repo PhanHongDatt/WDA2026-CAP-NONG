@@ -131,6 +131,45 @@ export async function resetPassword(identifier: string, otp: string, newPassword
   await api.post("/api/auth/reset-password", { identifier, otp, new_password: newPassword });
 }
 
+/**
+ * Google OAuth Login — POST /api/auth/oauth/google
+ * Dùng supabaseToken từ Supabase Google sign-in
+ */
+export async function googleLogin(supabaseToken: string): Promise<AuthResult> {
+  const res = await api.post<{ success: boolean; message: string; data: BEAuthResponse }>(
+    "/api/auth/oauth/google",
+    { supabaseToken }
+  );
+  const authData = res.data.data;
+
+  localStorage.setItem("access_token", authData.access_token);
+  if (authData.refresh_token) {
+    localStorage.setItem("refresh_token", authData.refresh_token);
+  }
+
+  const user = await fetchUserProfile(authData);
+  return { access_token: authData.access_token, refresh_token: authData.refresh_token, user };
+}
+
+/**
+ * Google OAuth Register — POST /api/auth/oauth/google/register
+ * Khi user Google chưa có tài khoản → cần chọn username
+ */
+export async function googleRegister(supabaseToken: string, username: string): Promise<AuthResult> {
+  const res = await api.post<{ success: boolean; message: string; data: BEAuthResponse }>(
+    "/api/auth/oauth/google/register",
+    { supabaseToken, username }
+  );
+  const authData = res.data.data;
+
+  localStorage.setItem("access_token", authData.access_token);
+  if (authData.refresh_token) {
+    localStorage.setItem("refresh_token", authData.refresh_token);
+  }
+
+  const user = await fetchUserProfile(authData);
+  return { access_token: authData.access_token, refresh_token: authData.refresh_token, user };
+}
 /* ─── Helper: Fetch full profile sau login ─── */
 async function fetchUserProfile(authData: BEAuthResponse): Promise<User> {
   try {

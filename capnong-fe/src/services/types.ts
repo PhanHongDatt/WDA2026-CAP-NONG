@@ -125,6 +125,7 @@ export interface IOrderService {
     provinceCode?: string;
     orderNotes?: string;
     otpCode?: string;
+    paymentMethod?: string;
   }): Promise<unknown>;
   /** GET /api/orders — Lịch sử đơn hàng (paginated) */
   getMyOrders(status?: string, page?: number, size?: number): Promise<unknown>;
@@ -138,6 +139,8 @@ export interface IOrderService {
   getSellerSubOrders(status?: string): Promise<unknown[]>;
   /** PATCH /api/orders/sub-orders/{subOrderId}/status */
   updateSubOrderStatus(subOrderId: string, status: string): Promise<void>;
+  /** GET /api/orders/sub-orders/{subOrderId} — Chi tiết đơn con */
+  getSubOrderDetail(subOrderId: string): Promise<unknown>;
 }
 
 /* ─── Shops ─────────────────────────────────────── */

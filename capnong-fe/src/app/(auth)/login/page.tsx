@@ -146,10 +146,8 @@ export default function LoginPage() {
       showToast("success", "Đăng nhập thành công!");
       router.push("/home");
       router.refresh();
-    } catch (err: unknown) {
-      const msg =
-        (err instanceof Error ? err.message : "") ||
-        "Sai thông tin đăng nhập. Vui lòng thử lại.";
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Sai thông tin đăng nhập. Vui lòng thử lại.";
       showToast("error", msg);
     } finally {
       setLoading(false);

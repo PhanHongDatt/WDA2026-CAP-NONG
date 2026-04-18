@@ -24,8 +24,20 @@ export const apiOrderService: IOrderService = {
     provinceCode?: string;
     orderNotes?: string;
     otpCode?: string;
+    paymentMethod?: string;
   }): Promise<unknown> {
-    const res = await api.post("/api/orders", data);
+    const payload = {
+      guest_email: data.guestEmail,
+      guest_phone: data.guestPhone,
+      guest_name: data.guestName,
+      street_address: data.streetAddress,
+      ward_code: data.wardCode,
+      province_code: data.provinceCode,
+      order_notes: data.orderNotes,
+      otp_code: data.otpCode,
+      payment_method: data.paymentMethod,
+    };
+    const res = await api.post("/api/orders", payload);
     return res.data.data || res.data;
   },
 
@@ -67,5 +79,11 @@ export const apiOrderService: IOrderService = {
   /** PATCH /api/orders/sub-orders/{subOrderId}/status — Farmer cập nhật trạng thái */
   async updateSubOrderStatus(subOrderId: string, status: string): Promise<void> {
     await api.patch(`/api/orders/sub-orders/${subOrderId}/status`, { status });
+  },
+
+  /** GET /api/orders/sub-orders/{subOrderId} — Farmer xem chi tiết 1 đơn con */
+  async getSubOrderDetail(subOrderId: string): Promise<unknown> {
+    const res = await api.get(`/api/orders/sub-orders/${subOrderId}`);
+    return res.data.data || res.data;
   },
 };

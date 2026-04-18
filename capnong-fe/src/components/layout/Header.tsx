@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import FontSizeToggle from "@/components/ui/FontSizeToggle";
 import NotificationBell from "@/components/ui/NotificationBell";
+import { cartService } from "@/services";
 
 /**
  * Header — Role-based UI
@@ -38,6 +39,14 @@ export default function Header() {
   const router = useRouter();
 
   const { user, isLoggedIn, isFarmer, isHtxMember, isHtxManager, isAdmin, loginAs, logout } = useAuth();
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    cartService.getItemCount().then(setCartCount).catch(() => {});
+    const handleCartUpdated = () => cartService.getItemCount().then(setCartCount).catch(() => {});
+    window.addEventListener("cartUpdated", handleCartUpdated);
+    return () => window.removeEventListener("cartUpdated", handleCartUpdated);
+  }, []);
 
   const handleSearch = () => {
     const q = searchQuery.trim();
@@ -142,7 +151,11 @@ export default function Header() {
             {(!isLoggedIn || user?.role === "BUYER") && (
               <Link href="/cart" className="relative cursor-pointer" aria-label="Giỏ hàng">
                 <ShoppingCart className="w-6 h-6 text-gray-600 dark:text-foreground-muted hover:text-primary transition-colors" />
-                {/* Badge count sẽ từ cartService */}
+                {cartCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-surface animate-pop-in">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
               </Link>
             )}
 
@@ -151,8 +164,16 @@ export default function Header() {
               /* Guest — Đăng nhập / Đăng ký */
               <div className="hidden md:flex items-center gap-4">
                 <Link
+                  href="/orders/lookup"
+                  className="flex items-center justify-center w-8 h-8 rounded-full text-gray-600 dark:text-foreground-muted hover:bg-gray-100 dark:hover:bg-surface-hover hover:text-primary transition-colors"
+                  title="Tra cứu đơn"
+                >
+                  <Package className="w-5 h-5" />
+                </Link>
+                <div className="w-px h-4 bg-gray-200 dark:bg-border hidden lg:block"></div>
+                <Link
                   href="/login"
-                  className="text-gray-600 dark:text-foreground-muted font-medium hover:text-primary transition-colors"
+                  className="text-gray-600 dark:text-foreground-muted text-sm font-medium hover:text-primary transition-colors"
                 >
                   Đăng nhập
                 </Link>
@@ -305,7 +326,10 @@ export default function Header() {
             <div className="flex flex-col gap-3">
               {!isLoggedIn ? (
                 <>
-                  <Link href="/login" className="text-gray-600 dark:text-foreground-muted font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/orders/lookup" className="flex items-center gap-2 text-primary font-medium hover:text-primary-dark" onClick={() => setMobileMenuOpen(false)}>
+                    <Package className="w-5 h-5" /> Tra cứu đơn hàng
+                  </Link>
+                  <Link href="/login" className="text-gray-600 dark:text-foreground-muted font-medium hover:text-primary mt-2" onClick={() => setMobileMenuOpen(false)}>
                     Đăng nhập
                   </Link>
                   <Link

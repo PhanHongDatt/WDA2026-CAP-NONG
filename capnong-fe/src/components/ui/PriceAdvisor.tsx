@@ -35,9 +35,10 @@ function formatVND(n: number) {
 interface PriceAdvisorProps {
   productName: string;
   currentPrice: string;
+  onPriceChange?: (newPrice: string) => void;
 }
 
-export default function PriceAdvisor({ productName, currentPrice }: PriceAdvisorProps) {
+export default function PriceAdvisor({ productName, currentPrice, onPriceChange }: PriceAdvisorProps) {
   const [visible, setVisible] = useState(false);
   const [data, setData] = useState<ReturnType<typeof lookupPrice> | null>(null);
 
@@ -89,6 +90,12 @@ export default function PriceAdvisor({ productName, currentPrice }: PriceAdvisor
         : { text: "Nằm trong khoảng giá thị trường — phù hợp", color: "text-green-700" }
     : null;
 
+  // Calculate slider bounds
+  const sliderMin = data.min * 0.8;
+  const sliderMax = data.max * 1.5;
+  const val = price > 0 ? price : data.avg;
+  const percentage = Math.min(Math.max(((val - sliderMin) / (sliderMax - sliderMin)) * 100, 0), 100);
+
   return (
     <div className="bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/60 dark:border-amber-800/40 rounded-xl p-4 space-y-2">
       <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
@@ -100,15 +107,34 @@ export default function PriceAdvisor({ productName, currentPrice }: PriceAdvisor
         <span className="text-foreground-muted">Cao: <strong className="text-foreground">{formatVND(data.max)}</strong></span>
       </div>
 
-      {/* Simple bar visualization */}
-      <div className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-        <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-400 to-primary rounded-full" style={{ width: "100%" }} />
-        {price > 0 && (
-          <div
-            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-primary rounded-full shadow-sm"
-            style={{ left: `${Math.min(Math.max(((price - data.min) / (data.max - data.min)) * 100, 2), 98)}%` }}
-          />
-        )}
+      {/* Interactive visual slider */}
+      <div className="relative py-2 group">
+        {/* Full Track background (Gradient) */}
+        <div className="absolute inset-y-0 left-0 right-0 h-2 bg-gradient-to-r from-green-400 to-primary rounded-full pointer-events-none mt-[8px] opacity-30" />
+        
+        {/* Filled Track background with Animated Stripes */}
+        <div 
+          className="absolute inset-y-0 left-0 h-2 bg-primary rounded-full pointer-events-none mt-[8px] overflow-hidden" 
+          style={{ width: `${percentage}%` }}
+        >
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.2)_10px,rgba(255,255,255,0.2)_20px)] animate-[bg-scroll_2s_linear_infinite]" style={{ backgroundSize: "28px 28px" }} />
+        </div>
+
+        {/* Input Native Element */}
+        <input
+          type="range"
+          min={sliderMin}
+          max={sliderMax}
+          step={100}
+          value={val}
+          onChange={(e) => onPriceChange?.(e.target.value)}
+          className="w-full h-2 rounded-full appearance-none cursor-pointer bg-transparent relative z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md hover:[&::-webkit-slider-thumb]:scale-110 transition-all outline-none align-middle"
+        />
+        
+        {/* Tooltip Overlay */}
+        <div className="absolute top-0 right-0 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border px-2 py-1 rounded shadow-sm text-xs font-bold pointer-events-none z-20">
+          {formatVND(val)}
+        </div>
       </div>
 
       <p className="text-[11px] text-foreground-muted">

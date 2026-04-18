@@ -11,7 +11,7 @@ spring:
   application:
     name: capnong-be
   profiles:
-    active: dev
+    active: dev, seed
 
   # ─── PostgreSQL Supabase DataSource ─────────────────
   datasource:
@@ -104,7 +104,7 @@ logging:
 
 ai:
   service:
-    base-url: http://localhost:8001
+    base-url: http://localhost:8000
     timeout: 15000
 
 # ─── Kafka ───────────────────────────────────

@@ -16,5 +16,7 @@ public interface CartMapper {
     @Mapping(target = "productId", source = "product.id")
     @Mapping(target = "productName", source = "product.name")
     @Mapping(target = "pricePerUnit", source = "product.pricePerUnit")
+    @Mapping(target = "shopName", source = "product.shop.name")
+    @Mapping(target = "imageUrl", expression = "java(cartItem.getProduct().getImages() != null && !cartItem.getProduct().getImages().isEmpty() ? cartItem.getProduct().getImages().get(0).getUrl() : null)")
     CartItemResponse toCartItemResponse(CartItem cartItem);
 }

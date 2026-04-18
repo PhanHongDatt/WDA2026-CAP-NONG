@@ -24,7 +24,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
-        User user = userRepository.findByUsernameOrPhoneOrEmail(identifier, identifier, identifier)
+        User user = userRepository.findFirstByUsernameOrPhoneOrEmail(identifier, identifier, identifier)
                 .orElseThrow(() -> new UsernameNotFoundException(
                         "Không tìm thấy tài khoản với username/SĐT/email: " + identifier));
 
