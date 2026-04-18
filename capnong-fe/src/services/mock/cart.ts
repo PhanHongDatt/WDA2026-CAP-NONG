@@ -2,7 +2,7 @@
  * Mock Cart Service — localStorage cart, dùng khi NEXT_PUBLIC_USE_MOCK_DATA=true
  */
 import type { ICartService, CartItem } from "../types";
-import type { Product } from "@/types/product";
+
 import { MOCK_SEASONAL_PRODUCTS, MOCK_NEW_PRODUCTS } from "@/lib/mock-data";
 
 const CART_KEY = "capnong-cart";

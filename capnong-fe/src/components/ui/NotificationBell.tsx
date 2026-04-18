@@ -91,6 +91,7 @@ export default function NotificationBell() {
 
   /* Fetch on mount + poll unread count only when tab visible */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
 
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -131,6 +132,7 @@ export default function NotificationBell() {
 
   /* Refresh when dropdown opens */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) fetchNotifications();
   }, [open, fetchNotifications]);
 

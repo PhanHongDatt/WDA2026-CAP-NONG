@@ -37,7 +37,6 @@ const GALLERY = [
   },
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function ShopProfilePage() {
   const params = useParams();
   const slug = params?.slug as string;

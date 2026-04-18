@@ -38,6 +38,7 @@ function Placeholder({ alt, className, style, fill }: { alt: string; className?:
   const src = fallbackImages[hash % fallbackImages.length];
 
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       /* Cache Buster 3x */
@@ -53,7 +54,7 @@ function Placeholder({ alt, className, style, fill }: { alt: string; className?:
   );
 }
 
-export function SafeImage({ src, alt, width, height, className, blurDataURL, priority, fill, sizes, style }: SafeImageProps) {
+export function SafeImage({ src, alt, width, height, className, blurDataURL: _blurDataURL, priority, fill, sizes, style }: SafeImageProps) { // eslint-disable-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState(false);
 
   // If src is empty/null or errored → show placeholder

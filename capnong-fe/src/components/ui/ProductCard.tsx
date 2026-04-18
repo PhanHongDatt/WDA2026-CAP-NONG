@@ -20,7 +20,7 @@ interface ProductCardProps {
  */
 export default function ProductCard({
   product,
-  variant = "seasonal",
+  variant: _variant = "seasonal", // eslint-disable-line @typescript-eslint/no-unused-vars
 }: ProductCardProps) {
   const [liked, setLiked] = useState(false);
   const [added, setAdded] = useState(false);

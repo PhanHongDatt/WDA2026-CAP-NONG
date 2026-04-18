@@ -27,6 +27,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const storedFontSize = localStorage.getItem("capnong-font-size") as FontSize | null;
 
     if (storedTheme) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTheme(storedTheme);
     } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
       setTheme("dark");

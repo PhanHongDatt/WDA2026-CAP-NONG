@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
-import type { User, UserRole } from "@/types/user";
+import type { User } from "@/types/user";
 import { authService, userService } from "@/services";
 
 /* ─── Sell / Buy Mode (Baseline §1: client-side, không ảnh hưởng JWT) ─── */

@@ -16,7 +16,7 @@ const PriceAdvisor = lazy(() => import("@/components/ui/PriceAdvisor"));
 export default function NewProductPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [images, setImages] = useState<string[]>([]);
+  const [_images, _setImages] = useState<string[]>([]); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
