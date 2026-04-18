@@ -8,7 +8,7 @@ import {
   TrendingUp,
   Plus,
   Package,
-  Settings,
+
   CheckCircle2,
   XCircle,
   UserPlus,

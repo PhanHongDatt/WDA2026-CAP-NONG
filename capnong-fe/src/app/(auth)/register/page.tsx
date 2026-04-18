@@ -193,8 +193,8 @@ function GoogleRegisterForm() {
 
 /* ─── Main Register Page ─── */
 function RegisterContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const _router = useRouter(); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const _searchParams = useSearchParams(); // eslint-disable-line @typescript-eslint/no-unused-vars
   const { showToast } = useToast();
 
   // Detect Google OAuth registration flow (state-based for SSR safety)

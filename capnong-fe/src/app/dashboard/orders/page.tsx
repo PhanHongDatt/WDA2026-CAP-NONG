@@ -81,7 +81,7 @@ export default function OrderManagementPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [loadingData, setLoadingData] = useState(true);
+  const [_loadingData, setLoadingData] = useState(true); // eslint-disable-line @typescript-eslint/no-unused-vars
   const ITEMS_PER_PAGE = 5;
 
   /* Fetch real orders from API, fallback to mock */

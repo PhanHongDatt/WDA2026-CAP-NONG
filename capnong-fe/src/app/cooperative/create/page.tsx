@@ -7,7 +7,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
   ArrowLeft,
   Building2,
-  MapPin,
+
   FileText,
   Upload,
   CheckCircle2,
@@ -23,7 +23,7 @@ const PROVINCES = [
 ];
 
 function CreateHtxContent() {
-  const { user } = useAuth();
+  const { user: _user } = useAuth(); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);

@@ -10,7 +10,7 @@ import {
   Truck,
   Package,
   PackageCheck,
-  XCircle,
+
   Phone,
   MapPin,
   ChevronRight,
@@ -96,6 +96,7 @@ export default function SellerOrderDetailPage() {
       setLoading(false);
     }
     fetchOrder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
   if (!order) {

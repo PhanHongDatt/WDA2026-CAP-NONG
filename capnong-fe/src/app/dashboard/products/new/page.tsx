@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, lazy, Suspense } from "react";
+import { useState, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload, Loader2, CheckCircle2 } from "lucide-react";
