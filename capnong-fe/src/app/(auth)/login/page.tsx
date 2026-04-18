@@ -168,6 +168,7 @@ export default function LoginPage() {
       });
       if (error) throw error;
       // User sẽ được redirect sang Google → quay lại /login với hash token
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       // Provide a fallback direct redirect to bypass crypto limitations in gotrue-js
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://qpzhehhjzniegbcpzqqt.supabase.co";

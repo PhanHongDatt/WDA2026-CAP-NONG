@@ -96,6 +96,7 @@ export default function OrderManagementPage() {
           id: o.orderCode || o.id || "#???",
           buyer: o.buyerName || o.guestName || "—",
           phone: o.buyerPhone || o.guestPhone || "—",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           products: (o.items || []).map((i: any) => `${i.productName || "SP"} x${i.quantity || 1}`).join(", ") || "—",
           total: o.totalAmount || 0,
           status: (o.status || "PENDING") as OrderStatus,

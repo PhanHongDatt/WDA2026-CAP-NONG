@@ -102,6 +102,7 @@ function BuyerOrderContent() {
           total: o.totalAmount || 0,
           seller_name: o.items?.[0]?.shopName || o.sellerName || "Nhà vườn",
           seller_phone: o.sellerPhone || "—",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           items: (o.items || []).map((item: any) => ({
             name: item.productName || item.name || "Sản phẩm",
             qty: item.quantity || 1,
