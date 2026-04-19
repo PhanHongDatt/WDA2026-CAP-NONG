@@ -7,11 +7,11 @@
 /* stylelint-disable-next-line at-rule-no-unknown */
 @theme inline {
   /* === Colors === */
-  --color-primary: #1565C0;
-  --color-primary-light: #1E88E5;
-  --color-primary-dark: #0D47A1;
-  --color-primary-50: #E3F2FD;
-  --color-primary-100: #BBDEFB;
+  --color-primary: #2E7D32;
+  --color-primary-light: #43A047;
+  --color-primary-dark: #1B5E20;
+  --color-primary-50: #E8F5E9;
+  --color-primary-100: #C8E6C9;
 
   --color-accent: #C62828;
   --color-accent-light: #EF5350;
@@ -43,7 +43,7 @@
   /* === Shadows === */
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05);
   --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.1);
-  --shadow-primary: 0 4px 14px rgba(21, 101, 192, 0.3);
+  --shadow-primary: 0 4px 14px rgba(46, 125, 50, 0.3);
   --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.08);
 
   /* === Transitions === */
