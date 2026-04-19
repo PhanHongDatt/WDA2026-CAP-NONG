@@ -7,11 +7,11 @@
 /* stylelint-disable-next-line at-rule-no-unknown */
 @theme inline {
   /* === Colors === */
-  --color-primary: #2E7D32;
-  --color-primary-light: #4CAF50;
-  --color-primary-dark: #1B5E20;
-  --color-primary-50: #E8F5E9;
-  --color-primary-100: #C8E6C9;
+  --color-primary: #276B2C;
+  --color-primary-light: #45A049;
+  --color-primary-dark: #1A5220;
+  --color-primary-50: #E6F4E7;
+  --color-primary-100: #C5E3C6;
 
   --color-accent: #C62828;
   --color-accent-light: #EF5350;
