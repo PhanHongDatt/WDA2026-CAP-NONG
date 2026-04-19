@@ -15,6 +15,7 @@ import com.capnong.service.OrderService;
 import com.capnong.service.OtpService;
 import com.capnong.service.RefreshTokenService;
 import com.capnong.service.ShopService;
+import com.capnong.service.LoginRateLimiterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,15 +37,31 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final OtpService otpService;
     private final ShopService shopService;
+    private final LoginRateLimiterService loginRateLimiterService;
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findFirstByUsernameOrPhoneOrEmail(request.getIdentifier(), request.getIdentifier(), request.getIdentifier())
-                .orElseThrow(() -> new AppException("Tài khoản không tồn tại", HttpStatus.NOT_FOUND));
+        loginRateLimiterService.checkRateLimit(request.getIdentifier());
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        user.getUsername(), request.getPassword()));
+        User user;
+        try {
+            user = userRepository.findFirstByUsernameOrPhoneOrEmail(request.getIdentifier(), request.getIdentifier(), request.getIdentifier())
+                    .orElseThrow(() -> new AppException("Tài khoản không tồn tại", HttpStatus.NOT_FOUND));
+        } catch (AppException e) {
+            int remaining = loginRateLimiterService.recordFailedAttempt(request.getIdentifier());
+            throw new AppException(e.getMessage() + ". Bạn còn " + remaining + " lần thử trước khi bị khóa.", e.getStatus());
+        }
+
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(user.getUsername(), request.getPassword()));
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            int remaining = loginRateLimiterService.recordFailedAttempt(request.getIdentifier());
+            throw new AppException("Sai thông tin đăng nhập. Bạn còn " + remaining + " lần thử trước khi bị khóa.", HttpStatus.UNAUTHORIZED);
+        }
+
+        loginRateLimiterService.resetAttempts(request.getIdentifier());
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 
