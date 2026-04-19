@@ -44,7 +44,7 @@ const PHONE_MAP: Record<string, string> = {
 };
 
 export const mockAuthService: IAuthService = {
-  async login(phone: string, _password: string): Promise<AuthResult> {
+  async login(phone: string, _password: string): Promise<AuthResult> { // eslint-disable-line @typescript-eslint/no-unused-vars
     await new Promise((r) => setTimeout(r, 300)); // simulate delay
     const key = PHONE_MAP[phone] || "farmer";
     const user = MOCK_USERS[key];

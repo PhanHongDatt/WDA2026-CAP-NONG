@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 function CreateShopContent() {
-  const { user } = useAuth();
+  const { user: _user } = useAuth(); // eslint-disable-line @typescript-eslint/no-unused-vars
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);

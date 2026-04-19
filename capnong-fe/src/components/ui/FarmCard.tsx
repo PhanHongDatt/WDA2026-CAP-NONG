@@ -19,7 +19,7 @@ export default function FarmCard({ shop }: FarmCardProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const shopAny = shop as any;
   const customerCount = shopAny.customer_count ?? Math.floor((shop.total_reviews || 10) * 0.8);
-  const productCount = shopAny.product_count ?? Math.floor(50 + Math.random() * 80);
+  const productCount = shopAny.product_count ?? Math.floor(50 + ((shop.total_reviews || 10) * 3.7) % 80);
   const orderCount = shopAny.order_count ?? `${Math.floor(shop.total_reviews * 1.5)}+`;
 
   /* Derive main product line from bio */

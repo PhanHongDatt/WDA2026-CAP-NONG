@@ -9,7 +9,7 @@ import FlashDeal from "@/components/ui/FlashDeal";
 import { productService, shopService } from "@/services";
 import { MOCK_SEASONAL_PRODUCTS, MOCK_NEW_PRODUCTS, MOCK_SHOPS } from "@/lib/mock-data";
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
 
 export const metadata: Metadata = {
   title: "Trang Chủ",

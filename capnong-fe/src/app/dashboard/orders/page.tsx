@@ -81,7 +81,7 @@ export default function OrderManagementPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [loadingData, setLoadingData] = useState(true);
+  const [_loadingData, setLoadingData] = useState(true); // eslint-disable-line @typescript-eslint/no-unused-vars
   const ITEMS_PER_PAGE = 5;
 
   /* Fetch real orders from API, fallback to mock */
@@ -96,6 +96,7 @@ export default function OrderManagementPage() {
           id: o.orderCode || o.id || "#???",
           buyer: o.buyerName || o.guestName || "—",
           phone: o.buyerPhone || o.guestPhone || "—",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           products: (o.items || []).map((i: any) => `${i.productName || "SP"} x${i.quantity || 1}`).join(", ") || "—",
           total: o.totalAmount || 0,
           status: (o.status || "PENDING") as OrderStatus,

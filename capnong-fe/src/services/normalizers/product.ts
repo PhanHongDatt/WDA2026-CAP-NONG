@@ -46,7 +46,6 @@ export function normalizeProduct(raw: any): Product {
 
   // 🎀 FALLBACK MOCK DATA HÌNH ẢNH (Theo yêu cầu: chỉ minh họa bằng mockdata khi API không có hình)
   if (images.length === 0) {
-    const defaultPlaceholder = "https://images.unsplash.com/photo-1595853035070-59a39fe84ee3?auto=format&fit=crop&w=400&q=80";
     
     // Use a pool of high-quality Unsplash agriculture images instead of loremflickr
     const mockImages = [

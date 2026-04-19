@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Flame, Clock, Users } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { Clock, Users } from "lucide-react";
 import type { CoopPool } from "@/types/order";
 import ProgressBar from "@/components/ui/ProgressBar";
 

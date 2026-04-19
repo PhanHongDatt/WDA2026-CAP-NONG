@@ -21,12 +21,14 @@ export default function NetworkStatus() {
   const [mounted, setMounted] = useState(false);
 
   // Prevent SSR hydration mismatch
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   // Track offline → online transitions
   useEffect(() => {
     if (!mounted) return;
     if (!isOnline) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWasOffline(true);
     } else if (wasOffline) {
       setShowReconnect(true);

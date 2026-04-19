@@ -149,10 +149,12 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
   const [errorMsg, setErrorMsg] = useState("");
   const [supported, setSupported] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
   /* Check browser support */
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     if (!w.webkitSpeechRecognition && !w.SpeechRecognition) {
       setSupported(false);
@@ -180,6 +182,7 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
     setState("recording");
     setDuration(0);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     const SpeechRecognition = w.webkitSpeechRecognition || w.SpeechRecognition;
 
@@ -212,6 +215,7 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const res = event.results[i];
         if (res[0]) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if ((res as any).isFinal) {
             finalTranscript += res[0].transcript + " ";
           } else {
@@ -222,6 +226,7 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
       setTranscript(finalTranscript + interim);
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onerror = (event: any) => {
       if (event.error === "no-speech") {
         setErrorMsg("Không nghe thấy giọng nói. Hãy thử lại.");

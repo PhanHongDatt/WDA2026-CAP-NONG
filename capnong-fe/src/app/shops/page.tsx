@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, MapPin, Star, ChevronRight } from "lucide-react";
+import { Search, MapPin } from "lucide-react";
 import FarmCard from "@/components/ui/FarmCard";
 import { shopService } from "@/services";
 import type { Shop } from "@/types/shop";

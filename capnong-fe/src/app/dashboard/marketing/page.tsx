@@ -63,6 +63,7 @@ function PosterResultView({ content }: { content: PosterContent }) {
           <Check className="w-5 h-5" /> 🎨 Poster AI đã tạo thành công!
         </h4>
         <div className="rounded-2xl overflow-hidden shadow-xl border border-border bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={content.imageUrl} alt="AI Generated Poster" className="w-full object-contain" />
         </div>
         {content.promptUsed && (

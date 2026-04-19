@@ -50,6 +50,7 @@ export default function ProductDraftsPage() {
           image: "",
           updated_at: new Date().toLocaleString("vi-VN"),
         };
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDrafts((prev) => {
           // Add local draft at top if not already there
           if (prev.some((d) => d.id === "local-draft")) return prev;

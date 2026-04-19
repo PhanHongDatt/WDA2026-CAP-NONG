@@ -8,7 +8,7 @@ import {
   Package,
   ArrowLeft,
   CheckCircle2,
-  Truck,
+
   Clock,
   Phone,
   MapPin,
