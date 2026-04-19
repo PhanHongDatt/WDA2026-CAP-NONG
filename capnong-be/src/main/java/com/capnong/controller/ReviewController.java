@@ -43,6 +43,26 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.success("OK", reviews));
     }
 
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('BUYER')")
+    @Operation(summary = "Lấy đánh giá của tôi", description = "Buyer xem lại danh sách các bài đánh giá mình đã viết.")
+    public ResponseEntity<ApiResponse<Page<Review>>> getMyReviews(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success("OK",
+                reviewService.getMyReviews(userDetails.getId(), pageable)));
+    }
+
+    @GetMapping("/seller")
+    @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
+    @Operation(summary = "Xem đánh giá về shop của tôi", description = "Seller xem tất cả đánh giá của khách hàng về các sản phẩm thuộc shop mình.")
+    public ResponseEntity<ApiResponse<Page<Review>>> getShopReviews(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success("OK",
+                reviewService.getShopReviews(userDetails.getUsername(), pageable)));
+    }
+
     /**
      * POST /api/reviews — Buyer tạo đánh giá (chỉ khi đơn đã DELIVERED).
      */

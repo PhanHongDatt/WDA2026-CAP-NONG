@@ -39,4 +39,27 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("SELECT o FROM Order o WHERE (o.guestPhone = :phone OR o.guestEmail = :email) AND o.user IS NULL AND o.isMerged = false")
     List<Order> findUnmergedGuestOrders(@Param("phone") String phone, @Param("email") String email);
+
+    // Dashboard - Buyer
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.user.username = :username")
+    long countOrdersByBuyerUsername(@Param("username") String username);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.user.username = :username AND o.status IN ('PENDING', 'PROCESSING', 'SHIPPED')")
+    long countPendingOrdersByBuyerUsername(@Param("username") String username);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.user.username = :username")
+    java.math.BigDecimal calculateGrossRevenueByBuyerUsername(@Param("username") String username);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.user.username = :username AND o.status = 'COMPLETED'")
+    java.math.BigDecimal calculateNetRevenueByBuyerUsername(@Param("username") String username);
+
+    // Dashboard - Admin
+    @Query("SELECT COUNT(o) FROM Order o")
+    long countAllOrders();
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o")
+    java.math.BigDecimal calculateGlobalGrossGMV();
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status = 'COMPLETED'")
+    java.math.BigDecimal calculateGlobalNetGMV();
 }

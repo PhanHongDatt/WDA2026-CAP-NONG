@@ -45,6 +45,16 @@ public class ReviewService implements IReviewService {
     }
 
     @Override
+    public Page<Review> getMyReviews(UUID authorId, Pageable pageable) {
+        return reviewRepository.findByAuthorIdOrderByCreatedAtDesc(authorId, pageable);
+    }
+
+    @Override
+    public Page<Review> getShopReviews(String sellerUsername, Pageable pageable) {
+        return reviewRepository.findByShopOwnerUsernameOrderByCreatedAtDesc(sellerUsername, pageable);
+    }
+
+    @Override
     @Transactional
     public Review createReview(UUID authorId, ReviewCreateRequest request) {
         // Verify order item exists

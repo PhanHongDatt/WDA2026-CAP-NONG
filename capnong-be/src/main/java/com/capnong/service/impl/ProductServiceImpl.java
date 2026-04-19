@@ -96,6 +96,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<ProductResponse> getSellerProducts(String username, Pageable pageable) {
+        Page<Product> products = productRepository.findByShop_Owner_Username(username, pageable);
+        return products.map(productMapper::toProductResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     @Cacheable(value = "products", key = "#productId")
     public ProductResponse getProductById(UUID productId) {
         Product product = productRepository.findById(productId)

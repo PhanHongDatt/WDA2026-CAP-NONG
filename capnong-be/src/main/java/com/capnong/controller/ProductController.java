@@ -60,6 +60,16 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin sản phẩm thành công", product));
     }
 
+    @GetMapping("/seller")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Danh sách sản phẩm của tôi", description = "Lấy tất cả sản phẩm của Nông dân (Seller) đang đăng nhập, bất kể trạng thái (HIDDEN, OUT_OF_STOCK...). Dùng cho trang Quản lý Sản phẩm.")
+    public ResponseEntity<ApiResponse<PagedResponse<ProductResponse>>> getSellerProducts(
+            Authentication authentication,
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        var page = productService.getSellerProducts(authentication.getName(), pageable);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", PagedResponse.from(page)));
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  CREATE
     // ═══════════════════════════════════════════════════════════════
