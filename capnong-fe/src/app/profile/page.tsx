@@ -15,7 +15,7 @@ import {
   Send,
   Loader2,
 } from "lucide-react";
-import { apiUserService } from "@/services/api/user";
+import { apiUserService, linkGoogleAccount } from "@/services/api/user";
 import * as notificationApi from "@/services/api/notification";
 
 import { useToast } from "@/components/ui/Toast";
@@ -109,7 +109,6 @@ function ProfileContent() {
       setPasswordSaved(true);
       setTimeout(() => {
         setPasswordSaved(false);
-        setShowPasswordForm(false);
         setPasswordForm({ current: "", newPass: "", confirm: "" });
       }, 2000);
     } catch (err: unknown) {
@@ -117,6 +116,27 @@ function ProfileContent() {
       setPasswordError(msg);
     }
   }, [passwordForm]);
+
+  /* ── UC-31: Link Google ── */
+  const [googleLinked, setGoogleLinked] = useState(false);
+  const [googleLinking, setGoogleLinking] = useState(false);
+
+  const handleLinkGoogle = async () => {
+    setGoogleLinking(true);
+    try {
+      // Gọi thử popup logic hoặc gửi mock signal để test UI (do Supabase Auth không popup được dễ ở đây nếu chưa setup SDK)
+      // Trong thực tế sẽ gọi Supabase signInWithOAuth, lấy token => truyền cho linkGoogleAccount
+      const mockSupabaseToken = "mock_token_" + Date.now();
+      await linkGoogleAccount(mockSupabaseToken);
+      setGoogleLinked(true);
+      showToast("success", "Liên kết tài khoản Google thành công!");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Lỗi liên kết Google";
+      showToast("error", msg);
+    } finally {
+      setGoogleLinking(false);
+    }
+  };
 
   /* ── UC-39: Telegram toggle → real API ── */
   const handleTelegramToggle = useCallback(async () => {
@@ -283,27 +303,18 @@ function ProfileContent() {
         </div>
       </div>
 
-      {/* Security info */}
-      <div className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-6 space-y-3">
+      {/* Security info - Đổi mật khẩu */}
+      <div className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-6 space-y-4">
         <h2 className="font-bold text-gray-900 dark:text-foreground flex items-center gap-2">
           <Shield className="w-5 h-5 text-primary" />
-          Bảo mật
+          Đổi mật khẩu đăng nhập
         </h2>
-        <div className="flex items-center justify-between py-2">
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-foreground">Mật khẩu</p>
-            <p className="text-xs text-foreground-muted">Đổi mật khẩu đăng nhập</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2 lg:col-span-1">
+            <label htmlFor="pw-current" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Mật khẩu hiện tại</label>
+            <input id="pw-current" type="password" value={passwordForm.current} onChange={(e) => setPasswordForm(p => ({...p, current: e.target.value}))} className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
-          <button type="button" onClick={() => setShowPasswordForm(!showPasswordForm)} className="text-sm text-primary font-medium hover:underline">
-            {showPasswordForm ? "Đóng" : "Đổi mật khẩu"}
-          </button>
-        </div>
-        {showPasswordForm && (
-          <div className="space-y-3 pt-3 border-t border-border">
-            <div>
-              <label htmlFor="pw-current" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Mật khẩu hiện tại</label>
-              <input id="pw-current" type="password" value={passwordForm.current} onChange={(e) => setPasswordForm(p => ({...p, current: e.target.value}))} className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-            </div>
+          <div className="sm:col-span-2 lg:col-span-1 border-l-0 lg:border-l border-gray-100 pl-0 lg:pl-6 space-y-4">
             <div>
               <label htmlFor="pw-new" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Mật khẩu mới</label>
               <input id="pw-new" type="password" value={passwordForm.newPass} onChange={(e) => setPasswordForm(p => ({...p, newPass: e.target.value}))} className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
@@ -315,14 +326,16 @@ function ProfileContent() {
                 <p className="text-xs text-accent mt-1">Mật khẩu không khớp</p>
               )}
             </div>
-            {passwordError && (
-              <p className="text-xs text-accent">{passwordError}</p>
-            )}
-            <button type="button" onClick={handlePasswordSave} disabled={!passwordForm.current || !passwordForm.newPass || passwordForm.newPass !== passwordForm.confirm} className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              {passwordSaved ? "✅ Đã đổi!" : "Lưu mật khẩu mới"}
-            </button>
           </div>
+        </div>
+        {passwordError && (
+          <p className="text-xs text-accent">{passwordError}</p>
         )}
+        <div className="flex justify-end pt-2">
+          <button type="button" onClick={handlePasswordSave} disabled={!passwordForm.current || !passwordForm.newPass || passwordForm.newPass !== passwordForm.confirm} className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+            {passwordSaved ? "✅ Đã đổi thành công!" : "Lưu mật khẩu mới"}
+          </button>
+        </div>
       </div>
 
       {/* UC-39: Telegram Notification Toggle */}
@@ -362,6 +375,46 @@ function ProfileContent() {
         </div>
         <div className={`flex items-center gap-2 text-sm font-medium ${telegramEnabled ? "text-success" : "text-foreground-muted"}`}>
           {telegramEnabled ? "✅ Đã bật nhận thông báo Telegram" : "⚪ Chưa kết nối Telegram"}
+        </div>
+      </div>
+
+      {/* UC-XX: Tài khoản liên kết (Google) */}
+      <div className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-6 space-y-4">
+        <h2 className="font-bold text-gray-900 dark:text-foreground flex items-center gap-2">
+          <User className="w-5 h-5 text-primary" />
+          Tài khoản liên kết
+        </h2>
+        <div className="flex items-center justify-between py-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-50 dark:bg-background rounded-full flex items-center justify-center border border-border">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48">
+                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900 dark:text-foreground">Google</p>
+              <p className={`text-xs ${googleLinked ? "text-success" : "text-foreground-muted"}`}>
+                {googleLinked ? "Đã liên kết (someone@gmail.com)" : "Chưa liên kết thẻ Google nào"}
+              </p>
+            </div>
+          </div>
+          {!googleLinked && (
+            <button
+              onClick={handleLinkGoogle}
+              disabled={googleLinking}
+              className="px-4 py-2 bg-gray-100 dark:bg-background border border-border text-foreground hover:bg-gray-200 dark:hover:bg-surface-hover rounded-lg text-sm font-medium transition-colors"
+            >
+              {googleLinking ? "Đang xử lý..." : "Liên kết"}
+            </button>
+          )}
+          {googleLinked && (
+            <span className="px-3 py-1 bg-green-50 text-success text-xs font-bold rounded-full border border-green-200">
+              Đã bật
+            </span>
+          )}
         </div>
       </div>
 
