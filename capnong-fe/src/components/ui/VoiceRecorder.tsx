@@ -273,26 +273,41 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
       const { extractFromTranscript } = await import("@/services/api/voice");
       const apiResult = await extractFromTranscript(textToProcess);
 
-      // Map BE response → VoiceProductResult
+      // Map BE response → VoiceProductResult safely handling nested { value: ... } structures
+      const safeGet = (obj: any, defaultValue: any = "") => {
+        if (obj === undefined || obj === null) return defaultValue;
+        if (typeof obj === "object" && obj !== null) return obj.value ?? defaultValue;
+        return obj;
+      };
+
+      const safeConf = (obj: any) => {
+        if (!obj) return 0;
+        if (typeof obj === "object" && obj.confidence_level) {
+          return obj.confidence_level === "high" ? 0.95 : obj.confidence_level === "medium" ? 0.7 : 0.4;
+        }
+        if (typeof obj === "object" && obj.confidence) return obj.confidence;
+        return obj === "HIGH" ? 0.95 : obj === "MEDIUM" ? 0.7 : 0.4;
+      };
+
       const result: VoiceProductResult = {
-        name: apiResult.name || "Sản phẩm mới",
-        description: apiResult.description || textToProcess,
-        price: apiResult.pricePerUnit || 0,
-        unit: apiResult.unitCode || "Kg",
-        quantity: apiResult.availableQuantity || 0,
-        location: apiResult.harvestNote || "",
-        harvestDate: "",
-        farmingMethod: "",
-        transcript: apiResult.rawTranscript || textToProcess,
+        name: safeGet(apiResult.product_name || apiResult.name, "Sản phẩm mới"),
+        description: safeGet(apiResult.description, textToProcess),
+        price: Number(safeGet(apiResult.price_per_unit || apiResult.pricePerUnit, 0)),
+        unit: safeGet(apiResult.quantity_unit || apiResult.unitCode, "Kg"),
+        quantity: Number(safeGet(apiResult.quantity || apiResult.availableQuantity, 0)),
+        location: safeGet(apiResult.location || apiResult.harvestNote, ""),
+        harvestDate: safeGet(apiResult.harvest_date || (apiResult as any).harvestDate, ""),
+        farmingMethod: safeGet(apiResult.farming_method || (apiResult as any).farmingMethod, ""),
+        transcript: safeGet(apiResult.original_transcript || apiResult.rawTranscript, textToProcess),
         confidence: {
-          name: apiResult.nameConfidence === "HIGH" ? 0.95 : apiResult.nameConfidence === "MEDIUM" ? 0.7 : 0.4,
-          price: apiResult.pricePerUnitConfidence === "HIGH" ? 0.95 : 0.5,
-          quantity: apiResult.availableQuantityConfidence === "HIGH" ? 0.95 : 0.5,
-          unit: apiResult.unitCodeConfidence === "HIGH" ? 0.95 : 0.5,
-          description: 0.95,
-          location: 0,
-          harvestDate: 0,
-          farmingMethod: 0,
+          name: safeConf(apiResult.product_name || apiResult.name),
+          price: safeConf(apiResult.price_per_unit || apiResult.pricePerUnit),
+          quantity: safeConf(apiResult.quantity || apiResult.availableQuantity),
+          unit: safeConf(apiResult.quantity_unit || apiResult.unitCode),
+          description: safeConf(apiResult.description),
+          location: safeConf(apiResult.location),
+          harvestDate: safeConf(apiResult.harvest_date || (apiResult as any).harvestDate),
+          farmingMethod: safeConf(apiResult.farming_method || (apiResult as any).farmingMethod),
         },
       };
       onResult?.(result);

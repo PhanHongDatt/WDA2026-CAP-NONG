@@ -89,7 +89,7 @@ export default function FlashDeal() {
               return (
                 <Link
                   key={deal.id}
-                  href={`/products/${deal.slug}`}
+                  href={`/products/${deal.id}`}
                   className="flex-shrink-0 w-[140px] sm:w-[180px] px-2 sm:px-3 border-r border-gray-50 last:border-r-0 group"
                 >
                   {/* Image */}

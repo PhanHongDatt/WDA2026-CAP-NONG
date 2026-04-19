@@ -25,12 +25,12 @@ export default function NewProductPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [unit, setUnit] = useState("Kg");
+  const [unit, setUnit] = useState("KG");
   const [quantity, setQuantity] = useState("");
-  const [category, setCategory] = useState("Trái cây");
+  const [category, setCategory] = useState("FRUIT");
   const [location, setLocation] = useState("");
   const [harvestDate, setHarvestDate] = useState("");
-  const [farmingMethod, setFarmingMethod] = useState("Hữu cơ");
+  const [farmingMethod, setFarmingMethod] = useState("ORGANIC");
 
   /* ── Voice state ── */
   const [voiceFilled, setVoiceFilled] = useState(false);
@@ -223,11 +223,14 @@ export default function NewProductPage() {
                 onChange={(e) => setUnit(e.target.value)}
                 className={`w-full px-4 py-3 text-sm border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none ${fieldClass("unit")}`}
               >
-                <option>Kg</option>
-                <option>Trái</option>
-                <option>Khay</option>
-                <option>Bó</option>
-                <option>Hộp</option>
+                <option value="KG">Kg</option>
+                <option value="PIECE">Trái/Quả</option>
+                <option value="BOX">Thùng/Hộp</option>
+                <option value="BUNCH">Bó/Chùm</option>
+                <option value="BAG">Bao/Túi</option>
+                <option value="YEN">Yến</option>
+                <option value="TA">Tạ</option>
+                <option value="TON">Tấn</option>
               </select>
             </div>
             <div>
@@ -247,7 +250,7 @@ export default function NewProductPage() {
 
           {/* AI Price Advisor — lazy loaded */}
           <Suspense fallback={<div className="h-20 bg-blue-50/50 dark:bg-info/5 rounded-xl animate-pulse" />}>
-            <PriceAdvisor productName={name} currentPrice={price} />
+            <PriceAdvisor productName={name} currentPrice={price} onPriceChange={setPrice} />
           </Suspense>
 
           <div>
@@ -258,12 +261,12 @@ export default function NewProductPage() {
               onChange={(e) => setCategory(e.target.value)}
               className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
             >
-              <option>Trái cây</option>
-              <option>Rau củ</option>
-              <option>Ngũ cốc &amp; Hạt</option>
-              <option>Thủy hải sản</option>
-              <option>Gia vị &amp; Thảo mộc</option>
-              <option>Thịt &amp; Trứng</option>
+              <option value="FRUIT">Trái cây</option>
+              <option value="VEGETABLE">Rau củ</option>
+              <option value="GRAIN">Ngũ cốc &amp; Hạt</option>
+              <option value="TUBER">Củ</option>
+              <option value="HERB">Gia vị &amp; Thảo mộc</option>
+              <option value="OTHER">Khác</option>
             </select>
           </div>
         </div>
@@ -271,7 +274,23 @@ export default function NewProductPage() {
         {/* Image Upload Area */}
         <div className="bg-white dark:bg-surface border border-border rounded-xl p-6 shadow-sm space-y-4">
           <h3 className="font-bold text-lg">Hình ảnh sản phẩm</h3>
-          <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors cursor-pointer">
+          <div 
+            className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary transition-colors cursor-pointer relative"
+            onClick={() => document.getElementById('product-image-upload')?.click()}
+          >
+            <input 
+              id="product-image-upload" 
+              type="file" 
+              multiple 
+              accept="image/png, image/jpeg, image/webp" 
+              className="hidden" 
+              onChange={(e) => {
+                if (e.target.files) {
+                  const newImages = Array.from(e.target.files).map(f => URL.createObjectURL(f));
+                  setImages([...images, ...newImages].slice(0, 6)); // max 6 images
+                }
+              }}
+            />
             <Upload className="w-10 h-10 text-foreground-muted mx-auto mb-3" />
             <p className="font-medium text-sm">
               Kéo thả hoặc nhấn để tải ảnh lên
@@ -280,6 +299,25 @@ export default function NewProductPage() {
               PNG, JPG, WEBP • Tối đa 5MB • Tối đa 6 ảnh
             </p>
           </div>
+          {images.length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-4">
+              {images.map((img, idx) => (
+                <div key={idx} className="relative aspect-square rounded-lg object-cover overflow-hidden border border-border">
+                  <img src={img} alt="preview" className="w-full h-full object-cover" />
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setImages(images.filter((_, i) => i !== idx));
+                    }}
+                    className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5 hover:bg-red-500"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Traceability */}
@@ -324,11 +362,10 @@ export default function NewProductPage() {
               onChange={(e) => setFarmingMethod(e.target.value)}
               className={`w-full px-4 py-3 text-sm border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none ${fieldClass("farmingMethod")}`}
             >
-              <option>Hữu cơ</option>
-              <option>VietGAP</option>
-              <option>GlobalGAP</option>
-              <option>Canh tác truyền thống</option>
-              <option>Thủy canh</option>
+              <option value="ORGANIC">Hữu cơ</option>
+              <option value="VIETGAP">VietGAP</option>
+              <option value="GLOBALGAP">GlobalGAP</option>
+              <option value="TRADITIONAL">Canh tác truyền thống</option>
             </select>
           </div>
         </div>

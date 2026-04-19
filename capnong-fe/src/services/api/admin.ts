@@ -62,15 +62,15 @@ export async function changeUserRole(userId: string | number, role: string): Pro
 }
 
 /**
- * Duyệt HTX
+ * Duyệt HTX — PATCH /api/admin/htx-requests/{htxId} body { action: "APPROVE" }
  */
-export async function approveHtx(htxId: string | number): Promise<void> {
-  await api.patch(`/api/admin/htx/${htxId}/approve`);
+export async function approveHtx(htxId: string | number, note?: string): Promise<void> {
+  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "APPROVE", note });
 }
 
 /**
- * Từ chối HTX
+ * Từ chối HTX — PATCH /api/admin/htx-requests/{htxId} body { action: "REJECT" }
  */
-export async function rejectHtx(htxId: string | number): Promise<void> {
-  await api.patch(`/api/admin/htx/${htxId}/reject`);
+export async function rejectHtx(htxId: string | number, note?: string): Promise<void> {
+  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "REJECT", note });
 }

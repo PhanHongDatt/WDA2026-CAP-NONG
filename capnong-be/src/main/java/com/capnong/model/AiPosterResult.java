@@ -4,6 +4,8 @@ import com.capnong.model.enums.PosterTemplate;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -36,6 +38,7 @@ public class AiPosterResult {
     @Column(name = "badge_texts", columnDefinition = "TEXT[]")
     private String badgeTexts;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "color_scheme", columnDefinition = "jsonb")
     private String colorScheme;
 

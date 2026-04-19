@@ -12,22 +12,40 @@
  */
 import api from "../api";
 
+export interface VoiceExtractValue<T> {
+  value?: T;
+  confidence?: number;
+  confidence_level?: "high" | "medium" | "low";
+  raw_value?: string;
+}
+
 export interface VoiceExtractResult {
-  name?: string;
-  nameConfidence?: string;
-  description?: string;
-  descriptionConfidence?: string;
-  category?: string;
-  categoryConfidence?: string;
-  unitCode?: string;
-  unitCodeConfidence?: string;
-  rawUnitText?: string;
-  pricePerUnit?: number;
-  pricePerUnitConfidence?: string;
-  availableQuantity?: number;
-  availableQuantityConfidence?: string;
-  harvestNote?: string;
-  rawTranscript?: string;
+  product_name?: VoiceExtractValue<string>;
+  description?: VoiceExtractValue<string>;
+  price_per_unit?: VoiceExtractValue<number>;
+  price_unit?: VoiceExtractValue<string>;
+  quantity?: VoiceExtractValue<number>;
+  quantity_unit?: VoiceExtractValue<string>;
+  location?: VoiceExtractValue<string>;
+  harvest_date?: VoiceExtractValue<string>;
+  farming_method?: VoiceExtractValue<string>;
+  original_transcript?: string;
+  processing_notes?: string[];
+  
+  // Legacy fields for backward compatibility, optional:
+  name?: any;
+  nameConfidence?: any;
+  category?: any;
+  categoryConfidence?: any;
+  unitCode?: any;
+  unitCodeConfidence?: any;
+  rawUnitText?: any;
+  pricePerUnit?: any;
+  pricePerUnitConfidence?: any;
+  availableQuantity?: any;
+  availableQuantityConfidence?: any;
+  harvestNote?: any;
+  rawTranscript?: any;
 }
 
 /**

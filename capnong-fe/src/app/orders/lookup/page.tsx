@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   Package,
@@ -40,35 +41,63 @@ const MOCK_RESULT = {
   shipping_address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
 };
 
-export default function OrderLookupPage() {
-  const [phone, setPhone] = useState("");
-  const [orderId, setOrderId] = useState("");
+function OrderLookupContent() {
+  const searchParams = useSearchParams();
+  const [phone, setPhone] = useState(searchParams.get("phone") || "");
+  const [orderId, setOrderId] = useState(searchParams.get("code") || searchParams.get("orderId") || "");
   const [result, setResult] = useState<typeof MOCK_RESULT | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(false);
+  const searchRan = useRef(false);
+
+  useEffect(() => {
+    if (phone && orderId && !searchRan.current) {
+      searchRan.current = true;
+      handleSearch();
+    }
+  }, [phone, orderId]);
 
   const handleSearch = async () => {
     setLoading(true);
     setNotFound(false);
     setResult(null);
     try {
-      const { orderService } = await import("@/services");
-      const orders = await orderService.getMyOrders();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const match = (orders as any[]).find((o: any) => {
-        const code = (o.orderCode || o.id || "").replace(/[#\s]/g, "").toUpperCase();
-        return code === orderId.replace(/[#\s]/g, "").toUpperCase();
-      });
+      const { default: api } = await import("@/services/api");
+      const cleanOrderId = orderId.replace(/[#\s]/g, "").toUpperCase();
+      const res = await api.get(`/api/orders/guest/${cleanOrderId}?phone=${encodeURIComponent(phone)}`);
+      const match = res.data?.data || res.data;
+
       if (match) {
+        // extract all items
+        const subOrders = match.subOrders || match.sub_orders || [];
+        const allItems = subOrders.flatMap((sub: any) => 
+            (sub.items || []).map((i: any) => ({
+                name: i.product?.name || "Sản phẩm",
+                qty: i.quantity || 1,
+                price: i.product?.price_per_unit || i.product?.pricePerUnit || 0
+            }))
+        );
+        const shops = subOrders.map((sub: any) => sub.shop?.name).filter(Boolean);
+        const sellerName = shops.length > 0 ? Array.from(new Set(shops)).join(", ") : "Nhiều nhà vườn";
+        
+        const addrObj = match.shippingAddress || match.shipping_address;
+        let addressStr = "—";
+        if (typeof addrObj === 'string') {
+          addressStr = addrObj;
+        } else if (addrObj) {
+          addressStr = `${addrObj.street || ""}, ${addrObj.district || ""}, ${addrObj.province || ""}`.replace(/^,\s*/, "").replace(/,\s*,/g, ",");
+        }
+
+        const overallStatus = match.status || (subOrders.length > 0 ? subOrders[0].status : "PENDING");
+
         setResult({
-          id: match.orderCode || match.id,
-          status: (match.status || "PENDING") as OrderStatus,
-          date: match.createdAt ? new Date(match.createdAt).toLocaleDateString("vi-VN") : "—",
-          total: match.totalAmount || 0,
-          seller_name: match.items?.[0]?.shopName || match.sellerName || "Nhà vườn",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          items: (match.items || []).map((i: any) => ({ name: i.productName || "SP", qty: i.quantity || 1, price: i.pricePerUnit || 0 })),
-          shipping_address: match.shippingAddress || match.streetAddress || "—",
+          id: match.orderCode || match.order_code || match.id || cleanOrderId,
+          status: overallStatus as OrderStatus,
+          date: match.createdAt || match.created_at ? new Date(match.createdAt || match.created_at).toLocaleDateString("vi-VN") : "Hôm nay",
+          total: match.totalAmount || match.total_price || match.totalPrice || 0,
+          seller_name: sellerName,
+          items: allItems.length > 0 ? allItems : [{ name: "Sản phẩm", qty: 1, price: 0 }],
+          shipping_address: addressStr,
         });
       } else {
         // Fallback to mock for demo
@@ -228,5 +257,13 @@ export default function OrderLookupPage() {
       </p>
       )}
     </div>
+  );
+}
+
+export default function OrderLookupPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Đang tải...</div>}>
+      <OrderLookupContent />
+    </Suspense>
   );
 }

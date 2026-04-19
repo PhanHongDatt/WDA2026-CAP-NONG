@@ -9,8 +9,8 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "orders")
@@ -79,5 +79,5 @@ public class Order extends BaseEntity {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<SubOrder> subOrders = new ArrayList<>();
+    private Set<SubOrder> subOrders = new LinkedHashSet<>();
 }

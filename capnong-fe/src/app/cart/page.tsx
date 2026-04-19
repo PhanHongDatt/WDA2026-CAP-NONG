@@ -3,11 +3,13 @@
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Trash2, Minus, Plus, ShoppingBag, ChevronRight, Check } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { cartService } from "@/services";
 
 export default function CartPage() {
+  const router = useRouter();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ export default function CartPage() {
         const items = await cartService.getCart();
         setCartItems(items);
         /* Mặc định chọn hết */
-        setSelectedIds(new Set(items.map((i: { id?: string; product_id?: string }) => i.id || i.product_id || "")));
+        setSelectedIds(new Set(items.map((i: any) => i.id)));
       } catch {
         setCartItems([]);
       } finally {
@@ -29,7 +31,7 @@ export default function CartPage() {
     load();
   }, []);
 
-  const getItemId = (item: { id?: string; product_id?: string }) => item.id || item.product_id || "";
+  const getItemId = (item: any) => item.id;
 
   /* Checkbox logic */
   const toggleSelect = (id: string) => {
@@ -73,7 +75,7 @@ export default function CartPage() {
     let count = 0;
     for (const item of cartItems) {
       if (selectedIds.has(getItemId(item))) {
-        sub += (item.price_per_unit || item.price || 0) * (item.quantity || 1);
+        sub += (item.product?.price_per_unit || 0) * (item.quantity || 1);
         count++;
       }
     }
@@ -163,10 +165,10 @@ export default function CartPage() {
 
                 {/* Image */}
                 <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-50 shrink-0">
-                  {(item.images?.[0] || item.image_url) && (
+                  {item.product?.images?.[0] && (
                     <Image
-                      src={item.images?.[0] || item.image_url}
-                      alt={item.name || item.product_name || ""}
+                      src={item.product.images[0]}
+                      alt={item.product?.name || ""}
                       width={96}
                       height={96}
                       className="w-full h-full object-cover"
@@ -179,13 +181,13 @@ export default function CartPage() {
                   <div className="flex justify-between items-start mb-1">
                     <div>
                       <Link
-                        href={`/products/${item.slug || item.id}`}
+                        href={`/products/${item.product?.id}`}
                         className="font-bold text-foreground hover:text-primary transition-colors truncate block"
                       >
-                        {item.name || item.product_name}
+                        {item.product?.name}
                       </Link>
                       <p className="text-xs text-foreground-muted">
-                        Nhà vườn: {item.shop?.name || item.shop_name || "—"}
+                        Nhà vườn: {item.product?.shop?.name || "—"}
                       </p>
                     </div>
                     <button type="button"
@@ -207,7 +209,7 @@ export default function CartPage() {
                       </button>
                     </div>
                     <p className="font-bold text-primary text-lg">
-                      {formatCurrency((item.price_per_unit || item.price || 0) * (item.quantity || 1))}
+                      {formatCurrency((item.product?.price_per_unit || 0) * (item.quantity || 1))}
                     </p>
                   </div>
                 </div>
@@ -248,6 +250,7 @@ export default function CartPage() {
             <button
               type="button"
               disabled={selectedCount === 0}
+              onClick={() => router.push('/checkout')}
               className="mt-6 w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Thanh toán ({selectedCount})

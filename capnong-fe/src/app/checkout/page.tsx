@@ -21,6 +21,8 @@ import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { cartService, orderService } from "@/services";
 import type { CartItem } from "@/services";
+import { getProvinces, getWards, type Province, type Ward } from "@/services/api/address";
+import { useToast } from "@/components/ui/Toast";
 
 /* Mock saved addresses */
 const SAVED_ADDRESSES = [
@@ -52,7 +54,7 @@ function groupByShop(items: CartItem[]): SubOrder[] {
     }
     const group = map.get(slug)!;
     group.items.push(item);
-    const price = item.pricePerUnit || item.product?.price_per_unit || 0;
+    const price = item.product?.price_per_unit || 0;
     group.subtotal += price * item.quantity;
   }
   return Array.from(map.values());
@@ -60,6 +62,7 @@ function groupByShop(items: CartItem[]): SubOrder[] {
 
 export default function CheckoutPage() {
   const { isLoggedIn } = useAuth();
+  const { showToast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "BANK">("COD");
   const [submitted, setSubmitted] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
@@ -72,12 +75,34 @@ export default function CheckoutPage() {
   const [formName, setFormName] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formEmail, setFormEmail] = useState("");
-  const [formAddress, setFormAddress] = useState("");
+  const [formAddress, setFormAddress] = useState(""); // This is street address
+  const [formProvinceCode, setFormProvinceCode] = useState<number | "">("");
+  const [formWardCode, setFormWardCode] = useState<number | "">("");
   const [formNote, setFormNote] = useState("");
+
+  /* ── Address Data ── */
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
+
+  useEffect(() => {
+    getProvinces().then(setProvinces).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (formProvinceCode) {
+      getWards(formProvinceCode as number).then(setWards).catch(() => {});
+      setFormWardCode("");
+    } else {
+      setWards([]);
+      setFormWardCode("");
+    }
+  }, [formProvinceCode]);
 
   /* ── Submit state ── */
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [createdOrderCode, setCreatedOrderCode] = useState<string>("");
+  const [createdOrderPhone, setCreatedOrderPhone] = useState<string>("");
 
   /* ── Cart data ── */
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -98,7 +123,7 @@ export default function CheckoutPage() {
   }, []);
 
   const subOrders = useMemo(() => groupByShop(cartItems), [cartItems]);
-  const subtotal = useMemo(() => cartItems.reduce((s, i) => s + (i.pricePerUnit || i.product?.price_per_unit || 0) * i.quantity, 0), [cartItems]);
+  const subtotal = useMemo(() => cartItems.reduce((s, i) => s + (i.product?.price_per_unit || 0) * i.quantity, 0), [cartItems]);
   const shippingFee = cartItems.length > 0 ? 30000 * subOrders.length : 0; // phí ship mỗi shop
   const total = subtotal + shippingFee;
 
@@ -118,7 +143,7 @@ export default function CheckoutPage() {
         </p>
         <div className="flex gap-4 justify-center">
           <Link
-            href="/orders"
+            href={isLoggedIn ? "/orders" : `/orders/lookup?code=${createdOrderCode}&phone=${createdOrderPhone}`}
             className="border-2 border-primary text-primary px-8 py-3 rounded-xl font-bold hover:bg-primary/5 transition-colors"
           >
             Xem đơn hàng
@@ -217,14 +242,14 @@ export default function CheckoutPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 dark:text-foreground truncate">
-                            {item.productName || item.product?.name || "Sản phẩm"}
+                            {item.product?.name || "Sản phẩm"}
                           </p>
                           <p className="text-xs text-foreground-muted">
-                            {formatCurrency(item.pricePerUnit || item.product?.price_per_unit || 0)} × {item.quantity} {item.product?.unit?.symbol || "kg"}
+                            {formatCurrency(item.product?.price_per_unit || 0)} × {item.quantity} {item.product?.unit?.symbol || "kg"}
                           </p>
                         </div>
                         <p className="text-sm font-bold text-primary whitespace-nowrap">
-                          {formatCurrency((item.pricePerUnit || item.product?.price_per_unit || 0) * item.quantity)}
+                          {formatCurrency((item.product?.price_per_unit || 0) * item.quantity)}
                         </p>
                       </div>
                     ))}
@@ -323,9 +348,38 @@ export default function CheckoutPage() {
                     className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none"
                   />
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Tỉnh/Thành phố *</label>
+                    <select
+                      value={formProvinceCode}
+                      onChange={(e) => setFormProvinceCode(e.target.value ? Number(e.target.value) : "")}
+                      className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none cursor-pointer"
+                    >
+                      <option value="">Chọn Tỉnh/Thành phố</option>
+                      {provinces.map(p => (
+                        <option key={p.code} value={p.code}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Quận/Huyện/Xã *</label>
+                    <select
+                      value={formWardCode}
+                      onChange={(e) => setFormWardCode(e.target.value ? Number(e.target.value) : "")}
+                      disabled={!formProvinceCode || wards.length === 0}
+                      className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none cursor-pointer disabled:bg-gray-100 disabled:opacity-50"
+                    >
+                      <option value="">Chọn Xã/Phường</option>
+                      {wards.map(w => (
+                        <option key={w.code} value={w.code}>{w.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 <div>
                   <label htmlFor="checkout-address" className="block text-sm font-medium mb-2">
-                    Địa chỉ giao hàng *
+                    Địa chỉ cụ thể (Số nhà, Tên đường) *
                   </label>
                   <textarea
                     id="checkout-address"
@@ -364,7 +418,20 @@ export default function CheckoutPage() {
                   Bạn đang mua hàng với tư cách khách. Vui lòng xác minh SĐT bằng mã OTP để hoàn tất đơn hàng.
                 </p>
                 {!otpSent ? (
-                  <button type="button" onClick={() => setOtpSent(true)} className="bg-primary text-white px-6 py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity">
+                  <button type="button" onClick={async () => {
+                    if (!formPhone) {
+                      showToast("error", "Vui lòng nhập số điện thoại ở trên trước.");
+                      return;
+                    }
+                    try {
+                      const { default: api } = await import("@/services/api");
+                      await api.post("/api/otp/send", { phone: formPhone });
+                      setOtpSent(true);
+                      showToast("success", "Mã OTP đã được gửi!");
+                    } catch (err: any) {
+                      showToast("error", err.response?.data?.message || "Lỗi khi gửi mã OTP");
+                    }
+                  }} className="bg-primary text-white px-6 py-2.5 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity">
                     Gửi mã OTP
                   </button>
                 ) : !otpVerified ? (
@@ -535,18 +602,29 @@ export default function CheckoutPage() {
                     const addr = selectedAddress && !showNewAddress
                       ? SAVED_ADDRESSES.find((a) => a.id === selectedAddress)
                       : null;
-                    await orderService.checkout({
+                    const finalPhone = addr ? addr.phone : formPhone;
+                    const result = await orderService.checkout({
                       guestName: addr ? addr.name : formName,
-                      guestPhone: addr ? addr.phone : formPhone,
+                      guestPhone: finalPhone,
                       guestEmail: formEmail || undefined,
                       streetAddress: addr ? addr.detail : formAddress,
+                      wardCode: (!addr && formWardCode) ? String(formWardCode) : undefined,
+                      provinceCode: (!addr && formProvinceCode) ? String(formProvinceCode) : undefined,
                       orderNotes: formNote || undefined,
                       otpCode: otpCode || undefined,
-                    });
+                      paymentMethod: paymentMethod === 'BANK' ? 'VIET_QR' : 'COD'
+                    }) as any;
+                    
+                    setCreatedOrderCode(result?.orderCode || result?.order_code || "");
+                    setCreatedOrderPhone(finalPhone);
+                    
                     setSubmitted(true);
-                  } catch (err: unknown) {
-                    const msg = err instanceof Error ? err.message : "Đặt hàng thất bại. Vui lòng thử lại.";
+                    window.dispatchEvent(new Event("cartUpdated"));
+                    showToast("success", "Đặt hàng thành công!");
+                  } catch (err: any) {
+                    const msg = err.response?.data?.message || err.message || "Đặt hàng thất bại. Vui lòng thử lại.";
                     setSubmitError(msg);
+                    showToast("error", msg);
                   } finally {
                     setSubmitting(false);
                   }

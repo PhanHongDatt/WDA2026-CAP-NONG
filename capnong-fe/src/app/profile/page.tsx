@@ -18,8 +18,11 @@ import {
 import { apiUserService } from "@/services/api/user";
 import * as notificationApi from "@/services/api/notification";
 
+import { useToast } from "@/components/ui/Toast";
+
 function ProfileContent() {
   const { user, refreshProfile } = useAuth();
+  const { showToast } = useToast();
 
   const [form, setForm] = useState({
     full_name: user?.full_name || "",
@@ -67,14 +70,16 @@ function ProfileContent() {
       // Refresh auth context so header/nav shows updated name
       await refreshProfile?.();
       setSaved(true);
+      showToast("success", "Cập nhật hồ sơ thành công");
       setTimeout(() => setSaved(false), 3000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Lỗi cập nhật hồ sơ";
       setError(msg);
+      showToast("error", msg);
     } finally {
       setSaving(false);
     }
-  }, [form, refreshProfile]);
+  }, [form, refreshProfile, showToast]);
 
   /* ── Avatar upload → real API ── */
   const handleAvatarChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -28,7 +28,7 @@ public class OrderEventNotifier {
     /**
      * Thông báo có đơn hàng mới cho tất cả farmer (chủ shop) liên quan.
      */
-    public void notifyNewOrder(Order order, List<SubOrder> subOrders) {
+    public void notifyNewOrder(Order order, java.util.Collection<SubOrder> subOrders) {
         for (SubOrder subOrder : subOrders) {
             try {
                 Shop shop = subOrder.getShop();

@@ -29,7 +29,7 @@ export const mockCartService: ICartService = {
 
   async addItem(productId: string, quantity: number): Promise<void> {
     const cart = readCart();
-    const existing = cart.find((item) => item.product?.id === productId || item.productId === productId);
+    const existing = cart.find((item) => item.product?.id === productId || (item as any).productId === productId);
     if (existing) {
       existing.quantity += quantity;
     } else {
@@ -38,6 +38,7 @@ export const mockCartService: ICartService = {
       cart.push({ id: crypto.randomUUID(), product, quantity });
     }
     writeCart(cart);
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("cartUpdated"));
   },
 
   async updateItem(itemId: string, quantity: number): Promise<void> {
@@ -46,16 +47,19 @@ export const mockCartService: ICartService = {
     if (item) {
       item.quantity = quantity;
       writeCart(cart);
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("cartUpdated"));
     }
   },
 
   async removeItem(itemId: string): Promise<void> {
     const cart = readCart().filter((i) => i.id !== itemId);
     writeCart(cart);
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("cartUpdated"));
   },
 
   async clearCart(): Promise<void> {
     localStorage.removeItem(CART_KEY);
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("cartUpdated"));
   },
 
   async getItemCount(): Promise<number> {

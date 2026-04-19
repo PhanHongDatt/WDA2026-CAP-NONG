@@ -98,23 +98,39 @@ public class DataInitializer implements CommandLineRunner {
 
     private User ensureUser(String username, String email, String phone,
                             String fullName, Role role, String encodedPassword) {
-        if (userRepository.existsByUsername(username)) {
-            log.info("   ⏩ {} ({}) — đã tồn tại", username, role);
-            return userRepository.findByUsername(username).orElseThrow();
+        
+        // Find existing user by any of the unique keys
+        var existingUserOpt = userRepository.findFirstByUsernameOrPhoneOrEmail(username, phone, email);
+        if (existingUserOpt.isPresent()) {
+            User existing = existingUserOpt.get();
+            log.info("   ⏩ {} ({}) — đã tồn tại (Username: {}, Phone: {})", fullName, role, existing.getUsername(), existing.getPhone());
+            
+            // Ensure the existing user has the correct role for testing (in case it was created via UI with different role)
+            if (existing.getRole() != role) {
+                existing.setRole(role);
+                userRepository.save(existing);
+                log.info("   🔄 Đã cập nhật role của {} thành {}", existing.getUsername(), role);
+            }
+            return existing;
         }
 
-        User user = User.builder()
-                .username(username)
-                .email(email)
-                .phone(phone)
-                .fullName(fullName)
-                .password(encodedPassword)
-                .role(role)
-                .active(true)
-                .build();
-        userRepository.save(user);
-        log.info("   ✅ Tạo tài khoản: {} | {} | {}", username, role, phone);
-        return user;
+        try {
+            User user = User.builder()
+                    .username(username)
+                    .email(email)
+                    .phone(phone)
+                    .fullName(fullName)
+                    .password(encodedPassword)
+                    .role(role)
+                    .active(true)
+                    .build();
+            userRepository.save(user);
+            log.info("   ✅ Tạo tài khoản: {} | {} | {}", username, role, phone);
+            return user;
+        } catch (Exception e) {
+            log.warn("   ⚠️ Không thể tạo {}: {} (Có thể SĐT hoặc Email đã tồn tại ở User khác)", username, e.getMessage());
+            return null;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -164,24 +180,47 @@ public class DataInitializer implements CommandLineRunner {
 
     private Shop ensureShop(User owner, String slug, String name, String province,
                             String district, String bio, short yearsExp, int farmAreaM2) {
-        if (shopRepository.existsByOwner_Id(owner.getId())) {
-            log.info("   ⏩ Shop của {} — đã tồn tại", owner.getUsername());
-            return shopRepository.findByOwnerUsername(owner.getUsername()).orElseThrow();
+        if (owner == null) {
+            log.warn("   ⚠️ Owner is null, skipping shop creation for slug: {}", slug);
+            return null;
         }
 
-        Shop shop = Shop.builder()
-                .owner(owner)
-                .slug(slug)
-                .name(name)
-                .province(province)
-                .district(district)
-                .bio(bio)
-                .yearsExperience(yearsExp)
-                .farmAreaM2(farmAreaM2)
-                .build();
-        shopRepository.save(shop);
-        log.info("   ✅ Tạo shop: {} — {}, {}", name, province, district);
-        return shop;
+        var existingBySlug = shopRepository.findBySlug(slug);
+        if (existingBySlug.isPresent()) {
+            log.info("   ⏩ Shop {} — đã tồn tại theo slug", slug);
+            Shop shop = existingBySlug.get();
+            // Cập nhật lại owner nếu khác (để fix lỡ có dirty data)
+            if (!shop.getOwner().getId().equals(owner.getId())) {
+                shop.setOwner(owner);
+                shopRepository.save(shop);
+                log.info("   🔄 Đã gắn lại Owner của shop {} cho user {}", slug, owner.getUsername());
+            }
+            return shop;
+        }
+
+        if (shopRepository.existsByOwner_Id(owner.getId())) {
+            log.info("   ⏩ Shop của {} — đã tồn tại", owner.getUsername());
+            return shopRepository.findByOwner_Id(owner.getId()).orElse(null);
+        }
+
+        try {
+            Shop shop = Shop.builder()
+                    .owner(owner)
+                    .slug(slug)
+                    .name(name)
+                    .province(province)
+                    .district(district)
+                    .bio(bio)
+                    .yearsExperience(yearsExp)
+                    .farmAreaM2(farmAreaM2)
+                    .build();
+            shopRepository.save(shop);
+            log.info("   ✅ Tạo shop: {} — {}, {}", name, province, district);
+            return shop;
+        } catch (Exception e) {
+            log.warn("   ⚠️ Lỗi tạo shop {}: {}", slug, e.getMessage());
+            return null;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════

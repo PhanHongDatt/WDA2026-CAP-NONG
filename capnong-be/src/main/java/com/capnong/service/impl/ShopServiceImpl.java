@@ -57,7 +57,27 @@ public class ShopServiceImpl implements ShopService {
     public ShopResponse getShopBySlug(String slug) {
         Shop shop = shopRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Shop", "slug", slug));
-        return shopMapper.toShopResponse(shop);
+        try {
+            return shopMapper.toShopResponse(shop);
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            // Owner bị xóa hoặc không tồn tại → trả về response an toàn
+            return ShopResponse.builder()
+                    .id(shop.getId())
+                    .name(shop.getName())
+                    .slug(shop.getSlug())
+                    .province(shop.getProvince())
+                    .district(shop.getDistrict())
+                    .bio(shop.getBio())
+                    .yearsExperience(shop.getYearsExperience())
+                    .farmAreaM2(shop.getFarmAreaM2())
+                    .avatarUrl(shop.getAvatarUrl())
+                    .coverUrl(shop.getCoverUrl())
+                    .ownerId(null)
+                    .ownerUsername(null)
+                    .ownerFullName(null)
+                    .ownerAvatarUrl(null)
+                    .build();
+        }
     }
 
     @Override

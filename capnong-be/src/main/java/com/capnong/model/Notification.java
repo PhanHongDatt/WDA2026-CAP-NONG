@@ -4,6 +4,8 @@ import com.capnong.model.enums.NotificationType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -34,6 +36,7 @@ public class Notification {
     @Builder.Default
     private Boolean isRead = false;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String metadata;
 

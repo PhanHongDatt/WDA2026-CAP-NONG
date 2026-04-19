@@ -39,7 +39,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsernameOrPhoneOrEmail(request.getIdentifier(), request.getIdentifier(), request.getIdentifier())
+        User user = userRepository.findFirstByUsernameOrPhoneOrEmail(request.getIdentifier(), request.getIdentifier(), request.getIdentifier())
                 .orElseThrow(() -> new AppException("Tài khoản không tồn tại", HttpStatus.NOT_FOUND));
 
         Authentication authentication = authenticationManager.authenticate(
@@ -159,7 +159,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resetPassword(String identifier, String otp, String newPassword) {
-        User user = userRepository.findByUsernameOrPhoneOrEmail(identifier, identifier, identifier)
+        User user = userRepository.findFirstByUsernameOrPhoneOrEmail(identifier, identifier, identifier)
                 .orElseThrow(() -> new AppException("Không tìm thấy tài khoản", HttpStatus.NOT_FOUND));
 
         otpService.verifyOtp(identifier, otp);

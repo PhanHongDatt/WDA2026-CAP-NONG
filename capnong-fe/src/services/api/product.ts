@@ -47,8 +47,8 @@ export const apiProductService: IProductService = {
     const data = res.data.data || res.data;
     return {
       content: normalizeProducts(data.content || []),
-      total_elements: data.totalElements ?? 0,
-      total_pages: data.totalPages ?? 0,
+      total_elements: data.total_elements ?? data.totalElements ?? 0,
+      total_pages: data.total_pages ?? data.totalPages ?? 0,
       page: data.page ?? 0,
       size: data.size ?? 20,
     };
@@ -129,10 +129,115 @@ export const apiProductService: IProductService = {
     availableQuantity: number;
     locationDetail: string;
   }): Promise<unknown> {
-    const res = await api.post("/api/products", data);
+    const reqData = {
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      unit_code: data.unitCode,
+      price_per_unit: data.pricePerUnit,
+      available_quantity: data.availableQuantity,
+      location_detail: data.locationDetail,
+    };
+    const res = await api.post("/api/products", reqData);
     return res.data.data || res.data;
   },
 };
 
 /** Named export for direct import */
 export const createProduct = apiProductService.createProduct!.bind(apiProductService);
+
+/* ═══════ Product Management (FARMER+) ═══════ */
+
+/**
+ * Cập nhật toàn bộ thông tin sản phẩm — PUT /api/products/{id}
+ */
+export async function updateProduct(
+  id: string,
+  data: {
+    name: string;
+    description?: string;
+    category: string;
+    unitCode: string;
+    pricePerUnit: number;
+    availableQuantity: number;
+    locationDetail?: string;
+    farmingMethod?: string;
+    pesticideFree?: boolean;
+  }
+): Promise<unknown> {
+  const reqData = {
+    name: data.name,
+    description: data.description,
+    category: data.category,
+    unit_code: data.unitCode,
+    price_per_unit: data.pricePerUnit,
+    available_quantity: data.availableQuantity,
+    location_detail: data.locationDetail,
+    farming_method: data.farmingMethod,
+    pesticide_free: data.pesticideFree,
+  };
+  const res = await api.put(`/api/products/${id}`, reqData);
+  return res.data.data || res.data;
+}
+
+/**
+ * Cập nhật trạng thái sản phẩm — PATCH /api/products/{id}/status
+ * Status: IN_SEASON, UPCOMING, OFF_SEASON, OUT_OF_STOCK, HIDDEN
+ */
+export async function updateProductStatus(id: string, status: string): Promise<unknown> {
+  const res = await api.patch(`/api/products/${id}/status`, { status });
+  return res.data.data || res.data;
+}
+
+/**
+ * Cập nhật giá sản phẩm — PATCH /api/products/{id}/price
+ */
+export async function updateProductPrice(id: string, price: number): Promise<unknown> {
+  const res = await api.patch(`/api/products/${id}/price`, { price });
+  return res.data.data || res.data;
+}
+
+/**
+ * Cập nhật sản lượng — PATCH /api/products/{id}/quantity
+ * Tự động OUT_OF_STOCK nếu quantity = 0
+ */
+export async function updateProductQuantity(id: string, quantity: number): Promise<unknown> {
+  const res = await api.patch(`/api/products/${id}/quantity`, { quantity });
+  return res.data.data || res.data;
+}
+
+/**
+ * Xóa sản phẩm (soft delete) — DELETE /api/products/{id}
+ */
+export async function deleteProduct(id: string): Promise<void> {
+  await api.delete(`/api/products/${id}`);
+}
+
+/**
+ * Upload ảnh sản phẩm — POST /api/products/{id}/images (multipart)
+ * Tối đa 10 ảnh/sản phẩm
+ */
+export async function uploadProductImages(id: string, files: File[]): Promise<unknown> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  const res = await api.post(`/api/products/${id}/images`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data || res.data;
+}
+
+/**
+ * Xóa 1 ảnh sản phẩm — DELETE /api/products/{productId}/images/{imageId}
+ */
+export async function deleteProductImage(productId: string, imageId: string): Promise<void> {
+  await api.delete(`/api/products/${productId}/images/${imageId}`);
+}
+
+/**
+ * Xóa nhiều ảnh sản phẩm — DELETE /api/products/{productId}/images?ids=...
+ */
+export async function deleteProductImages(productId: string, imageIds: string[]): Promise<void> {
+  await api.delete(`/api/products/${productId}/images`, {
+    params: { ids: imageIds.join(",") },
+  });
+}

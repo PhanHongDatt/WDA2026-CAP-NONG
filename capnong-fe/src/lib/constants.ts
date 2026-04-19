@@ -10,7 +10,7 @@ import type { SubOrderStatus, BundleStatus, PaymentMethod } from "@/types/order"
  */
 const isServer = typeof window === 'undefined';
 export const API_BASE_URL = isServer 
-  ? (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1") 
+  ? (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/") 
   : "/api/v1";
 
 export const AI_API_BASE_URL = isServer 
@@ -20,7 +20,7 @@ export const AI_API_BASE_URL = isServer
 /**
  * Product categories — khớp DB ENUM
  */
-export const CATEGORIES: { id: ProductCategory | "ALL"; label: string; icon: string }[] = [
+export const CATEGORIES: { id: string; label: string; icon: string }[] = [
   { id: "ALL", label: "Tất cả", icon: "🌾" },
   { id: "FRUIT", label: "Trái cây", icon: "🍊" },
   { id: "VEGETABLE", label: "Rau củ", icon: "🥬" },
@@ -28,7 +28,7 @@ export const CATEGORIES: { id: ProductCategory | "ALL"; label: string; icon: str
   { id: "TUBER", label: "Khoai, Củ", icon: "🥔" },
   { id: "HERB", label: "Gia vị & Thảo mộc", icon: "🌿" },
   { id: "OTHER", label: "Đặc sản khác", icon: "🧺" },
-] as const;
+];
 
 /**
  * Vietnamese regions for filtering

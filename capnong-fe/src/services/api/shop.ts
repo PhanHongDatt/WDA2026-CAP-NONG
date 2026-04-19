@@ -69,3 +69,25 @@ export const apiShopService: IShopService = {
     return res.data.data || res.data;
   },
 };
+
+/* ═══════ Additional Shop Endpoints ═══════ */
+
+/**
+ * Xem gian hàng của tôi — GET /api/shops/me (FARMER)
+ */
+export async function getMyShop(): Promise<Shop | null> {
+  try {
+    const res = await api.get("/api/shops/me");
+    const raw = res.data.data || res.data;
+    return raw ? normalizeShop(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Xóa gian hàng (soft delete) — DELETE /api/shops/{slug} (owner only)
+ */
+export async function deleteShop(slug: string): Promise<void> {
+  await api.delete(`/api/shops/${slug}`);
+}

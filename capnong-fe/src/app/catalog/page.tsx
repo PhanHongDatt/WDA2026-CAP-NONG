@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SlidersHorizontal, ChevronDown, ChevronRight, Home } from "lucide-react";
@@ -25,94 +25,109 @@ const SEASONS = [
   { value: "year-round", label: "Quanh năm" },
 ];
 
-const ITEMS_PER_PAGE = 12;
+/**
+ * Map slug từ URL (?category=rau-cu) → BE enum (VEGETABLE)
+ * Cũng xử lý trường hợp URL đã đúng BE enum (VEGETABLE)
+ */
+function mapCategoryParam(param: string | null): string {
+  if (!param) return "ALL";
+  const upper = param.toUpperCase().replace(/-/g, "_");
+  const validBE = ["FRUIT", "VEGETABLE", "GRAIN", "TUBER", "HERB", "OTHER"];
+  if (validBE.includes(upper)) return upper;
+  // Slug mapping (cho URL thân thiện)
+  const slugMap: Record<string, string> = {
+    "trai-cay": "FRUIT",
+    "rau-cu": "VEGETABLE",
+    "gao-ngu-coc": "GRAIN",
+    "khoai-cu": "TUBER",
+    "gia-vi-thao-moc": "HERB",
+    "dac-san-khac": "OTHER",
+  };
+  return slugMap[param.toLowerCase()] || "ALL";
+}
+
+/** Map UI sort → BE sort param */
+function mapSortParam(sort: string): string {
+  switch (sort) {
+    case "price-asc": return "pricePerUnit,asc";
+    case "price-desc": return "pricePerUnit,desc";
+    case "popular": return "soldCount,desc";
+    case "rating": return "averageRating,desc";
+    default: return "createdAt,desc";
+  }
+}
+
+/** Map UI season → BE status */
+function mapSeasonParam(season: string): string | undefined {
+  switch (season) {
+    case "in-season": return "IN_SEASON";
+    case "upcoming": return "UPCOMING";
+    case "year-round": return "OFF_SEASON";
+    default: return undefined;
+  }
+}
+
+const ITEMS_PER_PAGE = 20;
 
 export default function CatalogPage() {
   const searchParams = useSearchParams();
   const querySearch = searchParams.get("q") || "";
+  const queryCategory = searchParams.get("category") || "";
 
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeCategory, setActiveCategory] = useState(() => mapCategoryParam(queryCategory));
   const [selectedRegion, setSelectedRegion] = useState("all");
   const [selectedSeason, setSelectedSeason] = useState("all");
   const [selectedSort, setSelectedSort] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState(querySearch);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Sync URL query → local search
   useEffect(() => {
     setSearchTerm(querySearch);
   }, [querySearch]);
 
+  // Sync URL category → activeCategory (khi user navigate từ trang khác)
+  useEffect(() => {
+    setActiveCategory(mapCategoryParam(queryCategory));
+  }, [queryCategory]);
+
+  // Gọi API thực sự mỗi khi filter/page thay đổi
   useEffect(() => {
     async function load() {
-      const [seasonal, newP] = await Promise.all([
-        productService.getSeasonalProducts(),
-        productService.getNewProducts(),
-      ]);
-      /* Deduplicate by id */
-      const map = new Map<string, Product>();
-      [...seasonal, ...newP].forEach((p) => map.set(p.id, p));
-      setAllProducts(Array.from(map.values()));
+      setIsLoading(true);
+      try {
+        const result = await productService.search({
+          keyword: searchTerm.trim() || undefined,
+          category: activeCategory !== "ALL" ? activeCategory : undefined,
+          status: mapSeasonParam(selectedSeason),
+          sort: mapSortParam(selectedSort),
+          page: currentPage - 1, // BE dùng 0-index
+          size: ITEMS_PER_PAGE,
+        });
+        setProducts(result.content);
+        setTotalElements(result.total_elements);
+        setTotalPages(result.total_pages);
+      } catch (err) {
+        console.error("Lỗi tải sản phẩm:", err);
+        setProducts([]);
+        setTotalElements(0);
+        setTotalPages(0);
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
-  }, []);
+  }, [activeCategory, selectedSort, selectedSeason, searchTerm, currentPage]);
 
-  /* Filter + Sort (memoized) */
-  const filteredProducts = useMemo(() => {
-    let result = [...allProducts];
-
-    // Search
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.description?.toLowerCase().includes(q) ||
-          p.shop?.name?.toLowerCase().includes(q)
-      );
-    }
-
-    // Category
-    if (activeCategory !== "all") {
-      result = result.filter((p) => p.category === activeCategory);
-    }
-
-    // Sort
-    switch (selectedSort) {
-      case "price-asc":
-        result.sort((a, b) => a.price_per_unit - b.price_per_unit);
-        break;
-      case "price-desc":
-        result.sort((a, b) => b.price_per_unit - a.price_per_unit);
-        break;
-      case "popular":
-        result.sort((a, b) => b.sold_count - a.sold_count);
-        break;
-      case "rating":
-        result.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
-        break;
-      case "newest":
-      default:
-        // Keep original order (newest first from API)
-        break;
-    }
-
-    return result;
-  }, [allProducts, activeCategory, selectedSort, searchTerm]);
-
-  /* Pagination */
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
-  const paginatedProducts = filteredProducts.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  // Reset page khi filter thay đổi
+  // Reset về trang 1 khi filter thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeCategory, selectedSort, searchTerm]);
+  }, [activeCategory, selectedSort, selectedSeason, searchTerm]);
 
   return (
     <div className="max-w-7xl mx-auto w-full px-4 py-6">
@@ -132,10 +147,11 @@ export default function CatalogPage() {
         )}
       </nav>
 
-      {/* Category Pills */}
+      {/* Category Pills — dùng BE enum values (FRUIT, VEGETABLE...) */}
       <div className="flex items-center gap-2 overflow-x-auto pb-3 scrollbar-hide mb-4">
         {CATEGORIES.map((cat) => (
-          <button type="button"
+          <button
+            type="button"
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
             className={
@@ -150,7 +166,8 @@ export default function CatalogPage() {
       </div>
 
       {/* Filter Toggle Mobile */}
-      <button type="button"
+      <button
+        type="button"
         onClick={() => setShowFilters(!showFilters)}
         className="md:hidden flex items-center gap-2 mb-4 text-sm font-medium text-foreground-muted border border-border rounded-lg px-4 py-2"
       >
@@ -159,8 +176,12 @@ export default function CatalogPage() {
         <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? "rotate-180" : ""}`} />
       </button>
 
-      {/* Filters Row — sticky on desktop */}
-      <div className={`sticky top-[73px] z-30 bg-white dark:bg-background py-3 -mx-4 px-4 border-b border-border/50 mb-6 ${showFilters ? "block" : "hidden md:block"}`}>
+      {/* Filters Row */}
+      <div
+        className={`sticky top-[73px] z-30 bg-white dark:bg-background py-3 -mx-4 px-4 border-b border-border/50 mb-6 ${
+          showFilters ? "block" : "hidden md:block"
+        }`}
+      >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Region */}
           <div className="flex flex-col gap-1.5">
@@ -224,19 +245,28 @@ export default function CatalogPage() {
       {/* Results Count */}
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-foreground-muted">
-          Tìm thấy{" "}
-          <span className="font-bold text-foreground">
-            {filteredProducts.length}
-          </span>{" "}
-          sản phẩm nông sản sạch
+          {isLoading ? (
+            <span className="animate-pulse">Đang tải sản phẩm...</span>
+          ) : (
+            <>
+              Tìm thấy <span className="font-bold text-foreground">{totalElements}</span> sản phẩm nông sản sạch
+            </>
+          )}
         </p>
         <div className="h-px flex-1 bg-border ml-4 hidden sm:block" />
       </div>
 
       {/* Product Grid */}
-      {paginatedProducts.length > 0 ? (
+      {isLoading ? (
+        /* Skeleton loading */
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-2xl bg-surface animate-pulse h-64" />
+          ))}
+        </div>
+      ) : products.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 product-grid-section">
-          {paginatedProducts.map((product) => (
+          {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
@@ -257,7 +287,7 @@ export default function CatalogPage() {
           onPageChange={setCurrentPage}
         />
         <p className="text-xs text-foreground-muted">
-          Trang {currentPage}/{totalPages || 1} — {filteredProducts.length} sản phẩm
+          Trang {currentPage}/{totalPages || 1} — {totalElements} sản phẩm
         </p>
       </div>
     </div>
