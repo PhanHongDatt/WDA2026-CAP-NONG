@@ -1,0 +1,1 @@
+gcloud compute ssh instance-20260417-161151 --zone=asia-southeast1-c --project=dogwood-rigging-492017-f0 --command="sudo tar -xzf /tmp/deploy.tar.gz -C /root/capnong && sudo chown -R root:root /root/capnong && sudo chmod -R 755 /root/capnong && sudo sh -c 'cd /root/capnong && docker compose up -d --build backend frontend'"

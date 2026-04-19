@@ -17,7 +17,7 @@ import {
 import Pagination from "@/components/ui/Pagination";
 
 /* ─── Types ─── */
-type HtxStatus = "PENDING" | "APPROVED" | "REJECTED";
+type HtxStatus = "PENDING" | "APPROVED" | "ACTIVE" | "REJECTED";
 
 /* ─── Mock Data ─── */
 const MOCK_HTX_REQUESTS: {
@@ -73,7 +73,8 @@ const MOCK_USERS = [
   { id: "u-006", full_name: "Trương Thị Hoa", phone: "0906666666", role: "BUYER", is_banned: false, created_at: "2026-03-05" },
 ];
 
-const PROVINCES = [
+
+const FALLBACK_PROVINCES = [
   "An Giang", "Bến Tre", "Đồng Tháp", "Hậu Giang", "Kiên Giang",
   "Lâm Đồng", "Long An", "Sóc Trăng", "Tiền Giang", "Vĩnh Long",
 ];
@@ -138,6 +139,7 @@ function AdminContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [userPage, setUserPage] = useState(1);
+  const [provinces, setProvinces] = useState<string[]>(FALLBACK_PROVINCES);
   const USERS_PER_PAGE = 5;
 
   /* ─── API Fetch (fallback to mock) ─── */
@@ -150,11 +152,11 @@ function AdminContent() {
       if (apiUsers.length > 0) {
         setUsers(apiUsers.map((u: Record<string, unknown>) => ({
           id: String(u.id || ""),
-          full_name: String(u.fullName || u.full_name || ""),
+          full_name: String(u.full_name || u.fullName || ""),
           phone: String(u.phone || ""),
           role: String(u.role || "BUYER"),
-          is_banned: Boolean(u.banned || u.is_banned),
-          created_at: String(u.createdAt || u.created_at || ""),
+          is_banned: u.active === false,
+          created_at: String(u.created_at || u.createdAt || ""),
         })));
       }
     } catch {
@@ -164,20 +166,20 @@ function AdminContent() {
 
   const fetchHtxRequests = useCallback(async () => {
     try {
-      const htxApi = await import("@/services/api/htx");
-      const all = await htxApi.getAllHtx();
+      const adminApi = await import("@/services/api/admin");
+      const all = await adminApi.getAllHtxRequests();
       if (Array.isArray(all) && all.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setHtxRequests(all.map((h: any) => ({
           id: String(h.id || ""),
           name: h.name || "",
-          registration_code: h.officialCode || h.registration_code || "",
+          registration_code: h.official_code || h.officialCode || "",
           province: h.province || "",
-          commune: h.district || h.commune || "",
+          commune: h.district || "",
           description: h.description || "",
-          creator_name: h.creatorName || h.managerName || "",
-          creator_phone: h.creatorPhone || "",
-          created_at: h.createdAt || h.created_at || "",
+          creator_name: h.created_by_username || h.createdByUsername || h.manager_full_name || h.managerFullName || "",
+          creator_phone: "",
+          created_at: h.created_at || h.createdAt || "",
           status: (h.status || "PENDING") as HtxStatus,
         })));
       }
@@ -186,7 +188,45 @@ function AdminContent() {
     }
   }, []);
 
-  useEffect(() => { fetchUsers(); fetchHtxRequests(); }, [fetchUsers, fetchHtxRequests]);
+  const fetchSeasonalConfig = useCallback(async () => {
+    try {
+      const seasonApi = await import("@/services/api/seasonal-config");
+      const all = await seasonApi.getAllSeasonalConfigs();
+      if (Array.isArray(all) && all.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setSeasonalConfig(all.map((s: any) => {
+          const cat = s.product_category || s.productCategory || "";
+          const found = CATEGORIES.find((c) => c.code === cat);
+          return {
+            id: s.id || "",
+            province: s.province || "",
+            category: cat,
+            label: found ? found.label : cat,
+            start_month: s.start_month ?? s.startMonth ?? 1,
+            end_month: s.end_month ?? s.endMonth ?? 12,
+          };
+        }));
+      }
+    } catch {
+      if (USE_MOCK) { setSeasonalConfig(MOCK_SEASONAL_CONFIG); }
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers(); fetchHtxRequests(); fetchSeasonalConfig();
+    // Fetch provinces from API
+    (async () => {
+      try {
+        const res = await (await import("@/services/api")).default.get("/api/address/provinces");
+        const data = res.data;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const list = Array.isArray(data) ? data : (data?.data || []);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const names = list.map((p: any) => p.name).filter(Boolean).sort();
+        if (names.length > 0) setProvinces(names);
+      } catch { /* keep fallback */ }
+    })();
+  }, [fetchUsers, fetchHtxRequests, fetchSeasonalConfig]);
 
   /* ─── HTX Actions → API + optimistic ─── */
   const handleApproveHtx = async (id: string) => {
@@ -234,12 +274,43 @@ function AdminContent() {
   };
 
   /* ─── Seasonal Config Actions ─── */
-  const handleDeleteSeason = (id: number) => {
-    setSeasonalConfig((prev) => prev.filter((s) => s.id !== id));
+  const handleDeleteSeason = async (id: number | string) => {
+    try {
+      const seasonApi = await import("@/services/api/seasonal-config");
+      await seasonApi.deleteSeasonalConfig(String(id));
+      setSeasonalConfig((prev) => prev.filter((s) => s.id !== id));
+    } catch {
+      alert("Không thể xóa cấu hình mùa vụ. Vui lòng thử lại.");
+    }
+  };
+
+  const handleAddSeason = async () => {
+    const province = (document.getElementById("season-province") as HTMLSelectElement)?.value;
+    const category = (document.getElementById("season-category") as HTMLSelectElement)?.value;
+    const startMonth = parseInt((document.getElementById("season-start") as HTMLSelectElement)?.value || "1");
+    const endMonth = parseInt((document.getElementById("season-end") as HTMLSelectElement)?.value || "1");
+    if (!province || !category) { alert("Vui lòng chọn tỉnh và danh mục."); return; }
+    try {
+      const seasonApi = await import("@/services/api/seasonal-config");
+      const created = await seasonApi.createSeasonalConfig({ province, productCategory: category, startMonth, endMonth });
+      const cat = (created as any).product_category || (created as any).productCategory || category; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const found = CATEGORIES.find((c) => c.code === cat);
+      setSeasonalConfig((prev) => [...prev, {
+        id: (created as any).id || Date.now(), // eslint-disable-line @typescript-eslint/no-explicit-any
+        province,
+        category: cat,
+        label: found ? found.label : cat,
+        start_month: startMonth,
+        end_month: endMonth,
+      }]);
+    } catch {
+      alert("Không thể tạo cấu hình mùa vụ. Vui lòng thử lại.");
+    }
   };
 
   /* ─── Stats ─── */
   const pendingHtx = htxRequests.filter((r) => r.status === "PENDING").length;
+  const _activeHtx = htxRequests.filter((r) => r.status === "ACTIVE" || r.status === "APPROVED").length; // eslint-disable-line @typescript-eslint/no-unused-vars
   const totalUsers = users.length;
   const bannedUsers = users.filter((u) => u.is_banned).length;
   const totalSeasons = seasonalConfig.length;
@@ -328,12 +399,12 @@ function AdminContent() {
                       className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                         req.status === "PENDING"
                           ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                          : req.status === "APPROVED"
+                          : (req.status === "APPROVED" || req.status === "ACTIVE")
                           ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300"
                           : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                       }`}
                     >
-                      {req.status === "PENDING" ? "⏳ Chờ duyệt" : req.status === "APPROVED" ? "✅ Đã duyệt" : "❌ Từ chối"}
+                      {req.status === "PENDING" ? "⏳ Chờ duyệt" : (req.status === "APPROVED" || req.status === "ACTIVE") ? "✅ Đã duyệt" : "❌ Từ chối"}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-foreground-muted">
@@ -511,7 +582,7 @@ function AdminContent() {
                   className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
                   <option value="">Chọn tỉnh...</option>
-                  {PROVINCES.map((p) => (
+                  {provinces.map((p) => (
                     <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
@@ -557,7 +628,7 @@ function AdminContent() {
                 </select>
               </div>
             </div>
-            <button type="button" className="mt-4 bg-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+            <button type="button" onClick={handleAddSeason} className="mt-4 bg-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
               Thêm cấu hình
             </button>
           </div>

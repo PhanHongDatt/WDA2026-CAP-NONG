@@ -62,15 +62,34 @@ export async function changeUserRole(userId: string | number, role: string): Pro
 }
 
 /**
- * Duyệt HTX — PATCH /api/admin/htx-requests/{htxId} body { action: "APPROVE" }
+ * Duyệt HTX — PATCH /api/admin/htx-requests/{htxId} body { action: "APPROVE", adminNote }
  */
-export async function approveHtx(htxId: string | number, note?: string): Promise<void> {
-  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "APPROVE", note });
+export async function approveHtx(htxId: string | number, adminNote?: string): Promise<void> {
+  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "APPROVE", adminNote });
 }
 
 /**
- * Từ chối HTX — PATCH /api/admin/htx-requests/{htxId} body { action: "REJECT" }
+ * Từ chối HTX — PATCH /api/admin/htx-requests/{htxId} body { action: "REJECT", adminNote }
  */
-export async function rejectHtx(htxId: string | number, note?: string): Promise<void> {
-  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "REJECT", note });
+export async function rejectHtx(htxId: string | number, adminNote?: string): Promise<void> {
+  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "REJECT", adminNote });
 }
+
+/* ─── Admin HTX Listing ─── */
+
+/**
+ * Lấy TẤT CẢ HTX (mọi trạng thái) — GET /api/admin/htx-requests/all
+ */
+export async function getAllHtxRequests(): Promise<unknown[]> {
+  const res = await api.get("/api/admin/htx-requests/all");
+  return res.data.data || res.data || [];
+}
+
+/**
+ * Lấy HTX đang PENDING — GET /api/admin/htx-requests
+ */
+export async function getPendingHtxRequests(): Promise<unknown[]> {
+  const res = await api.get("/api/admin/htx-requests");
+  return res.data.data || res.data || [];
+}
+
