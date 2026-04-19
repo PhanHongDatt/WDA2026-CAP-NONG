@@ -16,4 +16,5 @@ public interface HtxRepository extends JpaRepository<Htx, UUID> {
     List<Htx> findByStatus(HtxStatus status);
     Optional<Htx> findByManager_Id(UUID managerId);
     boolean existsByCreatedByUser_Id(UUID userId);
+    long countByStatus(HtxStatus status);
 }

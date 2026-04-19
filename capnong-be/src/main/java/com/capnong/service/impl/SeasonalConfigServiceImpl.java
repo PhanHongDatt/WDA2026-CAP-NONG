@@ -19,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,6 +40,7 @@ public class SeasonalConfigServiceImpl implements SeasonalConfigService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "seasonal_configs", allEntries = true)
     public SeasonalConfigResponse createConfig(SeasonalConfigRequest request, String username, boolean isAdmin) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
@@ -60,6 +63,7 @@ public class SeasonalConfigServiceImpl implements SeasonalConfigService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "seasonal_configs", allEntries = true)
     public SeasonalConfigResponse updateConfig(UUID id, SeasonalConfigRequest request, String username) {
         SeasonalConfig config = seasonalConfigRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("SeasonalConfig", "id", id));
@@ -75,6 +79,7 @@ public class SeasonalConfigServiceImpl implements SeasonalConfigService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable("seasonal_configs")
     public List<SeasonalConfigResponse> getAllConfigs() {
         return seasonalConfigRepository.findAll().stream()
                 .map(this::mapToResponse)
@@ -83,6 +88,7 @@ public class SeasonalConfigServiceImpl implements SeasonalConfigService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "seasonal_configs", key = "#province")
     public List<SeasonalConfigResponse> getConfigsByProvince(String province) {
         return seasonalConfigRepository.findByProvince(province).stream()
                 .map(this::mapToResponse)
@@ -91,6 +97,7 @@ public class SeasonalConfigServiceImpl implements SeasonalConfigService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "seasonal_configs", allEntries = true)
     public void deleteConfig(UUID id, String username) {
         SeasonalConfig config = seasonalConfigRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("SeasonalConfig", "id", id));

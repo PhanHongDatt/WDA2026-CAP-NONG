@@ -17,6 +17,9 @@ public interface ProductService {
     /** Search/filter with pagination — replaces old getAllPublicProducts() and getProductsByShopSlug() */
     Page<ProductResponse> searchProducts(ProductFilterParams filter, Pageable pageable);
 
+    /** Get all products of a specific seller (including hidden/out of stock) */
+    Page<ProductResponse> getSellerProducts(String username, Pageable pageable);
+
     ProductResponse getProductById(UUID productId);
 
     ProductResponse updateProduct(UUID productId, ProductCreateRequest request, String username);

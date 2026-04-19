@@ -24,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.util.List;
 import java.util.UUID;
@@ -90,6 +92,7 @@ public class HtxServiceImpl implements HtxService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable("htx_all")
     public List<HtxResponse> getAllHtx() {
         return htxRepository.findAll().stream()
                 .map(htxMapper::toHtxResponse)
@@ -98,6 +101,7 @@ public class HtxServiceImpl implements HtxService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"htx_all", "htx_active", "htx_detail"}, allEntries = true)
     public HtxResponse reviewHtx(UUID htxId, HtxReviewRequest request) {
         Htx htx = htxRepository.findById(htxId)
                 .orElseThrow(() -> new ResourceNotFoundException("HTX", "id", htxId.toString()));
@@ -309,6 +313,7 @@ public class HtxServiceImpl implements HtxService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "htx_detail", key = "#htxId")
     public HtxResponse getHtxById(UUID htxId) {
         Htx htx = htxRepository.findById(htxId)
                 .orElseThrow(() -> new ResourceNotFoundException("HTX", "id", htxId.toString()));
@@ -317,6 +322,7 @@ public class HtxServiceImpl implements HtxService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable("htx_active")
     public List<HtxResponse> getActiveHtxList() {
         return htxRepository.findByStatus(HtxStatus.ACTIVE).stream()
                 .map(htxMapper::toHtxResponse)
