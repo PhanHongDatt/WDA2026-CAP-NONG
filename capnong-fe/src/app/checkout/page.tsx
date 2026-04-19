@@ -428,6 +428,7 @@ export default function CheckoutPage() {
                       await api.post("/api/otp/send", { phone: formPhone });
                       setOtpSent(true);
                       showToast("success", "Mã OTP đã được gửi!");
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } catch (err: any) {
                       showToast("error", err.response?.data?.message || "Lỗi khi gửi mã OTP");
                     }
@@ -613,6 +614,7 @@ export default function CheckoutPage() {
                       orderNotes: formNote || undefined,
                       otpCode: otpCode || undefined,
                       paymentMethod: paymentMethod === 'BANK' ? 'VIET_QR' : 'COD'
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     }) as any;
                     
                     setCreatedOrderCode(result?.orderCode || result?.order_code || "");
@@ -621,6 +623,7 @@ export default function CheckoutPage() {
                     setSubmitted(true);
                     window.dispatchEvent(new Event("cartUpdated"));
                     showToast("success", "Đặt hàng thành công!");
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   } catch (err: any) {
                     const msg = err.response?.data?.message || err.message || "Đặt hàng thất bại. Vui lòng thử lại.";
                     setSubmitError(msg);

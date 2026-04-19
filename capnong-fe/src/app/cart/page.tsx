@@ -21,6 +21,7 @@ export default function CartPage() {
         const items = await cartService.getCart();
         setCartItems(items);
         /* Mặc định chọn hết */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setSelectedIds(new Set(items.map((i: any) => i.id)));
       } catch {
         setCartItems([]);
@@ -31,6 +32,7 @@ export default function CartPage() {
     load();
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getItemId = (item: any) => item.id;
 
   /* Checkbox logic */

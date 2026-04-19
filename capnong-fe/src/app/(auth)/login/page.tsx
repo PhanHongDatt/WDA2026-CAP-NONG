@@ -146,6 +146,7 @@ export default function LoginPage() {
       showToast("success", "Đăng nhập thành công!");
       router.push("/home");
       router.refresh();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || "Sai thông tin đăng nhập. Vui lòng thử lại.";
       showToast("error", msg);
