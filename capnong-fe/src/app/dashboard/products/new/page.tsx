@@ -287,7 +287,7 @@ export default function NewProductPage() {
               onChange={(e) => {
                 if (e.target.files) {
                   const newImages = Array.from(e.target.files).map(f => URL.createObjectURL(f));
-                  setImages([...images, ...newImages].slice(0, 6)); // max 6 images
+                  _setImages([..._images, ...newImages].slice(0, 6)); // max 6 images
                 }
               }}
             />
