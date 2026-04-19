@@ -17,8 +17,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
+@Tag(name = "Review", description = "Hệ thống Feedback, Đánh giá và Phản hồi theo sản phẩm")
 @RequestMapping("/api/reviews")
 public class ReviewController {
 
@@ -32,6 +35,7 @@ public class ReviewController {
      * GET /api/reviews/product/{productId} — Lấy đánh giá của sản phẩm (public).
      */
     @GetMapping("/product/{productId}")
+    @Operation(summary = "Lấy đánh giá sản phẩm", description = "Liệt kê và phân trang các bài đánh giá, bình luận của khách hàng về một mặt hàng chuyên biệt.")
     public ResponseEntity<ApiResponse<Page<Review>>> getProductReviews(
             @PathVariable UUID productId,
             @PageableDefault(size = 10) Pageable pageable) {
@@ -44,6 +48,7 @@ public class ReviewController {
      */
     @PostMapping
     @PreAuthorize("hasRole('BUYER')")
+    @Operation(summary = "Người mua viết đánh giá", description = "Khách hàng tạo phản hồi gồm số điểm và nội dung bình luận sau khi sản phẩm đã được giao.")
     public ResponseEntity<ApiResponse<Review>> createReview(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @Valid @RequestBody ReviewCreateRequest request) {
@@ -57,6 +62,7 @@ public class ReviewController {
      */
     @PostMapping("/{id}/reply")
     @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
+    @Operation(summary = "Chủ shop trả lời đánh giá", description = "Nhà cung cấp trả lời lại bình luận của người mua với tư cách shop.")
     public ResponseEntity<ApiResponse<Review>> replyReview(
             @PathVariable UUID id,
             @AuthenticationPrincipal UserDetailsImpl userDetails,

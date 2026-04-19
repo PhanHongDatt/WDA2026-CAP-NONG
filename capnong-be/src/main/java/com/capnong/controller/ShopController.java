@@ -52,6 +52,16 @@ public class ShopController {
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin gian hàng thành công", shop));
     }
 
+    @GetMapping
+    @Operation(summary = "Danh sách gian hàng (public)",
+            description = "Lấy danh sách tất cả gian hàng có phân trang. Có thể lọc theo featured.")
+    public ResponseEntity<ApiResponse<PagedResponse<ShopResponse>>> getAllShops(
+            @RequestParam(required = false) Boolean featured,
+            @PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+        var page = shopService.getAllShops(featured, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách gian hàng thành công", PagedResponse.from(page)));
+    }
+
     @GetMapping("/{slug}")
     @Operation(summary = "Xem chi tiết gian hàng (public)",
             description = "Lấy thông tin công khai của gian hàng dựa trên slug.")

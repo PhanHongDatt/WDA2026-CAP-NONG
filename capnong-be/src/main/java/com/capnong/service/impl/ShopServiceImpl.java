@@ -14,6 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @Service
 @RequiredArgsConstructor
@@ -135,5 +139,22 @@ public class ShopServiceImpl implements ShopService {
         return shopRepository.findByOwnerUsername(username)
                 .map(Shop::getSlug)
                 .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ShopResponse> getAllShops(Boolean featured, Pageable pageable) {
+        Page<Shop> shops;
+        if (Boolean.TRUE.equals(featured)) {
+            Pageable featuredPageable = PageRequest.of(
+                    pageable.getPageNumber(), 
+                    pageable.getPageSize(), 
+                    Sort.by(Sort.Direction.DESC, "averageRating", "totalReviews")
+            );
+            shops = shopRepository.findAll(featuredPageable);
+        } else {
+            shops = shopRepository.findAll(pageable);
+        }
+        return shops.map(shopMapper::toShopResponse);
     }
 }

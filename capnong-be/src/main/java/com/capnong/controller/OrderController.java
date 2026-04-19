@@ -20,7 +20,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
+@Tag(name = "Order", description = "Quản lý đơn đặt hàng, thao tác checkout, và theo dõi quá trình giao hàng")
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
 public class OrderController {
@@ -31,6 +35,7 @@ public class OrderController {
      * POST /api/orders — Checkout: tạo đơn hàng từ giỏ.
      */
     @PostMapping
+    @Operation(summary = "Tạo đơn hàng mới (Checkout)", description = "Xử lý việc khởi tạo và phát sinh đơn hàng từ giỏ hàng hiện tại của người dùng hoặc khách hàng không đăng nhập.")
     public ResponseEntity<ApiResponse<OrderResponseDto>> checkout(
             @RequestHeader(value = "Guest-Session-Id", required = false) String guestSessionId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
@@ -51,6 +56,7 @@ public class OrderController {
      */
     @GetMapping
     @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Lịch sử mua hàng", description = "Người dùng (Buyer) xem lại toàn bộ lịch sử các đơn hàng đã đặt của mình.")
     public ResponseEntity<ApiResponse<PagedResponse<OrderResponseDto>>> getMyOrders(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(required = false) String status,
@@ -65,6 +71,7 @@ public class OrderController {
      */
     @GetMapping("/{orderId}")
     @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Xem chi tiết đơn hàng", description = "Truy xuất danh sách sản phẩm cấu thành bên trong một đơn hàng cụ thể, dành cho Buyer.")
     public ResponseEntity<ApiResponse<OrderResponseDto>> getOrderDetail(
             @PathVariable UUID orderId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -77,6 +84,7 @@ public class OrderController {
      * GET /api/orders/guest/{orderCode}?phone=... — Tra cứu đơn hàng cho khách vãng lai.
      */
     @GetMapping("/guest/{orderCode}")
+    @Operation(summary = "Tra cứu đơn hàng vãng lai", description = "Cho phép khách mua vãng lai không có account dùng mã đơn (order code) và số điện thoại để xem trạng thái đơn.")
     public ResponseEntity<ApiResponse<OrderResponseDto>> getGuestOrder(
             @PathVariable String orderCode,
             @RequestParam String phone) {
@@ -90,6 +98,7 @@ public class OrderController {
      */
     @PostMapping("/{orderId}/cancel")
     @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Hủy đơn hàng", description = "Người dùng đưa ra yêu cầu hủy đơn. Hệ thống từ chối nếu kiện hàng đã bắt đầu được xử lý.")
     public ResponseEntity<ApiResponse<Void>> cancelOrder(
             @PathVariable UUID orderId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -103,6 +112,7 @@ public class OrderController {
      */
     @PatchMapping("/sub-orders/{subOrderId}/status")
     @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
+    @Operation(summary = "Tiến hành/Cập nhật đơn hàng (Farmer)", description = "Nhà vườn hay đơn vị kinh doanh dùng endpoint này để báo Đang Chuẩn Bị, Giao Hàng, v.v. cho kiện phụ.")
     public ResponseEntity<ApiResponse<Void>> updateSubOrderStatus(
             @PathVariable UUID subOrderId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
@@ -117,6 +127,7 @@ public class OrderController {
      */
     @GetMapping("/seller")
     @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
+    @Operation(summary = "Danh sách đơn hàng cần xử lý", description = "Lấy dữ liệu các kiện hàng chưa phân bổ mà Seller hiện có để đóng gói giao hàng.")
     public ResponseEntity<ApiResponse<Page<OrderResponseDto.SubOrderDto>>> getSellerSubOrders(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(required = false) String status,
@@ -131,6 +142,7 @@ public class OrderController {
      */
     @GetMapping("/sub-orders/{subOrderId}")
     @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
+    @Operation(summary = "Chi tiết một kiện của Seller", description = "Người bán truy xuất các thông tin phân phối, item trong một kiện con của họ.")
     public ResponseEntity<ApiResponse<OrderResponseDto.SubOrderDto>> getSellerSubOrderDetail(
             @PathVariable UUID subOrderId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {

@@ -34,6 +34,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        default_batch_fetch_size: 100
     defer-datasource-initialization: false
 
   # ─── Disable data.sql init (use manual migration) ──

@@ -13,8 +13,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
+@Tag(name = "Cart", description = "Quản lý giỏ hàng")
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
 public class CartController {
@@ -22,6 +25,7 @@ public class CartController {
     private final CartService cartService;
 
     @PostMapping("/items")
+    @Operation(summary = "Thêm sản phẩm vào giỏ hàng", description = "Hỗ trợ thêm sản phẩm vào giỏ. Nếu chưa đăng nhập, sử dụng Guest-Session-Id.")
     public ResponseEntity<ApiResponse<CartResponse>> addToCart(
             @RequestHeader(value = "Guest-Session-Id", required = false) String guestSessionId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
@@ -35,6 +39,7 @@ public class CartController {
     }
 
     @GetMapping
+    @Operation(summary = "Lấy thông tin giỏ hàng", description = "Lấy danh sách các sản phẩm đang có trong giỏ hàng hiện tại của người dùng hoặc khách.")
     public ResponseEntity<ApiResponse<CartResponse>> getCart(
             @RequestHeader(value = "Guest-Session-Id", required = false) String guestSessionId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -47,6 +52,7 @@ public class CartController {
     }
 
     @PutMapping("/items/{itemId}")
+    @Operation(summary = "Cập nhật số lượng sản phẩm", description = "Thay đổi số lượng (tăng/giảm) của một sản phẩm trong giỏ hàng.")
     public ResponseEntity<ApiResponse<CartResponse>> updateCartItem(
             @RequestHeader(value = "Guest-Session-Id", required = false) String guestSessionId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
@@ -61,6 +67,7 @@ public class CartController {
     }
 
     @DeleteMapping("/items/{itemId}")
+    @Operation(summary = "Xóa sản phẩm khỏi giỏ hàng", description = "Xóa hoàn toàn một mặt hàng khỏi giỏ.")
     public ResponseEntity<ApiResponse<CartResponse>> removeCartItem(
             @RequestHeader(value = "Guest-Session-Id", required = false) String guestSessionId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
@@ -74,6 +81,7 @@ public class CartController {
     }
 
     @PostMapping("/merge")
+    @Operation(summary = "Đồng bộ giỏ hàng vãng lai", description = "Chuyển toàn bộ các sản phẩm từ giỏ khách vãng lai (Guest-Session-Id) sang giỏ hàng của tài khoản ngay sau khi đăng nhập.")
     public ResponseEntity<ApiResponse<Void>> mergeCart(
             @RequestHeader(value = "Guest-Session-Id") String guestSessionId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
