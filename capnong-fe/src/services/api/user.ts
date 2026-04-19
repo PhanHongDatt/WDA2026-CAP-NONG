@@ -33,6 +33,7 @@ export const apiUserService: IUserService = {
       phone: data.phone,
       otp: data.otp,
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const res = await api.put<{ success: boolean; data: any }>("/api/users/me", reqData);
     return normalizeUserProfile(res.data.data);
   },
@@ -63,6 +64,7 @@ export async function linkGoogleAccount(supabaseToken: string): Promise<void> {
 }
 
 /* ─── Normalize BE UserResponse → FE User ─── */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeUserProfile(p: any): User {
   return {
     id: String(p.id),

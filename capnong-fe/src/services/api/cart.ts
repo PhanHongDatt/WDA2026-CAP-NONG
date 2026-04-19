@@ -23,6 +23,7 @@ export const apiCartService: ICartService = {
       const res = await api.get("/api/cart");
       const data = res.data.data || res.data;
       // Normalize BE CartItemResponse → FE CartItem
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (data.items || data || []).map((item: any) => ({
         id: String(item.id),
         quantity: Number(item.quantity || 0),
