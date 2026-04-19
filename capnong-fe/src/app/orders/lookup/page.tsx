@@ -71,7 +71,7 @@ function OrderLookupContent() {
         // extract all items
         const subOrders = match.subOrders || match.sub_orders || [];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const allItems = subOrders.flatMap((sub: any) => 
+        const allItems = subOrders.flatMap((sub: any) =>
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (sub.items || []).map((i: any) => ({
                 name: i.product?.name || "Sản phẩm",

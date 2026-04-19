@@ -21,10 +21,25 @@ jobs:
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          RDS_ENDPOINT: ${{ secrets.RDS_ENDPOINT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_USERNAME: ${{ secrets.TELEGRAM_BOT_USERNAME }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
+          username: ${{ secrets.EC2_USER || 'ec2-user' }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,RDS_ENDPOINT,REDIS_PASSWORD,JWT_SECRET,GEMINI_API_KEY,TELEGRAM_BOT_TOKEN,TELEGRAM_BOT_USERNAME,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET
           script_stop: true
           script: |
             echo "Starting deployment at $(date)..."
@@ -36,6 +51,22 @@ jobs:
             fi
 
             cd /opt/capnong
+
+            # Write .env from injected secrets (no leading whitespace)
+            printf '%s\n' \
+              "POSTGRES_DB=$POSTGRES_DB" \
+              "POSTGRES_USER=$POSTGRES_USER" \
+              "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" \
+              "RDS_ENDPOINT=$RDS_ENDPOINT" \
+              "REDIS_PASSWORD=$REDIS_PASSWORD" \
+              "JWT_SECRET=$JWT_SECRET" \
+              "GEMINI_API_KEY=$GEMINI_API_KEY" \
+              "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN" \
+              "TELEGRAM_BOT_USERNAME=$TELEGRAM_BOT_USERNAME" \
+              "CLOUDINARY_CLOUD_NAME=$CLOUDINARY_CLOUD_NAME" \
+              "CLOUDINARY_API_KEY=$CLOUDINARY_API_KEY" \
+              "CLOUDINARY_API_SECRET=$CLOUDINARY_API_SECRET" \
+              > .env
 
             # Reset local changes and pull latest
             git fetch --all
