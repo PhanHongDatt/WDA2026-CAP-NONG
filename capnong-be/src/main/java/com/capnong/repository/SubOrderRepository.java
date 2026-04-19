@@ -31,20 +31,20 @@ public interface SubOrderRepository extends JpaRepository<SubOrder, UUID> {
     @Query("SELECT COUNT(s) FROM SubOrder s WHERE s.shop.owner.username = :username AND s.status IN ('PENDING', 'PROCESSING', 'SHIPPED')")
     long countPendingOrdersByFarmerUsername(@Param("username") String username);
 
-    @Query("SELECT COALESCE(SUM(s.subTotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.username = :username")
+    @Query("SELECT COALESCE(SUM(s.subtotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.username = :username")
     java.math.BigDecimal calculateGrossRevenueByFarmerUsername(@Param("username") String username);
 
-    @Query("SELECT COALESCE(SUM(s.subTotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.username = :username AND s.status = 'COMPLETED'")
+    @Query("SELECT COALESCE(SUM(s.subtotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.username = :username AND s.status = 'COMPLETED'")
     java.math.BigDecimal calculateNetRevenueByFarmerUsername(@Param("username") String username);
 
     // Dashboard - HTX Manager
     @Query("SELECT COUNT(s) FROM SubOrder s WHERE s.shop.owner.htx.id = :htxId")
     long countOrdersByHtxId(@Param("htxId") UUID htxId);
 
-    @Query("SELECT COALESCE(SUM(s.subTotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.htx.id = :htxId")
+    @Query("SELECT COALESCE(SUM(s.subtotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.htx.id = :htxId")
     java.math.BigDecimal calculateMemberRetailGrossRevenueByHtxId(@Param("htxId") UUID htxId);
 
-    @Query("SELECT COALESCE(SUM(s.subTotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.htx.id = :htxId AND s.status = 'COMPLETED'")
+    @Query("SELECT COALESCE(SUM(s.subtotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.htx.id = :htxId AND s.status = 'COMPLETED'")
     java.math.BigDecimal calculateMemberRetailNetRevenueByHtxId(@Param("htxId") UUID htxId);
 }
 

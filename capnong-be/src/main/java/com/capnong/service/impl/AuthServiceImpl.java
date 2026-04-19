@@ -10,12 +10,7 @@ import com.capnong.model.enums.Role;
 import com.capnong.repository.UserRepository;
 import com.capnong.security.JwtUtils;
 import com.capnong.security.UserDetailsImpl;
-import com.capnong.service.AuthService;
-import com.capnong.service.OrderService;
-import com.capnong.service.OtpService;
-import com.capnong.service.RefreshTokenService;
-import com.capnong.service.ShopService;
-import com.capnong.service.LoginRateLimiterService;
+import com.capnong.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -33,10 +28,10 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-    private final OrderService orderService;
     private final RefreshTokenService refreshTokenService;
     private final OtpService otpService;
     private final ShopService shopService;
+    private final OrderService orderService;
     private final LoginRateLimiterService loginRateLimiterService;
 
     @Override
