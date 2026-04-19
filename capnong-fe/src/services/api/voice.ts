@@ -33,19 +33,19 @@ export interface VoiceExtractResult {
   processing_notes?: string[];
   
   // Legacy fields for backward compatibility, optional:
-  name?: any;
-  nameConfidence?: any;
-  category?: any;
-  categoryConfidence?: any;
-  unitCode?: any;
-  unitCodeConfidence?: any;
-  rawUnitText?: any;
-  pricePerUnit?: any;
-  pricePerUnitConfidence?: any;
-  availableQuantity?: any;
-  availableQuantityConfidence?: any;
-  harvestNote?: any;
-  rawTranscript?: any;
+  name?: unknown;
+  nameConfidence?: unknown;
+  category?: unknown;
+  categoryConfidence?: unknown;
+  unitCode?: unknown;
+  unitCodeConfidence?: unknown;
+  rawUnitText?: unknown;
+  pricePerUnit?: unknown;
+  pricePerUnitConfidence?: unknown;
+  availableQuantity?: unknown;
+  availableQuantityConfidence?: unknown;
+  harvestNote?: unknown;
+  rawTranscript?: unknown;
 }
 
 /**

@@ -111,7 +111,7 @@ services:
       # AI Service (Python FastAPI)
       AI_SERVICE_URL: http://ai-service:8001
     ports:
-      - "${BACKEND_PORT:-8080}:9999"
+      - "${BACKEND_PORT:-8080}:8080"
       - "5005:5005"
     volumes:
       - ./capnong-be/src:/app/src

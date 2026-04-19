@@ -70,13 +70,16 @@ function OrderLookupContent() {
       if (match) {
         // extract all items
         const subOrders = match.subOrders || match.sub_orders || [];
-        const allItems = subOrders.flatMap((sub: any) => 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const allItems = subOrders.flatMap((sub: any) =>
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (sub.items || []).map((i: any) => ({
                 name: i.product?.name || "Sản phẩm",
                 qty: i.quantity || 1,
                 price: i.product?.price_per_unit || i.product?.pricePerUnit || 0
             }))
         );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const shops = subOrders.map((sub: any) => sub.shop?.name).filter(Boolean);
         const sellerName = shops.length > 0 ? Array.from(new Set(shops)).join(", ") : "Nhiều nhà vườn";
         

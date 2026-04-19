@@ -73,7 +73,7 @@ export default function CooperativeContent() {
           name: h.name || "",
           province: h.province || "",
           members: h.memberCount || h.members || 0,
-          manager: h.managerName || h.manager || "",
+          manager: h.managerFullName || h.managerUsername || h.managerName || h.manager || "",
         })));
       }
     } catch {

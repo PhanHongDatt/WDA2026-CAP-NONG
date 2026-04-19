@@ -274,12 +274,14 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
       const apiResult = await extractFromTranscript(textToProcess);
 
       // Map BE response → VoiceProductResult safely handling nested { value: ... } structures
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const safeGet = (obj: any, defaultValue: any = "") => {
         if (obj === undefined || obj === null) return defaultValue;
         if (typeof obj === "object" && obj !== null) return obj.value ?? defaultValue;
         return obj;
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const safeConf = (obj: any) => {
         if (!obj) return 0;
         if (typeof obj === "object" && obj.confidence_level) {
@@ -296,7 +298,9 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
         unit: safeGet(apiResult.quantity_unit || apiResult.unitCode, "Kg"),
         quantity: Number(safeGet(apiResult.quantity || apiResult.availableQuantity, 0)),
         location: safeGet(apiResult.location || apiResult.harvestNote, ""),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         harvestDate: safeGet(apiResult.harvest_date || (apiResult as any).harvestDate, ""),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         farmingMethod: safeGet(apiResult.farming_method || (apiResult as any).farmingMethod, ""),
         transcript: safeGet(apiResult.original_transcript || apiResult.rawTranscript, textToProcess),
         confidence: {
@@ -306,7 +310,9 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
           unit: safeConf(apiResult.quantity_unit || apiResult.unitCode),
           description: safeConf(apiResult.description),
           location: safeConf(apiResult.location),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           harvestDate: safeConf(apiResult.harvest_date || (apiResult as any).harvestDate),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           farmingMethod: safeConf(apiResult.farming_method || (apiResult as any).farmingMethod),
         },
       };

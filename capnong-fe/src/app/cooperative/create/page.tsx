@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -15,12 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-const PROVINCES = [
-  "An Giang", "Bến Tre", "Bình Dương", "Bình Phước", "Cà Mau",
-  "Cần Thơ", "Đắk Lắk", "Đồng Nai", "Đồng Tháp", "Hà Giang",
-  "Hậu Giang", "Kiên Giang", "Lâm Đồng", "Long An", "Sóc Trăng",
-  "Tây Ninh", "Tiền Giang", "Trà Vinh", "Vĩnh Long", "Vũng Tàu",
-];
+import { getProvinces, getWards, Province, Ward } from "@/services/api/address";
 
 function CreateHtxContent() {
   const { user: _user } = useAuth(); // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -30,10 +25,38 @@ function CreateHtxContent() {
   const [form, setForm] = useState({
     name: "",
     registration_code: "",
-    province: "",
-    commune: "",
+    province: "", // Tên Tỉnh
+    commune: "", // Tên xã/phường (District/Ward)
     description: "",
   });
+
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState<number | "">("");
+
+  // Tải danh sách tỉnh ngay khi mở trang
+  useEffect(() => {
+    getProvinces().then(setProvinces).catch(console.error);
+  }, []);
+
+  // Khi chọn Tỉnh, tải danh sách Phường/Xã
+  const handleProvinceChange = (provinceCodeStr: string) => {
+    if (!provinceCodeStr) {
+      setSelectedProvinceCode("");
+      setWards([]);
+      setForm((p) => ({ ...p, province: "", commune: "" }));
+      return;
+    }
+    const code = Number(provinceCodeStr);
+    setSelectedProvinceCode(code);
+    
+    // Tìm tên tỉnh
+    const provName = provinces.find((p) => p.code === code)?.name || "";
+    setForm((p) => ({ ...p, province: provName, commune: "" }));
+
+    // Tải Xã/Phường
+    getWards(code).then(setWards).catch(console.error);
+  };
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -138,9 +161,9 @@ function CreateHtxContent() {
             <label htmlFor="htx-province" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">
               Tỉnh/Thành phố <span className="text-accent">*</span>
             </label>
-            <select id="htx-province" value={form.province} onChange={(e) => handleChange("province", e.target.value)} className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <select id="htx-province" value={selectedProvinceCode} onChange={(e) => handleProvinceChange(e.target.value)} className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
               <option value="">Chọn tỉnh...</option>
-              {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+              {provinces.map((p) => <option key={p.code} value={p.code}>{p.name}</option>)}
             </select>
           </div>
 
@@ -148,7 +171,10 @@ function CreateHtxContent() {
             <label htmlFor="htx-commune" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">
               Xã/Phường <span className="text-accent">*</span>
             </label>
-            <input id="htx-commune" type="text" value={form.commune} onChange={(e) => handleChange("commune", e.target.value)} placeholder="VD: Xã Châu Thành" className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            <select id="htx-commune" value={form.commune} onChange={(e) => handleChange("commune", e.target.value)} disabled={!selectedProvinceCode} className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:bg-gray-50">
+              <option value="">Chọn Xã/Phường...</option>
+              {wards.map((w) => <option key={w.code} value={w.name}>{w.name}</option>)}
+            </select>
           </div>
 
           <div className="sm:col-span-2">

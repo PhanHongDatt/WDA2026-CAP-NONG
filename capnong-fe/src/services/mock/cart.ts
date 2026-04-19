@@ -29,6 +29,7 @@ export const mockCartService: ICartService = {
 
   async addItem(productId: string, quantity: number): Promise<void> {
     const cart = readCart();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existing = cart.find((item) => item.product?.id === productId || (item as any).productId === productId);
     if (existing) {
       existing.quantity += quantity;

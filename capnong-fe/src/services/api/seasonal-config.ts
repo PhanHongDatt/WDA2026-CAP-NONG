@@ -15,21 +15,27 @@ import api from "../api";
 export interface SeasonalConfig {
   id: string;
   province: string;
-  category: string;
-  startMonth: number;
-  endMonth: number;
-  description?: string;
-  isActive?: boolean;
-  createdAt?: string;
+  // BE returns snake_case: product_category
+  product_category?: string;
+  productCategory?: string;
+  // BE returns snake_case: start_month, end_month
+  start_month?: number;
+  end_month?: number;
+  startMonth?: number;
+  endMonth?: number;
+  note?: string;
+  configured_by?: string;
+  configured_by_username?: string;
+  updated_at?: string;
   updatedAt?: string;
 }
 
 export interface SeasonalConfigRequest {
   province: string;
-  category: string;
+  productCategory: string;
   startMonth: number;
   endMonth: number;
-  description?: string;
+  note?: string;
 }
 
 /* ─── API Functions ─── */
@@ -48,7 +54,14 @@ export async function getSeasonalConfigsByProvince(province: string): Promise<Se
 
 /** Tạo config mùa vụ (HTX_MANAGER / ADMIN) */
 export async function createSeasonalConfig(data: SeasonalConfigRequest): Promise<SeasonalConfig> {
-  const res = await api.post("/api/seasonal-configs", data);
+  // BE uses global SNAKE_CASE ObjectMapper → send snake_case keys
+  const res = await api.post("/api/seasonal-configs", {
+    province: data.province,
+    product_category: data.productCategory,
+    start_month: data.startMonth,
+    end_month: data.endMonth,
+    note: data.note || "",
+  });
   return res.data.data || res.data;
 }
 

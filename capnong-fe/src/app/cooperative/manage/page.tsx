@@ -161,15 +161,29 @@ function CoopManageContent() {
   const [seasonalConfig, setSeasonalConfig] = useState(USE_MOCK ? MOCK_SEASONAL : []);
   const [showNewBundle, setShowNewBundle] = useState(false);
   const [expandedBundle, setExpandedBundle] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   /* ─── API Fetch (fallback to mock) ─── */
   const fetchData = useCallback(async () => {
     try {
       const htxApi = await import("@/services/api/htx");
-      const [apiBundles, apiJoinReqs] = await Promise.all([
-        htxApi.getOpenBundles(),
-        htxApi.getPendingJoinRequests(),
+      const [apiMembers, apiBundles, apiJoinReqs] = await Promise.all([
+        htxApi.getHtxMembers().catch(() => []),
+        htxApi.getOpenBundles().catch(() => []),
+        htxApi.getPendingJoinRequests().catch(() => []),
       ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (Array.isArray(apiMembers) && apiMembers.length > 0) {
+        setMembers(apiMembers.map((m: any) => ({
+          id: String(m.id || ""),
+          name: m.full_name || m.fullName || m.username || "",
+          phone: m.phone || "",
+          product: "",
+          qty: 0,
+          share: "",
+          joined_at: m.created_at || m.createdAt || "",
+        })));
+      }
       if (Array.isArray(apiBundles) && apiBundles.length > 0) {
         setBundles(apiBundles as unknown as Bundle[]);
       }
@@ -178,6 +192,7 @@ function CoopManageContent() {
       }
     } catch {
       if (USE_MOCK) {
+        setMembers(MOCK_MEMBERS);
         setBundles(MOCK_BUNDLES);
         setJoinRequests(MOCK_JOIN_REQUESTS);
       }
@@ -250,10 +265,27 @@ function CoopManageContent() {
   const pendingJoin = joinRequests.filter((r) => r.status === "PENDING").length;
   const openBundles = bundles.filter((b) => b.status === "OPEN" || b.status === "FULL").length;
 
-  const handleKickMember = (id: string, name: string) => {
-    if (confirm(`Xác nhận xóa thành viên "${name}" khỏi HTX?`)) {
-      setMembers((prev) => prev.filter((m) => m.id !== id));
+  const [confirmingKickId, setConfirmingKickId] = useState<string | null>(null);
+
+  const handleKickMember = async (id: string, name: string) => {
+    if (confirmingKickId !== id) {
+      setConfirmingKickId(id);
+      setTimeout(() => setConfirmingKickId(null), 5000); // auto-cancel after 5s
+      return;
     }
+    setConfirmingKickId(null);
+    try {
+      const htxApi = await import("@/services/api/htx");
+      await htxApi.removeMember(id);
+      setMembers((prev) => prev.filter((m) => m.id !== id));
+      setActionMessage({ type: "success", text: `Đã xóa thành viên "${name}" khỏi HTX thành công.` });
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const axiosMsg = (err as any)?.response?.data?.message;
+      const msg = axiosMsg || (err instanceof Error ? err.message : "Không thể xóa thành viên. Vui lòng thử lại.");
+      setActionMessage({ type: "error", text: msg });
+    }
+    setTimeout(() => setActionMessage(null), 5000);
   };
 
   return (
@@ -269,6 +301,17 @@ function CoopManageContent() {
           </p>
         </div>
       </div>
+      {/* Action feedback banner */}
+      {actionMessage && (
+        <div className={`flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium ${
+          actionMessage.type === "success"
+            ? "bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800"
+            : "bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800"
+        }`}>
+          <span>{actionMessage.type === "success" ? "✅" : "❌"} {actionMessage.text}</span>
+          <button type="button" onClick={() => setActionMessage(null)} className="ml-3 opacity-60 hover:opacity-100 text-lg leading-none">&times;</button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -341,9 +384,20 @@ function CoopManageContent() {
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-foreground-muted">{m.qty}</td>
                     <td className="px-6 py-4 text-sm font-bold text-primary">{m.share}</td>
                     <td className="px-6 py-4 text-right">
-                      <button type="button" onClick={() => handleKickMember(m.id, m.name)} className="text-red-400 hover:text-red-600 text-xs font-medium transition-colors" title="Xóa thành viên">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {confirmingKickId === m.id ? (
+                        <div className="flex items-center gap-2 justify-end">
+                          <button type="button" onClick={() => handleKickMember(m.id, m.name)} className="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-red-600 transition-colors">
+                            Xác nhận xóa?
+                          </button>
+                          <button type="button" onClick={() => setConfirmingKickId(null)} className="text-gray-400 hover:text-gray-600 text-xs">
+                            Hủy
+                          </button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => handleKickMember(m.id, m.name)} className="text-red-400 hover:text-red-600 text-xs font-medium transition-colors" title="Xóa thành viên">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -131,6 +131,33 @@ function DashboardContent() {
         )}
       </div>
 
+      {user?.role === "FARMER" && !isHtxManager && !user?.htx_id && (
+        <div className="bg-gradient-to-r from-primary-dark to-primary text-white p-6 sm:p-8 rounded-xl shadow-lg border border-primary-light flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+          {/* Decorative background circle */}
+          <div className="absolute top-[-50px] right-[-50px] w-32 h-32 bg-white opacity-5 rounded-full blur-2xl pointer-events-none"></div>
+          
+          <div className="flex items-start sm:items-center gap-4 relative z-10 w-full md:w-auto">
+            <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center shrink-0 border border-white/10 hidden sm:flex">
+              <TrendingUp className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black mb-1.5 flex items-center gap-2">Phát triển cùng Hợp tác xã! <span className="text-2xl">🌱</span></h2>
+              <p className="text-white/90 text-sm max-w-lg">
+                Gom đơn hàng số lượng lớn, đẩy mạnh xuất khẩu và tiếp cận hàng ngàn người mua sỉ bằng cách gia nhập hệ sinh thái HTX số.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row shrink-0 gap-3 w-full md:w-auto relative z-10">
+            <Link href="/cooperative" className="bg-white/10 hover:bg-white/20 border border-white/30 text-white px-6 py-3 rounded-lg text-sm font-bold transition-colors text-center shadow-inner">
+              Tìm & Tham gia
+            </Link>
+            <Link href="/cooperative/create" className="bg-white text-primary hover:bg-gray-50 px-6 py-3 rounded-lg text-sm font-bold shadow-md transition-transform hover:scale-105 active:scale-95 text-center flex items-center justify-center gap-2">
+              <Plus className="w-4 h-4" /> Thành lập HTX
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (

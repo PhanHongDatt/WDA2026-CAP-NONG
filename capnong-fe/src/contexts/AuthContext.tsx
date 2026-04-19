@@ -27,7 +27,7 @@ interface AuthContextType {
   // Actions
   login: (phone: string, password: string) => Promise<void>;
   register: (data: { full_name: string; phone: string; password: string; role: string; email?: string; username?: string; otp?: string }) => Promise<void>;
-  loginAs: (role: string) => void;
+
   logout: () => void;
   loginError: string | null;
   // Profile refresh
@@ -36,36 +36,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/* ─── Quick mock users cho loginAs (demo switching — chỉ dùng khi USE_MOCK=true) ─── */
-const QUICK_USERS: Record<string, User> = {
-  buyer: {
-    id: "a1b2c3d4-1111-4aaa-bbbb-000000000001",
-    full_name: "Nguyễn Thu Hà", phone: "0901111111", role: "BUYER",
-    is_banned: false, created_at: "2026-01-01T00:00:00Z",
-  },
-  farmer: {
-    id: "a1b2c3d4-2222-4aaa-bbbb-000000000002",
-    full_name: "Bác Ba Nhà Vườn", phone: "0902222222", role: "FARMER",
-    shop_slug: "vuon-bac-ba", is_banned: false, created_at: "2026-01-01T00:00:00Z",
-  },
-  htx_member: {
-    id: "a1b2c3d4-3333-4aaa-bbbb-000000000003",
-    full_name: "Chú Tư Bến Tre", phone: "0903333333", role: "HTX_MEMBER",
-    shop_slug: "vuon-chu-tu", htx_id: "htx-001", htx_name: "HTX Trái Cây Bến Tre",
-    is_banned: false, created_at: "2026-01-01T00:00:00Z",
-  },
-  htx_manager: {
-    id: "a1b2c3d4-4444-4aaa-bbbb-000000000004",
-    full_name: "Anh Năm Quản Lý", phone: "0904444444", role: "HTX_MANAGER",
-    shop_slug: "vuon-anh-nam", htx_id: "htx-001", htx_name: "HTX Trái Cây Bến Tre",
-    is_banned: false, created_at: "2026-01-01T00:00:00Z",
-  },
-  admin: {
-    id: "a1b2c3d4-9999-4aaa-bbbb-000000000099",
-    full_name: "Admin System", phone: "0909999999", role: "ADMIN",
-    is_banned: false, created_at: "2026-01-01T00:00:00Z",
-  },
-};
+
 
 /* ─── Provider ─── */
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -82,27 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * - Nếu fail hoàn toàn → clear session
    */
   useEffect(() => {
-    const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
-
     const restoreSession = async () => {
-      // Mock mode: chỉ load từ localStorage, KHÔNG gọi API
-      // Tránh timeout loop khi BE chưa chạy
-      if (USE_MOCK) {
-        const stored = localStorage.getItem("capnong-user");
-        if (stored) {
-          try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
-        }
-        setIsLoading(false);
-        return;
-      }
-
       const token = authService.getToken();
       if (!token) {
-        // Fallback: load từ localStorage (cho offline)
-        const stored = localStorage.getItem("capnong-user");
-        if (stored) {
-          try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
-        }
+        // No token = not logged in. Clear any dirty offline states
+        localStorage.removeItem("capnong-user");
+        setUser(null);
         setIsLoading(false);
         return;
       }
@@ -205,11 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  /* ─── loginAs (demo/dev — chỉ cho mock mode) ─── */
-  const loginAs = useCallback((role: string) => {
-    const mockUser = QUICK_USERS[role];
-    if (mockUser) setUser(mockUser);
-  }, []);
+
 
   /* ─── Logout ─── */
   const logout = useCallback(() => {
@@ -234,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoggedIn, isBuyer, isFarmer, isHtxMember, isHtxManager, isAdmin,
       canAccessDashboard, canManageHtx,
       viewMode, isSellMode, toggleViewMode,
-      login, register, loginAs, logout,
+      login, register, logout,
       refreshProfile,
     }}>
       {children}

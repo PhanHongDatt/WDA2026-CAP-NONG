@@ -38,28 +38,56 @@ export interface UserAddressRequest {
 
 /* ─── API Functions ─── */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeAddress(item: any): UserAddress {
+  return {
+    id: String(item.id),
+    recipientName: item.full_name || item.fullName || item.recipientName || "",
+    phone: item.phone || "",
+    provinceCode: item.province || item.provinceCode || "",
+    wardCode: item.district || item.wardCode || "",
+    streetAddress: item.street || item.streetAddress || "",
+    isDefault: item.is_default || item.isDefault || false,
+    createdAt: item.created_at || item.createdAt,
+  };
+}
+
+function normalizeRequest(data: UserAddressRequest) {
+  return {
+    full_name: data.recipientName,
+    phone: data.phone,
+    province: data.provinceCode,
+    district: data.wardCode,
+    street: data.streetAddress,
+    is_default: data.isDefault,
+  };
+}
+
 /**
  * Lấy tất cả địa chỉ đã lưu (default lên đầu)
  */
 export async function getMyAddresses(): Promise<UserAddress[]> {
   const res = await api.get("/api/users/me/addresses");
-  return res.data.data || res.data || [];
+  const items = res.data.data || res.data || [];
+  return items.map(normalizeAddress);
 }
 
 /**
  * Thêm địa chỉ mới (tối đa 10 địa chỉ/user, địa chỉ đầu tiên tự động mặc định)
  */
 export async function createAddress(data: UserAddressRequest): Promise<UserAddress> {
-  const res = await api.post("/api/users/me/addresses", data);
-  return res.data.data || res.data;
+  const payload = normalizeRequest(data);
+  const res = await api.post("/api/users/me/addresses", payload);
+  return normalizeAddress(res.data.data || res.data);
 }
 
 /**
  * Cập nhật địa chỉ (nếu isDefault=true sẽ set làm mặc định)
  */
 export async function updateAddress(addressId: string, data: UserAddressRequest): Promise<UserAddress> {
-  const res = await api.put(`/api/users/me/addresses/${addressId}`, data);
-  return res.data.data || res.data;
+  const payload = normalizeRequest(data);
+  const res = await api.put(`/api/users/me/addresses/${addressId}`, payload);
+  return normalizeAddress(res.data.data || res.data);
 }
 
 /**
@@ -74,5 +102,5 @@ export async function deleteAddress(addressId: string): Promise<void> {
  */
 export async function setDefaultAddress(addressId: string): Promise<UserAddress> {
   const res = await api.patch(`/api/users/me/addresses/${addressId}/default`);
-  return res.data.data || res.data;
+  return normalizeAddress(res.data.data || res.data);
 }
