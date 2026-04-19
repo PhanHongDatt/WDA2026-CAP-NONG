@@ -14,8 +14,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
+@Tag(name = "Notification", description = "Quản lý hộp thư thông báo và tin nhắn qua nền tảng")
 @RequestMapping("/api/v1/notifications")
 public class NotificationController {
 
@@ -29,6 +32,7 @@ public class NotificationController {
     }
 
     @GetMapping
+    @Operation(summary = "Lấy danh sách thông báo", description = "Lấy danh sách các thông báo tới cá nhân người dùng, có hỗ trợ phân trang.")
     public ResponseEntity<ApiResponse<Map<String, Object>>> list(
             @AuthenticationPrincipal UserDetailsImpl user,
             @RequestParam(defaultValue = "0") int page,
@@ -41,6 +45,7 @@ public class NotificationController {
     }
 
     @GetMapping("/unread-count")
+    @Operation(summary = "Lấy số lượng thông báo chưa đọc", description = "Đếm số lượng thông báo có trạng thái unread cho badge trên UI.")
     public ResponseEntity<ApiResponse<Map<String, Long>>> unreadCount(
             @AuthenticationPrincipal UserDetailsImpl user) {
         long count = notificationService.getUnreadCount(user.getId());
@@ -48,6 +53,7 @@ public class NotificationController {
     }
 
     @PatchMapping("/{id}/read")
+    @Operation(summary = "Đánh dấu thông báo đã đọc", description = "Cập nhật thay đổi trạng thái của thẻ thông báo thành read.")
     public ResponseEntity<ApiResponse<Void>> markAsRead(
             @AuthenticationPrincipal UserDetailsImpl user,
             @PathVariable UUID id) {
@@ -56,6 +62,7 @@ public class NotificationController {
     }
 
     @PatchMapping("/read-all")
+    @Operation(summary = "Đánh dấu tất cả thông báo là đã đọc", description = "Chỉnh sửa trạng thái toàn bộ thông báo trong list unread thành read.")
     public ResponseEntity<ApiResponse<Void>> markAllAsRead(
             @AuthenticationPrincipal UserDetailsImpl user) {
         notificationService.markAllAsRead(user.getId());
@@ -66,6 +73,7 @@ public class NotificationController {
      * POST /api/v1/notifications/telegram/register
      */
     @PostMapping("/telegram/register")
+    @Operation(summary = "Cấu hình liên kết tài khoản Telegram", description = "Cho phép người dùng lưu chat ID để hệ thống bắn Notification thông qua bot Telegram.")
     public ResponseEntity<ApiResponse<Void>> registerTelegram(
             @AuthenticationPrincipal UserDetailsImpl user,
             @RequestBody Map<String, String> body) {
@@ -77,6 +85,7 @@ public class NotificationController {
      * DELETE /api/v1/notifications/telegram
      */
     @DeleteMapping("/telegram")
+    @Operation(summary = "Xóa cấu hình Telegram", description = "Ngừng liên kết với chat ID và ngừng gửi các notify thông qua Telegram.")
     public ResponseEntity<ApiResponse<Void>> unlinkTelegram(
             @AuthenticationPrincipal UserDetailsImpl user) {
         telegramNotificationService.unlinkTelegram(user.getId());

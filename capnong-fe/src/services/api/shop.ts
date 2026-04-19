@@ -42,9 +42,14 @@ export const apiShopService: IShopService = {
   },
 
   async getFeaturedShops(): Promise<Shop[]> {
-    // BE hiện chưa có endpoint featured shops
-    // TODO: Khi BE thêm GET /api/shops?featured=true → implement
-    return [];
+    try {
+      const res = await api.get(`/api/shops?featured=true&size=5`);
+      const data = res.data.data || res.data;
+      const content = data.content || data;
+      return Array.isArray(content) ? content.map(normalizeShop) : [];
+    } catch {
+      return [];
+    }
   },
 
   async createShop(data: {

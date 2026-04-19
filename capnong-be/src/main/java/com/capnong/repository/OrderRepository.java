@@ -19,20 +19,12 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findByUser_Id(UUID userId);
 
     @Query(value = "SELECT o FROM Order o " +
-            "LEFT JOIN FETCH o.subOrders so " +
-            "LEFT JOIN FETCH so.items i " +
-            "LEFT JOIN FETCH i.product p " +
-            "LEFT JOIN FETCH so.shop s " +
             "LEFT JOIN FETCH o.user " +
             "WHERE o.user.id = :userId",
             countQuery = "SELECT count(o) FROM Order o WHERE o.user.id = :userId")
     Page<Order> findByUserIdWithDetails(@Param("userId") UUID userId, Pageable pageable);
 
     @Query(value = "SELECT o FROM Order o " +
-            "LEFT JOIN FETCH o.subOrders so " +
-            "LEFT JOIN FETCH so.items i " +
-            "LEFT JOIN FETCH i.product p " +
-            "LEFT JOIN FETCH so.shop s " +
             "LEFT JOIN FETCH o.user " +
             "WHERE o.user.id = :userId AND o.status = :status",
             countQuery = "SELECT count(o) FROM Order o WHERE o.user.id = :userId AND o.status = :status")
