@@ -26,7 +26,14 @@ export const apiUserService: IUserService = {
     phone?: string;
     otp?: string;
   }): Promise<User> {
-    const res = await api.put<{ success: boolean; data: UserProfileResponse }>("/api/users/me", data);
+    const reqData = {
+      full_name: data.fullName,
+      username: data.username,
+      email: data.email,
+      phone: data.phone,
+      otp: data.otp,
+    };
+    const res = await api.put<{ success: boolean; data: any }>("/api/users/me", reqData);
     return normalizeUserProfile(res.data.data);
   },
 
@@ -56,16 +63,16 @@ export async function linkGoogleAccount(supabaseToken: string): Promise<void> {
 }
 
 /* ─── Normalize BE UserResponse → FE User ─── */
-function normalizeUserProfile(p: UserProfileResponse): User {
+function normalizeUserProfile(p: any): User {
   return {
     id: String(p.id),
-    full_name: p.fullName || "",
+    full_name: p.full_name || p.fullName || "",
     username: p.username,
     phone: p.phone || "",
     email: p.email,
     role: p.role as User["role"],
-    avatar_url: p.avatarUrl,
+    avatar_url: p.avatar_url || p.avatarUrl,
     is_banned: !(p.active ?? true),
-    created_at: p.createdAt || new Date().toISOString(),
+    created_at: p.created_at || p.createdAt || new Date().toISOString(),
   };
 }

@@ -63,7 +63,7 @@ export default function ProductListPage() {
             price: p.price_per_unit || 0,
             quantity: p.available_quantity || 0,
             status: (p.status || "IN_SEASON") as ProductStatus,
-            image: p.images?.[0] ? "" : "🥬",
+            image: p.images?.[0] ? p.images[0] : "🥬",
             sold: p.sold_count || 0,
           })));
         }
@@ -141,7 +141,11 @@ export default function ProductListPage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 {/* Image placeholder */}
                 <div className="w-16 h-16 bg-gray-100 dark:bg-background-light rounded-xl flex items-center justify-center text-3xl shrink-0">
-                  {p.image}
+                  {p.image.startsWith("http") || p.image.startsWith("data:") ? (
+                    <img src={p.image} alt={p.name} className="w-full h-full object-cover rounded-xl" />
+                  ) : (
+                    p.image
+                  )}
                 </div>
 
                 {/* Info */}

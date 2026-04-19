@@ -191,10 +191,13 @@ export default function Header() {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors"
                 >
-                  {/* Avatar circle */}
-                  <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
-                    {(user.full_name || user.email || "U").charAt(0).toUpperCase()}
-                  </div>
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
+                      {(user.full_name || user.email || "U").charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="text-sm font-medium text-gray-700 dark:text-foreground max-w-[120px] truncate">
                     {user.full_name || user.email || "Người dùng"}
                   </span>
