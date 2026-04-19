@@ -50,7 +50,7 @@ export const apiUserService: IUserService = {
   },
 
   async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    await api.put("/api/users/me/password", { oldPassword, newPassword });
+    await api.put("/api/users/me/password", { old_password: oldPassword, new_password: newPassword });
   },
 
   async sendUpdateOtp(identifier: string): Promise<void> {
@@ -60,7 +60,7 @@ export const apiUserService: IUserService = {
 
 /* ─── Link Google account ─── */
 export async function linkGoogleAccount(supabaseToken: string): Promise<void> {
-  await api.post("/api/users/me/link-google", { supabaseToken });
+  await api.post("/api/users/me/link-google", { supabase_token: supabaseToken });
 }
 
 /* ─── Normalize BE UserResponse → FE User ─── */

@@ -55,7 +55,15 @@ export async function createHtx(data: {
   description?: string;
   documentUrl?: string;
 }): Promise<unknown> {
-  const res = await api.post("/api/htx", data);
+  const payload = {
+    name: data.name,
+    officialCode: data.officialCode,
+    province: data.province,
+    district: data.district,
+    description: data.description,
+    documentUrl: data.documentUrl,
+  };
+  const res = await api.post("/api/htx", payload);
   return res.data.data || res.data;
 }
 
@@ -170,7 +178,17 @@ export async function createBundle(data: {
   description?: string;
   minPledgeQuantity?: number;
 }): Promise<unknown> {
-  const res = await api.post("/api/v1/cooperatives/bundles", data);
+  const payload = {
+    product_category: data.productCategory,
+    product_name: data.productName,
+    unit_code: data.unitCode,
+    target_quantity: data.targetQuantity,
+    price_per_unit: data.pricePerUnit,
+    deadline: data.deadline,
+    description: data.description,
+    min_pledge_quantity: data.minPledgeQuantity,
+  };
+  const res = await api.post("/api/v1/cooperatives/bundles", payload);
   return res.data.data || res.data;
 }
 

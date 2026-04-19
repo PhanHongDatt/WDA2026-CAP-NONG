@@ -138,7 +138,7 @@ export async function resetPassword(identifier: string, otp: string, newPassword
 export async function googleLogin(supabaseToken: string): Promise<AuthResult> {
   const res = await api.post<{ success: boolean; message: string; data: BEAuthResponse }>(
     "/api/auth/oauth/google",
-    { supabaseToken }
+    { supabase_token: supabaseToken }
   );
   const authData = res.data.data;
 
@@ -158,7 +158,7 @@ export async function googleLogin(supabaseToken: string): Promise<AuthResult> {
 export async function googleRegister(supabaseToken: string, username: string): Promise<AuthResult> {
   const res = await api.post<{ success: boolean; message: string; data: BEAuthResponse }>(
     "/api/auth/oauth/google/register",
-    { supabaseToken, username }
+    { supabase_token: supabaseToken, username }
   );
   const authData = res.data.data;
 

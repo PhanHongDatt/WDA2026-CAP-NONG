@@ -25,7 +25,8 @@ export interface HtxRequestResponse {
   creatorName?: string;
   createdAt?: string;
   updatedAt?: string;
-  reviewNote?: string;
+  admin_note?: string;
+  review_note?: string;
 }
 
 /* ─── API Functions ─── */
@@ -63,6 +64,6 @@ export async function reviewHtxRequest(
   action: "APPROVE" | "REJECT",
   note?: string
 ): Promise<HtxRequestResponse> {
-  const res = await api.patch(`/api/admin/htx-requests/${htxId}`, { action, note });
+  const res = await api.patch(`/api/admin/htx-requests/${htxId}`, { action, admin_note: note });
   return res.data.data || res.data;
 }
