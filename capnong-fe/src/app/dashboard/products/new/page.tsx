@@ -287,7 +287,7 @@ export default function NewProductPage() {
               onChange={(e) => {
                 if (e.target.files) {
                   const newImages = Array.from(e.target.files).map(f => URL.createObjectURL(f));
-                  _setImages([..._images, ...newImages].slice(0, 6)); // max 6 images
+                  setImages([...images, ...newImages].slice(0, 6)); // max 6 images
                 }
               }}
             />
@@ -299,16 +299,16 @@ export default function NewProductPage() {
               PNG, JPG, WEBP • Tối đa 5MB • Tối đa 6 ảnh
             </p>
           </div>
-          {_images.length > 0 && (
+          {images.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-4">
-              {_images.map((img, idx) => (
+              {images.map((img, idx) => (
                 <div key={idx} className="relative aspect-square rounded-lg object-cover overflow-hidden border border-border">
                   <img src={img} alt="preview" className="w-full h-full object-cover" />
                   <button 
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      _setImages(_images.filter((_, i) => i !== idx));
+                      setImages(images.filter((_, i) => i !== idx));
                     }}
                     className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5 hover:bg-red-500"
                   >
