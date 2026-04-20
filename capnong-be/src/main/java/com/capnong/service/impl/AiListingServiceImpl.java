@@ -11,7 +11,7 @@ import com.capnong.model.enums.AiSessionStatus;
 import com.capnong.model.enums.AiSessionType;
 import com.capnong.repository.*;
 import com.capnong.service.AiListingService;
-import com.capnong.service.GeminiService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -31,8 +31,13 @@ public class AiListingServiceImpl implements AiListingService {
     private final AiRefineSessionRepository refineSessionRepository;
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
-    private final GeminiService geminiService;
     private final VoiceExtractionProducer voiceExtractionProducer;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @org.springframework.beans.factory.annotation.Value("${app.ai-service.url:http://localhost:8000}")
+    private String aiServiceUrl;
+
+    private final org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
 
     /**
      * Tạo session Voice-to-Product, lưu voice input, publish Kafka message.
@@ -101,18 +106,35 @@ public class AiListingServiceImpl implements AiListingService {
                 .build();
         session = sessionRepository.save(session);
 
-        // 2. Gọi Gemini AI để refine
-        String prompt = buildRefinePrompt(request.getRawText(), request.getProductNameHint());
-        String aiResponse = geminiService.generateContent(prompt);
+        // 2. Gọi AI Service bằng REST API (đã thiết lập AI service url là http://localhost:8000)
+        String url = aiServiceUrl + "/ai/refine-description";
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("raw_description", request.getRawText());
+        if (request.getProductNameHint() != null && !request.getProductNameHint().isBlank()) {
+            body.put("product_name", request.getProductNameHint());
+        }
 
-        // Parse AI response
-        String refinedText = aiResponse;
-        String changesSummary = "AI đã chỉnh sửa văn bản.";
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        org.springframework.http.HttpEntity<java.util.Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(body, headers);
 
-        if (aiResponse.contains("---CHANGES---")) {
-            String[] parts = aiResponse.split("---CHANGES---", 2);
-            refinedText = parts[0].trim();
-            changesSummary = parts.length > 1 ? parts[1].trim() : changesSummary;
+        String refinedText = request.getRawText();
+        String changesSummary = "AI không thể chỉnh sửa.";
+        try {
+            org.springframework.http.ResponseEntity<String> apiResponse = restTemplate.exchange(url, org.springframework.http.HttpMethod.POST, entity, String.class);
+            com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(apiResponse.getBody());
+            
+            refinedText = rootNode.has("refined_description") ? rootNode.get("refined_description").asText() : request.getRawText();
+            if (rootNode.has("changes_summary") && rootNode.get("changes_summary").isArray()) {
+                StringBuilder sb = new StringBuilder();
+                for (com.fasterxml.jackson.databind.JsonNode change : rootNode.get("changes_summary")) {
+                    sb.append("- ").append(change.asText()).append("\n");
+                }
+                changesSummary = sb.toString().trim();
+            }
+        } catch (Exception e) {
+            log.error("Failed to call capnong-ai-service for refine-description: {}", e.getMessage());
+            // Fallback content in case of AI service failure
         }
 
         // 3. Lưu refine session
@@ -138,23 +160,52 @@ public class AiListingServiceImpl implements AiListingService {
                 .build();
     }
 
-    private String buildRefinePrompt(String rawText, String productNameHint) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("Bạn là trợ lý viết mô tả sản phẩm nông sản cho nông dân Việt Nam.\n\n");
-        prompt.append("Nhiệm vụ: Chỉnh sửa mô tả sản phẩm sau đây. Sửa lỗi chính tả, ");
-        prompt.append("chuyển từ địa phương sang tiếng Việt chuẩn, và làm câu văn mượt hơn.\n");
-        prompt.append("KHÔNG thêm thông tin giả. Chỉ cải thiện cách diễn đạt.\n\n");
 
-        if (productNameHint != null && !productNameHint.isBlank()) {
-            prompt.append("Tên sản phẩm: ").append(productNameHint).append("\n");
+
+    @Override
+    public com.capnong.dto.response.PriceAdviceResponse getPriceAdvice(com.capnong.dto.request.PriceAdviceRequest request) {
+        String url = aiServiceUrl + "/ai/price-advice";
+        
+        // Build Map with snake_case keys matching Python Pydantic schema
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("product_name", request.getProductName());
+        if (request.getCategory() != null) body.put("category", request.getCategory());
+        if (request.getProvince() != null) body.put("province", request.getProvince());
+        if (request.getCurrentPrice() != null) body.put("current_price", request.getCurrentPrice());
+        
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        org.springframework.http.HttpEntity<java.util.Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(body, headers);
+                
+        try {
+            org.springframework.http.ResponseEntity<String> apiResponse = restTemplate.exchange(
+                    url, org.springframework.http.HttpMethod.POST, entity, String.class);
+            com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(apiResponse.getBody());
+            
+            Long suggestedPrice = null;
+            if (rootNode.has("suggested_price")) {
+                suggestedPrice = rootNode.get("suggested_price").asLong();
+            }
+            
+            java.util.Map<String, Long> priceRange = new java.util.HashMap<>();
+            com.fasterxml.jackson.databind.JsonNode rangeNode = rootNode.get("price_range");
+            if (rangeNode != null && !rangeNode.isNull()) {
+                priceRange.put("min", rangeNode.has("min") ? rangeNode.get("min").asLong() : 0L);
+                priceRange.put("max", rangeNode.has("max") ? rangeNode.get("max").asLong() : 0L);
+            }
+            
+            String marketTrend = rootNode.has("market_trend") ? rootNode.get("market_trend").asText() : "Ổn định";
+            String reasoning = rootNode.has("reasoning") ? rootNode.get("reasoning").asText() : "";
+            
+            return com.capnong.dto.response.PriceAdviceResponse.builder()
+                    .suggestedPrice(suggestedPrice)
+                    .priceRange(priceRange)
+                    .marketTrend(marketTrend)
+                    .reasoning(reasoning)
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to call capnong-ai-service for price-advice: {}", e.getMessage());
+            throw new AppException("Dịch vụ phân tích giá tạm thời không khả dụng", org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE);
         }
-
-        prompt.append("Mô tả gốc:\n\"").append(rawText).append("\"\n\n");
-        prompt.append("Trả về theo format sau (CHÍNH XÁC, không thêm markdown):\n");
-        prompt.append("[Mô tả đã chỉnh sửa]\n");
-        prompt.append("---CHANGES---\n");
-        prompt.append("[Tóm tắt những gì đã sửa, mỗi thay đổi 1 dòng]");
-
-        return prompt.toString();
     }
 }

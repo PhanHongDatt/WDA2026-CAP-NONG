@@ -97,3 +97,33 @@ class CaptionResponse(BaseModel):
     authentic: str
     professional: str
     hashtags: list[str]
+
+
+class PriceAdviceRequest(BaseModel):
+    product_name: str
+    category: Optional[str] = None
+    province: Optional[str] = None
+    current_price: Optional[float] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "product_name": "Xoài cát Chu",
+                "category": "Trái cây",
+                "province": "Đồng Tháp",
+                "current_price": 35000
+            }
+        }
+    }
+
+
+class PriceRange(BaseModel):
+    min: int
+    max: int
+
+
+class PriceAdviceResponse(BaseModel):
+    suggested_price: int
+    price_range: PriceRange
+    market_trend: str
+    reasoning: str

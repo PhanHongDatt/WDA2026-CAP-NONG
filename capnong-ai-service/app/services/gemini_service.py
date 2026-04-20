@@ -23,7 +23,7 @@ GENERATION_CONFIG = genai.types.GenerationConfig(
     temperature=0.3,        # Thấp = ít sáng tạo, cao = output ổn định, nhất quán
     top_p=0.8,
     top_k=10,
-    max_output_tokens=2048,
+    max_output_tokens=4096,  # Voice schema nested sâu, cần nhiều tokens
     response_mime_type="application/json",  # Buộc Gemini trả về JSON (Gemini 1.5+)
 )
 
@@ -47,6 +47,7 @@ def _get_model() -> genai.GenerativeModel:
 def _extract_json(text: str) -> dict:
     """
     Robust JSON extraction — xử lý khi Gemini có thể bọc trong ```json ... ```
+    hoặc trả về JSON bị cắt ngắn.
     """
     # Thử parse trực tiếp trước
     try:
@@ -70,7 +71,25 @@ def _extract_json(text: str) -> dict:
         except json.JSONDecodeError:
             pass
 
-    raise ValueError(f"Không thể parse JSON từ response: {text[:200]}")
+    # Thử sửa JSON bị cắt ngắn: đếm brackets và đóng cho đủ
+    trimmed = text.strip()
+    if trimmed.startswith("{"):
+        open_braces = trimmed.count("{")
+        close_braces = trimmed.count("}")
+        if open_braces > close_braces:
+            # Cắt bỏ value cuối cùng bị lỗi, thêm null và đóng brackets
+            # Tìm dấu phẩy hoặc key cuối cùng hoàn chỉnh
+            last_complete = trimmed.rfind("}")
+            if last_complete > 0:
+                candidate = trimmed[:last_complete + 1]
+                missing = candidate.count("{") - candidate.count("}")
+                candidate += "}" * missing
+                try:
+                    return json.loads(candidate)
+                except json.JSONDecodeError:
+                    pass
+
+    raise ValueError(f"Không thể parse JSON từ response: {text[:500]}")
 
 
 # ═══════════════════════════════════════════════════
@@ -485,3 +504,64 @@ async def _generate_with_grok(
         "model_used": model_id, "fallback": True,
         "error": f"Grok model ({model_id}) không trả về ảnh.",
     }
+
+
+async def get_price_advice(
+    product_name: str,
+    category: str | None = None,
+    province: str | None = None,
+    current_price: float | None = None,
+) -> dict:
+    """Gọi Gemini để lấy gợi ý giá."""
+    model = _get_model()
+
+    prompt = f"""Bạn là chuyên gia phân tích thị trường nông sản Việt Nam.
+Nhiệm vụ: Đưa ra định giá thị trường hợp lý cho sản phẩm sau:
+
+- Tên sản phẩm: {product_name}"""
+
+    if category:
+        prompt += f"\n- Phân loại: {category}"
+    if province:
+        prompt += f"\n- Khu vực: {province}"
+    if current_price:
+        prompt += f"\n- Giá đang bán dự kiến: {current_price} VNĐ"
+
+    prompt += """
+
+Trả về CHÍNH XÁC một JSON (không có markdown codeblock) format như sau:
+{
+  "suggested_price": 35000,
+  "price_range": {
+    "min": 30000,
+    "max": 45000
+  },
+  "market_trend": "Đang tăng nhẹ do cuối vụ",
+  "reasoning": "Phân tích thị trường 1-2 câu ngắn..."
+}
+"""
+    try:
+        response = await model.generate_content_async(prompt)
+        text = response.text.strip()
+        data = _extract_json(text)
+        
+        # Nếu parse lỗi hoặc Gemini đổi format camelCase
+        if "suggestedPrice" in data:
+            data["suggested_price"] = data.pop("suggestedPrice")
+        if "priceRange" in data:
+            data["price_range"] = data.pop("priceRange")
+        if "marketTrend" in data:
+            data["market_trend"] = data.pop("marketTrend")
+            
+        return data
+
+    except Exception as e:
+        logger.error(f"Price advice error: {e}")
+        # Trả về fallback
+        suggested = int(current_price) if current_price else 35000
+        return {
+            "suggested_price": suggested,
+            "price_range": { "min": int(suggested * 0.8), "max": int(suggested * 1.2) },
+            "market_trend": "Ổn định",
+            "reasoning": "Không thể phân tích thị trường lúc này."
+        }
