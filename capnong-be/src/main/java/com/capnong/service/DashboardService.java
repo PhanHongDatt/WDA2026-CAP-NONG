@@ -10,4 +10,5 @@ public interface DashboardService {
     FarmerSummaryResponse getFarmerSummary(String username);
     HtxSummaryResponse getHtxSummary(String username);
     AdminSummaryResponse getAdminSummary();
+    java.util.List<java.util.Map<String, Object>> getMonthlyRevenue(String username, int year);
 }

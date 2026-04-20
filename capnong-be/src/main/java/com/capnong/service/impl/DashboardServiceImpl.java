@@ -10,10 +10,7 @@ import com.capnong.model.Htx;
 import com.capnong.model.User;
 import com.capnong.model.enums.HtxStatus;
 import com.capnong.model.enums.Role;
-import com.capnong.repository.HtxRepository;
-import com.capnong.repository.OrderRepository;
-import com.capnong.repository.SubOrderRepository;
-import com.capnong.repository.UserRepository;
+import com.capnong.repository.*;
 import com.capnong.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -22,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +29,8 @@ public class DashboardServiceImpl implements DashboardService {
     private final SubOrderRepository subOrderRepository;
     private final UserRepository userRepository;
     private final HtxRepository htxRepository;
+    private final ProductRepository productRepository;
+    private final ReviewRepository reviewRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -56,12 +56,41 @@ public class DashboardServiceImpl implements DashboardService {
             throw new ResourceNotFoundException("User", "username", username);
         }
 
+        // Rating stats
+        Object[] ratingStats = reviewRepository.getShopRatingStatsByOwnerUsername(username);
+        double avgRating = 0;
+        long totalReviews = 0;
+
+        if (ratingStats != null && ratingStats.length > 0) {
+            Object avgObj;
+            Object countObj;
+            if (ratingStats[0] instanceof Object[]) {
+                Object[] row = (Object[]) ratingStats[0];
+                avgObj = row[0];
+                countObj = row[1];
+            } else if (ratingStats.length >= 2) {
+                avgObj = ratingStats[0];
+                countObj = ratingStats[1];
+            } else {
+                avgObj = null;
+                countObj = null;
+            }
+
+            if (avgObj != null && countObj != null) {
+                avgRating = ((Number) avgObj).doubleValue();
+                totalReviews = ((Number) countObj).longValue();
+            }
+        }
+
         return FarmerSummaryResponse.builder()
                 .totalOrders(subOrderRepository.countOrdersByFarmerUsername(username))
                 .pendingOrders(subOrderRepository.countPendingOrdersByFarmerUsername(username))
-                .outOfStockProducts(0) // Will implement product counting if needed
+                .totalProducts(productRepository.countActiveByShopOwnerUsername(username))
+                .outOfStockProducts(0)
                 .grossRevenue(subOrderRepository.calculateGrossRevenueByFarmerUsername(username))
                 .netRevenue(subOrderRepository.calculateNetRevenueByFarmerUsername(username))
+                .averageRating(Math.round(avgRating * 10.0) / 10.0)
+                .totalReviews(totalReviews)
                 .build();
     }
 
@@ -77,14 +106,14 @@ public class DashboardServiceImpl implements DashboardService {
 
         BigDecimal memberRetailGross = subOrderRepository.calculateMemberRetailGrossRevenueByHtxId(htx.getId());
         BigDecimal memberRetailNet = subOrderRepository.calculateMemberRetailNetRevenueByHtxId(htx.getId());
-        BigDecimal wholesaleGross = BigDecimal.ZERO; // Future wholesale aggregation
+        BigDecimal wholesaleGross = BigDecimal.ZERO;
         BigDecimal wholesaleNet = BigDecimal.ZERO;
 
         return HtxSummaryResponse.builder()
                 .totalMembers(userRepository.countMembersByHtxId(htx.getId()))
                 .totalOrders(subOrderRepository.countOrdersByHtxId(htx.getId()))
                 .totalMemberRetailRevenue(memberRetailGross)
-                .totalWholesaleRevenue(wholesaleGross) // Placeholder
+                .totalWholesaleRevenue(wholesaleGross)
                 .grossRevenue(memberRetailGross.add(wholesaleGross))
                 .netRevenue(memberRetailNet.add(wholesaleNet))
                 .build();
@@ -102,5 +131,34 @@ public class DashboardServiceImpl implements DashboardService {
                 .globalGrossGMV(orderRepository.calculateGlobalGrossGMV())
                 .globalNetGMV(orderRepository.calculateGlobalNetGMV())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getMonthlyRevenue(String username, int year) {
+        if (!userRepository.existsByUsername(username)) {
+            throw new ResourceNotFoundException("User", "username", username);
+        }
+
+        List<Object[]> rawData = subOrderRepository.getMonthlyRevenueByFarmerUsername(username, year);
+
+        // Build a full 12-month result (fill missing months with 0)
+        Map<Integer, BigDecimal> monthMap = new LinkedHashMap<>();
+        for (Object[] row : rawData) {
+            int month = ((Number) row[0]).intValue();
+            BigDecimal revenue = (BigDecimal) row[1];
+            monthMap.put(month, revenue);
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        String[] monthLabels = {"T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"};
+        for (int m = 1; m <= 12; m++) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("month", m);
+            entry.put("label", monthLabels[m - 1]);
+            entry.put("revenue", monthMap.getOrDefault(m, BigDecimal.ZERO));
+            result.add(entry);
+        }
+        return result;
     }
 }
