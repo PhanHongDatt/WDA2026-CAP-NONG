@@ -55,4 +55,15 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<AdminSummaryResponse>> getAdminSummary() {
         return ResponseEntity.ok(ApiResponse.success("Success", dashboardService.getAdminSummary()));
     }
+
+    @GetMapping("/farmer/monthly-revenue")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Get farmer monthly revenue for chart (12 months)")
+    public ResponseEntity<ApiResponse<java.util.List<java.util.Map<String, Object>>>> getMonthlyRevenue(
+            Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int year) {
+        String username = ((UserDetails) authentication.getPrincipal()).getUsername();
+        if (year <= 0) year = java.time.Year.now().getValue();
+        return ResponseEntity.ok(ApiResponse.success("Success", dashboardService.getMonthlyRevenue(username, year)));
+    }
 }

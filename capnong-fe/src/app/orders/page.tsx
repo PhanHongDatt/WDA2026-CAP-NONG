@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   ArrowLeft,
   Package,
@@ -17,6 +18,7 @@ import {
   ChevronDown,
   Star,
   MessageSquare,
+  ImageIcon,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import EmojiPicker from "@/components/ui/EmojiPicker";
@@ -36,7 +38,8 @@ const STATUS_ORDER: OrderStatus[] = ["PENDING", "CONFIRMED", "PREPARING", "SHIPP
 const MOCK_BUYER_ORDERS: {
   id: string; status: OrderStatus; date: string; total: number;
   seller_name: string; seller_phone: string;
-  items: { name: string; qty: number; price: number; image_url?: string }[];
+  parentOrderId?: string;
+  items: { productId?: string; orderItemId?: string; name: string; qty: number; price: number; image_url?: string }[];
   shipping_address: string;
   cancel_reason?: string;
 }[] = [
@@ -81,54 +84,99 @@ const MOCK_BUYER_ORDERS: {
 ];
 
 function BuyerOrderContent() {
+  const { isLoggedIn } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
+  const [sort, setSort] = useState("createdAt,desc");
   const [orders, setOrders] = useState<typeof MOCK_BUYER_ORDERS>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+
+  const STATUS_FILTERS = [
+    { value: "all", label: "Tất cả" },
+    { value: "SHIPPED", label: "🚚 Đang giao" },
+    { value: "DELIVERED", label: "✔️ Đã nhận" },
+    { value: "CANCELLED", label: "❌ Đã hủy" },
+  ];
+
+  useEffect(() => {
+    async function loadCounts() {
+      try {
+        const { apiOrderService } = await import("@/services/api/order");
+        const fetchCount = async (st: string) => {
+           const res = await apiOrderService.getMyOrders({ status: st === "all" ? undefined : st, page: 0, size: 1 });
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           const count = (res as any).total_elements ?? (res as any).totalElements ?? 0;
+           return { [st]: count };
+        };
+        const countsArray = await Promise.all(STATUS_FILTERS.map(f => fetchCount(f.value)));
+        const newCounts = countsArray.reduce((acc, curr) => ({ ...acc, ...curr }), {});
+        setStatusCounts(newCounts);
+      } catch { /* silent */ }
+    }
+    loadCounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* Fetch real orders from API, fallback to mock only if USE_MOCK=true */
   const fetchOrders = useCallback(async () => {
     const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
     setLoadingOrders(true);
     try {
-      const { orderService } = await import("@/services");
-      const apiOrders = await orderService.getMyOrders();
-      if (Array.isArray(apiOrders) && apiOrders.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapped = apiOrders.map((o: any) => ({
-          id: o.orderCode || o.id || "#???",
-          status: (o.status || "PENDING") as OrderStatus,
-          date: o.createdAt ? new Date(o.createdAt).toLocaleDateString("vi-VN") : "—",
-          total: o.totalAmount || 0,
-          seller_name: o.items?.[0]?.shopName || o.sellerName || "Nhà vườn",
-          seller_phone: o.sellerPhone || "—",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          items: (o.items || []).map((item: any) => ({
-            name: item.productName || item.name || "Sản phẩm",
-            qty: item.quantity || 1,
-            price: item.pricePerUnit || item.price || 0,
-            image_url: item.imageUrl || item.image_url,
-          })),
-          shipping_address: o.shippingAddress || o.streetAddress || "—",
-          cancel_reason: o.cancelReason,
-        }));
-        setOrders(mapped);
-        setExpandedId(mapped[0]?.id || null);
-      } else if (USE_MOCK) {
-        setOrders(MOCK_BUYER_ORDERS);
-        setExpandedId(MOCK_BUYER_ORDERS[0]?.id || null);
+      const { apiOrderService } = await import("@/services/api/order");
+      const apiOrders = await apiOrderService.getMyOrders({ status: filter, sort });
+      
+      // The API returns a paginated result so we read from .content
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const orderList = (apiOrders as any).content || apiOrders;
+      
+      if (Array.isArray(orderList)) {
+        const flatSubOrders: typeof MOCK_BUYER_ORDERS = [];
+        for (const order of orderList) {
+          const subOrders = order.sub_orders || [];
+          for (const sub of subOrders) {
+            flatSubOrders.push({
+               id: sub.id, 
+               parentOrderId: order.id,
+               status: (sub.status || "PENDING") as OrderStatus,
+               date: order.created_at ? new Date(order.created_at).toLocaleDateString("vi-VN") : "—",
+               total: sub.subtotal || 0,
+               seller_name: sub.shop?.name || "Nhà vườn",
+               seller_phone: sub.shop?.owner?.phone || "—",
+               // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               items: (sub.items || []).map((item: any) => ({
+                  productId: item.product?.id,
+                  orderItemId: item.id,
+                  name: item.product?.name || "Sản phẩm",
+                  qty: item.quantity || 1,
+                  price: item.product?.price_per_unit || 0,
+                  image_url: item.product?.images?.[0] || undefined,
+               })),
+               shipping_address: order.shipping_address ? 
+                 `${order.shipping_address.street}, ${order.shipping_address.district}, ${order.shipping_address.province}` 
+                 : "—",
+               cancel_reason: sub.cancel_reason,
+            });
+          }
+        }
+        setOrders(flatSubOrders);
+        if (flatSubOrders.length > 0) setExpandedId(flatSubOrders[0].id);
+      } else {
+         throw new Error("Invalid response");
       }
-      // else: keep empty — "Không có đơn hàng nào"
     } catch {
-      if (USE_MOCK) {
+      // API completely failed, don't fall back to mock unless explicitly wanted, 
+      // but to stop user confusion when API simply returns [], we only fallback if API threw an error.
+      if (USE_MOCK && !isLoggedIn) {
         setOrders(MOCK_BUYER_ORDERS);
         setExpandedId(MOCK_BUYER_ORDERS[0]?.id || null);
+      } else {
+        setOrders([]);
       }
-      // else: keep empty
     } finally {
       setLoadingOrders(false);
     }
-  }, []);
+  }, [filter, sort, isLoggedIn]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
@@ -136,40 +184,111 @@ function BuyerOrderContent() {
   const [reviewingOrderId, setReviewingOrderId] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
-  const [reviewedOrders, setReviewedOrders] = useState<Set<string>>(new Set());
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewedOrders, setReviewedOrders] = useState<Record<string, { rating: number; comment: string; reply?: string }>>({});
   const [reviewImages, setReviewImages] = useState<string[]>([]);
   const reviewFileRef = useRef<HTMLInputElement>(null);
 
+  const [cancelDialog, setCancelDialog] = useState<{ isOpen: boolean; subId?: string; parentId?: string } | null>(null);
+  const [isCanceling, setIsCanceling] = useState(false);
+
+  const handleCancelOrder = (subId: string, parentId?: string) => {
+    setCancelDialog({ isOpen: true, subId, parentId });
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelDialog?.subId) return;
+    setIsCanceling(true);
+    const { subId, parentId } = cancelDialog;
+    try {
+      const { apiOrderService } = await import("@/services/api/order");
+      if (parentId) {
+        await apiOrderService.cancelOrder(parentId);
+      }
+      setOrders(prev => prev.map(o => 
+        (o.parentOrderId === parentId && parentId) || o.id === subId 
+          ? { ...o, status: "CANCELLED", cancel_reason: "Khách hàng hủy" } : o
+      ));
+      setCancelDialog(null);
+    } catch {
+      alert("Không thể hủy đơn hàng. Có thể nhà vườn đã bắt đầu xử lý đơn.");
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
+  // Fetch existing reviews to persist "Đã đánh giá" state across refreshes
+  useEffect(() => {
+    if (!isLoggedIn || orders.length === 0) return;
+    (async () => {
+      try {
+        const { getMyReviews } = await import("@/services/api/review");
+        const res = await getMyReviews(0, 100);
+        const map: Record<string, { rating: number; comment: string; reply?: string }> = {};
+        for (const review of res.content) {
+          // Match review.order_item_id to sub-order id in our orders list
+          const orderItemId = review.order_item_id;
+          if (!orderItemId) continue;
+          // Find which order contains this item
+          const matchedOrder = orders.find(o =>
+            o.items?.some((item: { orderItemId?: string }) => item.orderItemId === orderItemId)
+          );
+          if (matchedOrder) {
+            map[matchedOrder.id] = {
+              rating: review.rating,
+              comment: review.comment || "",
+              reply: review.seller_reply || undefined,
+            };
+          }
+        }
+        if (Object.keys(map).length > 0) {
+          setReviewedOrders(prev => ({ ...prev, ...map }));
+        }
+      } catch {
+        // silently ignore — reviews just won't show as persisted
+      }
+    })();
+  }, [isLoggedIn, orders]);
+
   const handleSubmitReview = async (orderId: string) => {
     if (reviewRating === 0 || reviewComment.length < 10) return;
-    // Optimistic UI update
-    setReviewedOrders((prev) => new Set(prev).add(orderId));
-    setReviewingOrderId(null);
-    const savedRating = reviewRating;
-    const savedComment = reviewComment;
-    const savedImages = [...reviewImages];
-    setReviewRating(0);
-    setReviewComment("");
-    setReviewImages([]);
-    // Call API in background
+    
+    setIsSubmittingReview(true);
     try {
       const { createReview } = await import("@/services/api/review");
       // Find the order to get product/item IDs
       const order = orders.find((o) => o.id === orderId);
       const firstItem = order?.items?.[0];
+      if (!firstItem?.productId || !firstItem?.orderItemId) throw new Error("Missing IDs");
+      
       await createReview({
-        productId: (firstItem as unknown as { productId?: string })?.productId || orderId,
-        orderItemId: orderId,
-        rating: savedRating,
-        comment: savedComment,
-        images: savedImages.length > 0 ? savedImages : undefined,
+        productId: firstItem.productId,
+        orderItemId: firstItem.orderItemId,
+        rating: reviewRating,
+        comment: reviewComment,
+        images: reviewImages.length > 0 ? reviewImages : undefined,
       });
-    } catch {
-      /* optimistic — UI already updated, silent fail */
+
+      // Optimistic UI update only on success
+      setReviewedOrders((prev) => ({
+        ...prev,
+        [orderId]: {
+          rating: reviewRating,
+          comment: reviewComment,
+        }
+      }));
+      setReviewingOrderId(null);
+      setReviewRating(0);
+      setReviewComment("");
+      setReviewImages([]);
+
+    } catch (e) {
+      console.error(e);
+      alert("Đã xảy ra lỗi khi gửi đánh giá, vui lòng thử lại sau!");
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
-
-  const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
@@ -183,25 +302,41 @@ function BuyerOrderContent() {
 
       {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-        {[
-          { value: "all", label: "Tất cả" },
-          { value: "SHIPPED", label: "🚚 Đang giao" },
-          { value: "DELIVERED", label: "✔️ Đã nhận" },
-          { value: "CANCELLED", label: "❌ Đã hủy" },
-        ].map((f) => (
+        {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
             type="button"
             onClick={() => setFilter(f.value)}
             className={
               filter === f.value
-                ? "whitespace-nowrap rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white"
-                : "whitespace-nowrap rounded-full bg-white dark:bg-surface border border-border px-5 py-2 text-sm font-medium hover:border-primary transition-colors"
+                ? "whitespace-nowrap rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white flex items-center gap-1.5"
+                : "whitespace-nowrap rounded-full bg-white dark:bg-surface border border-border px-5 py-2 text-sm font-medium text-foreground hover:border-primary transition-colors flex items-center gap-1.5"
             }
           >
             {f.label}
+            {statusCounts[f.value] !== undefined && (
+              <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                filter === f.value ? "bg-white/20 text-white" : "bg-gray-100 dark:bg-surface-hover text-foreground-muted"
+              }`}>
+                {statusCounts[f.value]}
+              </span>
+            )}
           </button>
         ))}
+      </div>
+
+      {/* Sort options */}
+      <div className="flex justify-end">
+        <select 
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="px-3 py-2 text-sm border border-border rounded-lg bg-white dark:bg-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="createdAt,desc">Đơn mới nhất</option>
+          <option value="createdAt,asc">Đơn cũ nhất</option>
+          <option value="totalAmount,desc">Tổng tiền giảm dần</option>
+          <option value="totalAmount,asc">Tổng tiền tăng dần</option>
+        </select>
       </div>
 
       {/* Loading */}
@@ -216,7 +351,7 @@ function BuyerOrderContent() {
       {!loadingOrders && (
       <>
       <div className="space-y-4">
-        {filtered.map((order) => {
+        {orders.map((order) => {
           const expanded = expandedId === order.id;
           const isCancelled = order.status === "CANCELLED";
           const currentStepIdx = STATUS_ORDER.indexOf(order.status);
@@ -339,28 +474,45 @@ function BuyerOrderContent() {
                     </div>
                   </div>
 
+                  {/* UC-Cancel: Buyer Cancel Button */}
+                  {order.status === "PENDING" && (
+                    <div className="border-t border-gray-100 dark:border-border pt-4 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleCancelOrder(order.id, order.parentOrderId)}
+                        disabled={isCanceling}
+                        className="flex items-center gap-1.5 text-sm px-4 py-2 border border-red-200 text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 font-bold transition-colors disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Hủy đơn hàng
+                      </button>
+                    </div>
+                  )}
+
                   {/* UC-27: Review section (only for DELIVERED) */}
                   {order.status === "DELIVERED" && (
                     <div className="border-t border-gray-100 dark:border-border pt-4">
-                      {reviewedOrders.has(order.id) ? (
+                      {reviewedOrders[order.id] ? (
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
                             <div className="flex">
-                              {[1,2,3,4,5].map((s) => <Star key={s} className={`w-4 h-4 ${s <= 4 ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />)}
+                              {[1,2,3,4,5].map((s) => <Star key={s} className={`w-4 h-4 ${s <= reviewedOrders[order.id].rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />)}
                             </div>
                             <span className="text-xs text-foreground-muted">Đã đánh giá</span>
                           </div>
-                          <p className="text-sm text-gray-700 dark:text-foreground">Sản phẩm rất tươi ngon, đóng gói cẩn thận. Sẽ mua lại!</p>
+                          <p className="text-sm text-gray-700 dark:text-foreground">{reviewedOrders[order.id].comment}</p>
                           {/* UC-28: Seller reply */}
-                          <div className="ml-6 p-3 bg-gray-50 dark:bg-background-light rounded-lg border-l-2 border-primary">
-                            <div className="flex items-center gap-2 mb-1">
-                              <MessageSquare className="w-3.5 h-3.5 text-primary" />
-                              <span className="text-xs font-bold text-primary">Phản hồi từ {order.seller_name}</span>
+                          {reviewedOrders[order.id].reply && (
+                            <div className="ml-6 p-3 bg-gray-50 dark:bg-background-light rounded-lg border-l-2 border-primary">
+                              <div className="flex items-center gap-2 mb-1">
+                                <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                                <span className="text-xs font-bold text-primary">Phản hồi từ {order.seller_name}</span>
+                              </div>
+                              <p className="text-xs text-gray-600 dark:text-foreground-muted">
+                                {reviewedOrders[order.id].reply}
+                              </p>
                             </div>
-                            <p className="text-xs text-gray-600 dark:text-foreground-muted">
-                              Cảm ơn bạn đã ủng hộ! Rất vui vì bạn hài lòng với sản phẩm. Hẹn gặp lại! 🌿
-                            </p>
-                          </div>
+                          )}
                         </div>
                       ) : reviewingOrderId === order.id ? (
                         <div className="space-y-3">
@@ -373,23 +525,29 @@ function BuyerOrderContent() {
                               </button>
                             ))}
                           </div>
-                          {/* Comment */}
-                          <div>
-                            <label htmlFor={`review-${order.id}`} className="block text-xs text-gray-500 dark:text-foreground-muted mb-1">Nhận xét (tối thiểu 10 ký tự)</label>
+                          {/* Comment & Attachments Combined Ui */}
+                          <div className="relative border border-gray-200 dark:border-border rounded-xl bg-white dark:bg-background focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition-all">
                             <textarea
                               id={`review-${order.id}`}
                               rows={3}
                               value={reviewComment}
                               onChange={(e) => setReviewComment(e.target.value)}
                               placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
-                              className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-border rounded-lg bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                              className="w-full px-4 py-3 text-sm bg-transparent focus:outline-none resize-none pb-12"
                             />
-                            {reviewComment.length > 0 && reviewComment.length < 10 && (
-                              <p className="text-[11px] text-accent mt-1">Cần tối thiểu 10 ký tự ({reviewComment.length}/10)</p>
-                            )}
-                          </div>
-                          {/* Media upload */}
-                          <div>
+                            
+                            {/* Action Buttons inside Textarea bottom-right */}
+                            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+                              {/* Emoji Picker — component has its own toggle button */}
+                              <EmojiPicker onSelect={(emoji) => setReviewComment(prev => prev + emoji)} />
+                              
+                              {/* Photo Upload */}
+                              <button type="button" onClick={() => reviewFileRef.current?.click()} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-surface-hover text-gray-500 transition-colors" title="Thêm ảnh">
+                                <ImageIcon className="w-4 h-4" />
+                              </button>
+                            </div>
+                            
+                            {/* Hidden File Input */}
                             <input ref={reviewFileRef} type="file" accept="image/*" multiple className="hidden" aria-label="Upload ảnh đánh giá" onChange={(e) => {
                               const files = Array.from(e.target.files || []);
                               files.forEach(f => {
@@ -398,23 +556,30 @@ function BuyerOrderContent() {
                                 reader.readAsDataURL(f);
                               });
                             }} />
-                            <button type="button" onClick={() => reviewFileRef.current?.click()} className="text-xs text-primary font-medium hover:underline">
-                              📷 Thêm ảnh/video
-                            </button>
-                            <EmojiPicker onSelect={(emoji) => setReviewComment(prev => prev + emoji)} />
-                            {reviewImages.length > 0 && (
-                              <div className="flex gap-2 mt-2">
-                                {reviewImages.map((img, i) => (
-                                  <div key={i} className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50">
-                                    <Image src={img} alt={`Review ${i+1}`} width={64} height={64} className="w-full h-full object-cover" />
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
+
+                          {/* Helpers */}
+                          {reviewComment.length > 0 && reviewComment.length < 10 && (
+                            <p className="text-[11px] text-accent mt-1">Cần tối thiểu 10 ký tự ({reviewComment.length}/10)</p>
+                          )}
+
+                          {/* Image Previews */}
+                          {reviewImages.length > 0 && (
+                            <div className="flex gap-2 flex-wrap">
+                              {reviewImages.map((img, i) => (
+                                <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-border group bg-gray-50 dark:bg-surface">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={img} alt={`Review ${i+1}`} className="w-full h-full object-cover" />
+                                  <button type="button" onClick={() => setReviewImages(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 w-5 h-5 bg-black/50 hover:bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-xs">
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           <div className="flex gap-2">
-                            <button type="button" onClick={() => handleSubmitReview(order.id)} disabled={reviewRating === 0 || reviewComment.length < 10} className="bg-primary text-white px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
-                              Gửi đánh giá
+                            <button type="button" onClick={() => handleSubmitReview(order.id)} disabled={reviewRating === 0 || reviewComment.length < 10 || isSubmittingReview} className="bg-primary text-white px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
+                              {isSubmittingReview ? "Đang gửi..." : "Gửi đánh giá"}
                             </button>
                             <button type="button" onClick={() => { setReviewingOrderId(null); setReviewRating(0); setReviewComment(""); }} className="text-sm text-foreground-muted hover:underline">
                               Hủy
@@ -436,13 +601,45 @@ function BuyerOrderContent() {
         })}
       </div>
 
-      {filtered.length === 0 && (
+      {orders.length === 0 && (
         <div className="text-center py-12 text-foreground-muted">
           <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p>Không có đơn hàng nào</p>
         </div>
       )}
       </>
+      )}
+
+      {/* Cancel Confirmation Dialog */}
+      {cancelDialog?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-surface rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-foreground mb-2 flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-red-500" />
+              Xác nhận hủy đơn
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-foreground-muted mb-6">
+              Bạn có chắc muốn hủy đơn hàng này không? Hành động này sẽ hủy toàn bộ các sản phẩm chung một mã đơn gốc.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelDialog(null)}
+                className="flex-1 px-4 py-2 bg-gray-100 dark:bg-surface-hover text-gray-700 dark:text-foreground rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                Giữ lại đơn
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancel}
+                disabled={isCanceling}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {isCanceling ? "Đang hủy..." : "Có, hủy đơn"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

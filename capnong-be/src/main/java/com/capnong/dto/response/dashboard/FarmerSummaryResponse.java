@@ -14,8 +14,12 @@ import java.math.BigDecimal;
 public class FarmerSummaryResponse {
     private long totalOrders;
     private long pendingOrders;
+    private long totalProducts;
     private long outOfStockProducts;
     
     private BigDecimal grossRevenue; 
-    private BigDecimal netRevenue;   
+    private BigDecimal netRevenue;
+    
+    private double averageRating;
+    private long totalReviews;
 }

@@ -106,7 +106,7 @@ logging:
 ai:
   service:
     base-url: http://localhost:8000
-    timeout: 15000
+    timeout: 60000
 
 # ─── Kafka ───────────────────────────────────
 spring.kafka:

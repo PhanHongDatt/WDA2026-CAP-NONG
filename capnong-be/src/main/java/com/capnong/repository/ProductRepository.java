@@ -33,4 +33,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     List<Product> findAllActive();
 
     Page<Product> findByShop_Owner_Username(String username, Pageable pageable);
+
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.shop.owner.username = :username AND p.status != 'HIDDEN'")
+    long countActiveByShopOwnerUsername(@Param("username") String username);
 }

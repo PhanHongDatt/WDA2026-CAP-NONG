@@ -58,17 +58,42 @@ export default function CartPage() {
   const updateQuantity = async (id: string, delta: number) => {
     const item = cartItems.find((i) => getItemId(i) === id);
     if (!item) return;
-    const newQty = Math.max(1, (item.quantity || 1) + delta);
-    try { await cartService.updateItem(id, newQty); } catch { /* ignore */ }
+    const oldQty = item.quantity || 1;
+    const newQty = Math.max(1, oldQty + delta);
+    
+    // Optimistic Update
     setCartItems((items) =>
       items.map((i) => getItemId(i) === id ? { ...i, quantity: newQty } : i)
     );
+    
+    try { 
+      await cartService.updateItem(id, newQty); 
+    } catch { 
+      // Rollback
+      setCartItems((items) =>
+        items.map((i) => getItemId(i) === id ? { ...i, quantity: oldQty } : i)
+      );
+    }
   };
 
   const removeItem = async (id: string) => {
-    try { await cartService.removeItem(id); } catch { /* ignore */ }
+    const itemToRemove = cartItems.find((i) => getItemId(i) === id);
+    if (!itemToRemove) return;
+    const wasSelected = selectedIds.has(id);
+
+    // Optimistic Update
     setCartItems((items) => items.filter((item) => getItemId(item) !== id));
     setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+
+    try { 
+      await cartService.removeItem(id); 
+    } catch { 
+      // Rollback
+      setCartItems((items) => [...items, itemToRemove]);
+      if (wasSelected) {
+        setSelectedIds((prev) => { const next = new Set(prev); next.add(id); return next; });
+      }
+    }
   };
 
   /* Tính subtotal chỉ cho items đã chọn */

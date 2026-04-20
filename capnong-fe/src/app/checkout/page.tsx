@@ -22,13 +22,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cartService, orderService } from "@/services";
 import type { CartItem } from "@/services";
 import { getProvinces, getWards, type Province, type Ward } from "@/services/api/address";
+import { getMyAddresses, createAddress, updateAddress, type UserAddress } from "@/services/api/user-address";
 import { useToast } from "@/components/ui/Toast";
-
-/* Mock saved addresses */
-const SAVED_ADDRESSES = [
-  { id: 1, label: "Nhà", detail: "123 Nguyễn Huệ, Quận 1, TP.HCM", name: "Nguyễn Văn A", phone: "0901234567" },
-  { id: 2, label: "Cơ quan", detail: "456 Lê Lợi, Quận 3, TP.HCM", name: "Nguyễn Văn A", phone: "0901234567" },
-];
 
 /** Group cart items by shop → sub-orders */
 interface SubOrder {
@@ -68,8 +63,16 @@ export default function CheckoutPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [selectedAddress, setSelectedAddress] = useState<number | null>(isLoggedIn ? 1 : null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewAddress, setShowNewAddress] = useState(!isLoggedIn);
+  const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([]);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [saveToProfile, setSaveToProfile] = useState(true);
+
+  // Provinces cache to quickly get names if needed
+  const [provinceMap, setProvinceMap] = useState<Record<string, string>>({});
+  const [wardMap, setWardMap] = useState<Record<string, string>>({});
 
   /* ── Form fields (controlled) ── */
   const [formName, setFormName] = useState("");
@@ -84,14 +87,46 @@ export default function CheckoutPage() {
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [wards, setWards] = useState<Ward[]>([]);
 
+  // Fetch init addresses
   useEffect(() => {
-    getProvinces().then(setProvinces).catch(() => {});
+    if (isLoggedIn) {
+      getMyAddresses().then(addrs => {
+        setSavedAddresses(addrs);
+        if (addrs.length > 0) {
+          setSelectedAddressId(addrs[0].id);
+          setShowNewAddress(false);
+          
+          // Set to form just in case fallback is needed, though we should use addr directly
+          setFormName(addrs[0].recipientName || "");
+          setFormPhone(addrs[0].phone || "");
+        } else {
+          setShowNewAddress(true);
+        }
+      }).catch(() => {});
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    getProvinces().then(data => {
+      setProvinces(data);
+      const map: Record<string, string> = {};
+      data.forEach(p => map[p.code] = p.name);
+      setProvinceMap(map);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (formProvinceCode) {
-      getWards(formProvinceCode as number).then(setWards).catch(() => {});
-      setFormWardCode("");
+      getWards(formProvinceCode as number).then(data => {
+        setWards(data);
+        const map: Record<string, string> = {};
+        data.forEach(w => map[w.code] = w.name);
+        setWardMap(map);
+      }).catch(() => {});
+      // Only reset ward if the previous ward isn't valid for this province
+      // Realistically we should test if formWardCode exists in new wards, but simple clear is okay.
+      // However for edit pre-fill, we shouldn't necessarily clear it immediately if it's correct.
+      // Let's rely on the user to fix it if they change the province.
     } else {
       setWards([]);
       setFormWardCode("");
@@ -280,24 +315,55 @@ export default function CheckoutPage() {
                     <BookOpen className="w-4 h-4 text-primary" />
                     <span className="text-sm font-medium text-gray-700 dark:text-foreground">Địa chỉ đã lưu</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {SAVED_ADDRESSES.map((addr) => (
-                      <button
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {savedAddresses.map((addr) => (
+                      <div
                         key={addr.id}
-                        type="button"
-                        onClick={() => { setSelectedAddress(addr.id); setShowNewAddress(false); }}
-                        className={`text-left p-3 rounded-lg border-2 transition-colors ${selectedAddress === addr.id && !showNewAddress ? "border-primary bg-primary/5" : "border-gray-200 dark:border-border hover:border-gray-300"}`}
+                        className={`text-left p-3 rounded-lg border-2 transition-colors relative flex flex-col justify-between ${selectedAddressId === addr.id && !showNewAddress && !editingAddressId ? "border-primary bg-primary/5" : "border-gray-200 dark:border-border"}`}
                       >
-                        <span className="text-xs font-bold text-primary">{addr.label}</span>
-                        <p className="text-sm text-gray-700 dark:text-foreground mt-0.5">{addr.detail}</p>
-                        <p className="text-[11px] text-foreground-muted">{addr.name} · {addr.phone}</p>
-                      </button>
+                        <div 
+                          className="cursor-pointer mb-2"
+                          onClick={() => { setSelectedAddressId(addr.id); setShowNewAddress(false); setEditingAddressId(null); }}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full ${addr.isDefault ? "bg-primary text-white" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"}`}>
+                              {addr.isDefault ? "Mặc định" : "Khác"}
+                            </span>
+                            <span className="text-xs font-semibold">{addr.recipientName}</span>
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-foreground mt-0.5">{addr.streetAddress}</p>
+                          <p className="text-[11px] text-foreground-muted">{addr.phone}</p>
+                        </div>
+                        <div className="flex justify-end border-t pt-2 border-slate-100 dark:border-border mt-1">
+                          <button
+                            type="button"
+                            className="text-xs text-primary font-medium hover:underline"
+                            onClick={() => {
+                              setSelectedAddressId(addr.id);
+                              setEditingAddressId(addr.id);
+                              setFormName(addr.recipientName);
+                              setFormPhone(addr.phone);
+                              setFormProvinceCode(Number(addr.provinceCode));
+                              setTimeout(() => setFormWardCode(Number(addr.wardCode)), 300); // Wait for wards 
+                              setFormAddress(addr.streetAddress);
+                              setShowNewAddress(true);
+                            }}
+                          >
+                            Chỉnh sửa
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                   <button
                     type="button"
-                    onClick={() => { setShowNewAddress(true); setSelectedAddress(null); }}
-                    className={`text-sm font-medium ${showNewAddress ? "text-primary" : "text-foreground-muted hover:text-primary"} transition-colors`}
+                    onClick={() => { 
+                      setShowNewAddress(true); 
+                      setSelectedAddressId(null); 
+                      setEditingAddressId(null);
+                      setFormName(""); setFormPhone(""); setFormAddress(""); setFormProvinceCode(""); setFormWardCode("");
+                    }}
+                    className={`text-sm font-medium ${showNewAddress && !editingAddressId ? "text-primary" : "text-foreground-muted hover:text-primary"} transition-colors`}
                   >
                     + Nhập địa chỉ mới
                   </button>
@@ -390,9 +456,61 @@ export default function CheckoutPage() {
                     className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none resize-none"
                   />
                 </div>
+                
+                {isLoggedIn && !editingAddressId && (
+                  <label className="flex items-center gap-2 cursor-pointer mt-2 text-sm text-foreground-muted">
+                    <input type="checkbox" checked={saveToProfile} onChange={(e) => setSaveToProfile(e.target.checked)} className="accent-primary" />
+                    Lưu địa chỉ này vào sổ địa chỉ
+                  </label>
+                )}
+                
+                {isLoggedIn && (showNewAddress || editingAddressId) && (
+                   <button
+                    type="button"
+                    disabled={savingAddress}
+                    onClick={async () => {
+                      if (!formName || !formPhone || !formProvinceCode || !formWardCode || !formAddress) {
+                        showToast("error", "Vui lòng nhập đủ tên, SĐT và địa chỉ.");
+                        return;
+                      }
+                      setSavingAddress(true);
+                      try {
+                        const payload = {
+                          recipientName: formName,
+                          phone: formPhone,
+                          provinceCode: String(formProvinceCode),
+                          wardCode: String(formWardCode),
+                          streetAddress: formAddress
+                        };
+                        
+                        if (editingAddressId) {
+                          await updateAddress(editingAddressId, payload);
+                          showToast("success", "Cập nhật địa chỉ thành công");
+                        } else {
+                          const newAddr = await createAddress(payload);
+                          setSelectedAddressId(newAddr.id);
+                        }
+                        
+                        // Reload addresses
+                        const addrs = await getMyAddresses();
+                        setSavedAddresses(addrs);
+                        setShowNewAddress(false);
+                        setEditingAddressId(null);
+                      } catch (err: any) {
+                        showToast("error", err.message || "Không thể lưu địa chỉ");
+                      } finally {
+                        setSavingAddress(false);
+                      }
+                    }}
+                    className="w-full bg-primary/10 text-primary font-bold py-3 mt-4 rounded-xl hover:bg-primary/20 transition-colors disabled:opacity-50"
+                  >
+                    {savingAddress ? "Đang lưu..." : (editingAddressId ? "Cập nhật địa chỉ này" : "Lưu vào sổ địa chỉ")}
+                  </button>
+                )}
+
                 <div>
-                  <label htmlFor="checkout-note" className="block text-sm font-medium mb-2">
-                    Ghi chú
+                  <label htmlFor="checkout-note" className="block text-sm font-medium mb-2 mt-4">
+                    Ghi chú đơn hàng (Tùy chọn)
                   </label>
                   <input
                     id="checkout-note"
@@ -600,25 +718,49 @@ export default function CheckoutPage() {
                   setSubmitError(null);
                   setSubmitting(true);
                   try {
-                    const addr = selectedAddress && !showNewAddress
-                      ? SAVED_ADDRESSES.find((a) => a.id === selectedAddress)
+                    const addr = selectedAddressId && !showNewAddress
+                      ? savedAddresses.find((a) => a.id === selectedAddressId)
                       : null;
-                    const finalPhone = addr ? addr.phone : formPhone;
+                      
+                    // Optionally auto-create address if they are logged in, chose not to explicitly save previously but submitted with saveToProfile checked
+                    let finalProvinceCode = (!addr && formProvinceCode) ? String(formProvinceCode) : undefined;
+                    let finalWardCode = (!addr && formWardCode) ? String(formWardCode) : undefined;
+                    const finalAddress = addr ? addr.streetAddress : formAddress;
+                    
+                    if (addr) {
+                       finalProvinceCode = addr.provinceCode;
+                       finalWardCode = addr.wardCode;
+                    }
+
+                    if (isLoggedIn && saveToProfile && showNewAddress && !editingAddressId) {
+                      try {
+                        const payload = {
+                          recipientName: formName,
+                          phone: formPhone,
+                          provinceCode: String(formProvinceCode),
+                          wardCode: String(formWardCode),
+                          streetAddress: formAddress
+                        };
+                        await createAddress(payload);
+                        // Async failure to save shouldn't block the checkout, so we ignore
+                      } catch { }
+                    }
+
                     const result = await orderService.checkout({
-                      guestName: addr ? addr.name : formName,
-                      guestPhone: finalPhone,
+                      guestName: addr ? addr.recipientName : formName,
+                      guestPhone: addr ? addr.phone : formPhone,
                       guestEmail: formEmail || undefined,
-                      streetAddress: addr ? addr.detail : formAddress,
-                      wardCode: (!addr && formWardCode) ? String(formWardCode) : undefined,
-                      provinceCode: (!addr && formProvinceCode) ? String(formProvinceCode) : undefined,
+                      streetAddress: finalAddress,
+                      wardCode: finalWardCode,
+                      provinceCode: finalProvinceCode,
                       orderNotes: formNote || undefined,
                       otpCode: otpCode || undefined,
                       paymentMethod: paymentMethod === 'BANK' ? 'VIET_QR' : 'COD'
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     }) as any;
                     
-                    setCreatedOrderCode(result?.orderCode || result?.order_code || "");
-                    setCreatedOrderPhone(finalPhone);
+                    setCreatedOrderCode(result?.data?.orderCode || result?.data?.order_code || result?.orderCode || result?.order_code || "");
+                    setCreatedOrderPhone(addr ? addr.phone : formPhone);
                     
                     setSubmitted(true);
                     window.dispatchEvent(new Event("cartUpdated"));

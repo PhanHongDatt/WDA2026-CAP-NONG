@@ -24,12 +24,7 @@ const POOLS = [
   { id: 3, productName: "Bưởi da xanh Bến Tre", targetQty: 800, currentQty: 320, pricePerUnit: 58000, participants: 6, deadline: "20/03/2026", status: "OPEN" as const },
 ];
 
-const PROFIT_TABLE = [
-  { farmer: "Nhà Vườn Bác Ba", qty: 200, percentage: 30.8, revenue: 7000000 },
-  { farmer: "HTX Bến Tre", qty: 180, percentage: 27.7, revenue: 6300000 },
-  { farmer: "Nông trại Xanh", qty: 150, percentage: 23.1, revenue: 5250000 },
-  { farmer: "Vườn Cần Thơ", qty: 120, percentage: 18.4, revenue: 4200000 },
-];
+
 
 const MOCK_ACTIVE_HTX = [
   { id: "htx-001", name: "HTX Trái Cây Bến Tre", province: "Bến Tre", members: 15, manager: "Nguyễn Văn A" },
@@ -56,12 +51,23 @@ export default function CooperativeContent() {
   const [pools, setPools] = useState(USE_MOCK ? POOLS : []);
   const [activeHtx, setActiveHtx] = useState(USE_MOCK ? MOCK_ACTIVE_HTX : []);
 
+  /* Dashboard Summary Data */
+  const [summaryData, setSummaryData] = useState<{
+    totalOrders: number;
+    pendingOrders: number;
+    outOfStockProducts: number;
+    grossRevenue: number;
+    netRevenue: number;
+  } | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
       const htxApi = await import("@/services/api/htx");
-      const [apiBundles, apiHtxList] = await Promise.all([
-        htxApi.getOpenBundles(),
-        htxApi.getAllHtx(),
+      const dashboardApi = await import("@/services/api/dashboard");
+      const [apiBundles, apiHtxList, userSummary] = await Promise.all([
+        htxApi.getOpenBundles().catch(() => null),
+        htxApi.getAllHtx().catch(() => null),
+        isLoggedIn ? dashboardApi.apiDashboardService.getFarmerSummary().catch(() => null) : Promise.resolve(null),
       ]);
       if (Array.isArray(apiBundles) && apiBundles.length > 0) {
         setPools(apiBundles as unknown as typeof POOLS);
@@ -76,13 +82,16 @@ export default function CooperativeContent() {
           manager: h.managerFullName || h.managerUsername || h.managerName || h.manager || "",
         })));
       }
+      if (userSummary) {
+        setSummaryData(userSummary);
+      }
     } catch {
       if (USE_MOCK) {
         setPools(POOLS);
         setActiveHtx(MOCK_ACTIVE_HTX);
       }
     }
-  }, []);
+  }, [isLoggedIn]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -135,10 +144,10 @@ export default function CooperativeContent() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Pool đang mở", value: "2", icon: Flame, color: "text-accent bg-red-50 dark:bg-red-900/20" },
-          { label: "Tổng người tham gia", value: "26", icon: Users, color: "text-info bg-blue-50 dark:bg-blue-900/20" },
-          { label: "Đã hoàn thành", value: "15", icon: CheckCircle2, color: "text-success bg-green-50 dark:bg-green-900/20" },
-          { label: "Doanh thu gom đơn", value: formatCurrency(87500000), icon: TrendingUp, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
+          { label: "Tổng đơn hàng", value: summaryData?.totalOrders?.toString() || "0", icon: Users, color: "text-info bg-blue-50 dark:bg-blue-900/20" },
+          { label: "Đơn chờ xử lý", value: summaryData?.pendingOrders?.toString() || "0", icon: Clock, color: "text-accent bg-red-50 dark:bg-red-900/20" },
+          { label: "Đã hoàn thành", value: (summaryData ? (summaryData.totalOrders - summaryData.pendingOrders).toString() : "0"), icon: CheckCircle2, color: "text-success bg-green-50 dark:bg-green-900/20" },
+          { label: "Tổng doanh thu", value: formatCurrency(summaryData?.grossRevenue || 0), icon: TrendingUp, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white dark:bg-surface border border-border rounded-xl p-5 flex items-center gap-4 shadow-sm">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
@@ -286,42 +295,7 @@ export default function CooperativeContent() {
         </div>
       </section>
 
-      {/* Profit Sharing Table */}
-      <section>
-        <h2 className="text-xl font-bold mb-4">Bảng phân chia lợi nhuận — Cam sành VL-BT</h2>
-        <div className="bg-white dark:bg-surface border border-border rounded-xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-gray-50 dark:bg-background-light">
-                  <th className="text-left px-5 py-3 font-bold text-foreground-muted">Nông dân / HTX</th>
-                  <th className="text-right px-5 py-3 font-bold text-foreground-muted">Số lượng (kg)</th>
-                  <th className="text-right px-5 py-3 font-bold text-foreground-muted">Tỷ lệ</th>
-                  <th className="text-right px-5 py-3 font-bold text-foreground-muted">Doanh thu ước tính</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {PROFIT_TABLE.map((row) => (
-                  <tr key={row.farmer} className="hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">
-                    <td className="px-5 py-4 font-medium text-foreground">{row.farmer}</td>
-                    <td className="px-5 py-4 text-right text-foreground">{row.qty.toLocaleString()}</td>
-                    <td className="px-5 py-4 text-right font-bold text-primary">{row.percentage}%</td>
-                    <td className="px-5 py-4 text-right font-bold text-primary">{formatCurrency(row.revenue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-primary-50 dark:bg-primary-dark border-t border-primary/20">
-                  <td className="px-5 py-3 font-black text-foreground">Tổng</td>
-                  <td className="px-5 py-3 text-right font-black text-foreground">{PROFIT_TABLE.reduce((s, r) => s + r.qty, 0).toLocaleString()}</td>
-                  <td className="px-5 py-3 text-right font-black text-primary">100%</td>
-                  <td className="px-5 py-3 text-right font-black text-primary">{formatCurrency(PROFIT_TABLE.reduce((s, r) => s + r.revenue, 0))}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      </section>
+
     </div>
   );
 }

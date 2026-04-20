@@ -95,7 +95,7 @@ api.interceptors.response.use(
         if (!refreshToken) throw new Error('No refresh token');
 
         const res = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
-          refreshToken,
+          refresh_token: refreshToken,
         });
 
         const newToken = res.data.data?.access_token || res.data.data?.accessToken || res.data.access_token || res.data.accessToken;

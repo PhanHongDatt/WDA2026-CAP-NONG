@@ -19,6 +19,8 @@ export interface User extends UserSummary {
   htx_id?: string;
   htx_name?: string;
   is_banned: boolean;
+  google_id?: string;
+  google_email?: string;
   created_at: string;
 }
 
@@ -102,9 +104,11 @@ export interface UserProfileResponse {
   avatar_url?: string;
   role: string;
   active: boolean;
+  google_id?: string;
   created_at: string;
   // BE may also send camelCase in some endpoints — handle both
   fullName?: string;
   avatarUrl?: string;
+  googleId?: string;
   createdAt?: string;
 }

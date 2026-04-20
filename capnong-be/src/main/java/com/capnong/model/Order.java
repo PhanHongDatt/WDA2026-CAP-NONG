@@ -41,13 +41,13 @@ public class Order extends BaseEntity {
     @Column(name = "street_address", length = 255)
     private String streetAddress;
 
-    @Column(name = "ward_code", length = 10)
+    @Column(name = "ward_code", length = 20)
     private String wardCode;
 
     @Column(name = "ward_name", length = 100)
     private String wardName;
 
-    @Column(name = "province_code", length = 5)
+    @Column(name = "province_code", length = 20)
     private String provinceCode;
 
     @Column(name = "province_name", length = 100)
