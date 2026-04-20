@@ -13,49 +13,91 @@ Nền tảng nông nghiệp thông minh tích hợp AI, hỗ trợ nông dân Vi
 | AI | OpenAI/MegaLLM (hiện tại) → Google Gemini (sau) |
 | Messaging | Telegram Bot API |
 
-## Yêu cầu
+## Yêu cầu chạy Local
 
-- [Docker](https://www.docker.com/) & Docker Compose v2+
-- (Tùy chọn) Java 21, Node.js 22 — nếu muốn chạy ngoài Docker
+Để chạy dự án local phục vụ việc phát triển, bạn cần chuẩn bị các môi trường sau:
+- [Docker](https://www.docker.com/) & Docker Compose (cho các dịch vụ phụ trợ như Redis, Kafka, PostgreSQL nếu không cài local).
+- **Ngôn ngữ & Runtime**: 
+  - **Java 21** (Backend - Spring Boot)
+  - **Node.js 22** (Frontend - Next.js)
+  - **Python 3.10+** (AI Service - FastAPI)
+- **Cơ sở dữ liệu**: PostgreSQL 16 (local hoặc qua Supabase/Docker).
 
-## Bắt đầu nhanh
+## Bắt đầu nhanh (Môi trường Phát triển)
+
+Làm theo các bước sau để khởi chạy toàn bộ hệ thống ở môi trường local của bạn:
+
+### 1. Nền tảng (Database, Redis, Kafka)
+
+Hệ thống yêu cầu có Redis (cache) và Kafka (message queue) để hoạt động. Bạn có thể dùng Docker Compose để khởi chạy nhanh các dịch vụ này:
 
 ```bash
-# 1. Clone project
-git clone <repo-url>
+# Di chuyển tới thư mục gốc của dự án
 cd WD2026
 
-# 2. Tạo file .env từ template
+# Tạo file .env từ template (và cấu hình lại url database, port tuỳ ý)
 cp .env.example .env
-# → Mở .env và điền các giá trị thực (DB password, API keys, ...)
 
-# 3. Cấp quyền chạy script (macOS/Linux)
-chmod +x dev.sh
-
-# 4. Khởi chạy toàn bộ hệ thống
-./dev.sh up
+# Chạy cụm Docker cho Redis & Kafka (và Postgres nếu bạn thiết lập trong docker-compose.yml)
+docker-compose up -d redis kafka zookeeper
 ```
+*(Lưu ý: Nếu sử dụng Supabase cho PostgreSQL, hãy điền `SUPABASE_URL` và thông tin Auth vào `.env` backend).*
 
-Sau khi chạy xong:
+### 2. Khởi chạy AI Service (Python FastAPI)
 
-| Service | URL |
-|---------|-----|
-| Frontend | <http://localhost:3000> |
-| Backend API | <http://localhost:8080> |
-| Remote Debug (Java) | `localhost:5005` |
-
-## Các lệnh hữu ích
+Dịch vụ AI phục vụ xử lý Poster và Caption.
 
 ```bash
-./dev.sh up              # Build & chạy tất cả services
-./dev.sh down            # Dừng tất cả
-./dev.sh logs backend    # Xem log 1 service
-./dev.sh ps              # Trạng thái services
-./dev.sh db              # Mở psql vào PostgreSQL
-./dev.sh redis           # Mở redis-cli vào Redis
-./dev.sh rebuild backend # Rebuild 1 service
-./dev.sh reset           # Xóa sạch data (có confirm)
+cd capnong-ai-service
+
+# Tạo môi trường ảo và cài dependencies
+python -m venv venv
+venv\Scripts\activate   # trên Windows
+# source venv/bin/activate # trên Linux/Mac
+pip install -r requirements.txt
+
+# Khởi chạy server trên cổng 8000
+uvicorn app.main:app --reload --port 8000
 ```
+
+### 3. Khởi chạy Backend API (Java Spring Boot)
+
+Backend chạy trên cổng 8080. Cần lưu ý cấu hình biến môi trường kết nối Database (Supabase), Kafka, Redis, và Cloudinary.
+
+```bash
+cd capnong-be
+
+# Cấu hình file ứng dụng:
+# Mở src/main/resources/application.yml (hoặc .env tương ứng)
+# và chỉnh sửa các tham số db, redis port, kafka bootstrap-servers, v.v.
+
+# Biên dịch và chạy
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
+# (trên macOS/Linux: ./mvnw spring-boot:run)
+```
+
+### 4. Khởi chạy Frontend (Next.js)
+
+Giao diện Web App tương tác với người dùng ở cổng 3000.
+
+```bash
+cd capnong-fe
+
+# Copy biến môi trường cho Frontend
+cp .env.example .env.local
+# (Chỉnh sửa .env.local để trỏ tới http://localhost:8080 cho NEXT_PUBLIC_API_URL)
+
+# Cài đặt thư viện
+npm install
+
+# Khởi chạy chế độ dev
+npm run dev
+```
+
+Sau khi chạy xong, hãy truy cập:
+- Frontend: <http://localhost:3000>
+- Backend API (Swagger/OpenAPI): <http://localhost:8080/swagger-ui/index.html>
+- AI Service Docs: <http://localhost:8000/docs>
 
 ## Cấu trúc dự án
 
@@ -222,3 +264,4 @@ Xem chi tiết trong [`.env.example`](.env.example). Các biến quan trọng:
 ## License
 
 Private — All rights reserved.
+Nếu gặp khó khăn, liên hệ phanduyminh1262@gmail.com.

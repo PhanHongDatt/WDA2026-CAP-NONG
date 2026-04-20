@@ -9,10 +9,13 @@ import java.util.UUID;
 
 public interface ReviewService {
     Page<Review> getByProductId(UUID productId, Pageable pageable);
+
     Review createReview(UUID authorId, ReviewCreateRequest request);
+
     Review addSellerReply(UUID reviewId, UUID sellerId, String reply);
 
     // /me routes
     Page<Review> getMyReviews(UUID authorId, Pageable pageable);
+
     Page<Review> getShopReviews(String sellerUsername, Pageable pageable);
 }
