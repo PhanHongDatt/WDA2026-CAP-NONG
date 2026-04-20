@@ -29,15 +29,15 @@ services:
     container_name: capnong-postgres-prod
     restart: unless-stopped
     environment:
-      POSTGRES_DB: capnong_prod
-      POSTGRES_USER: capnong
-      POSTGRES_PASSWORD: capnongpassword123
+      POSTGRES_DB: ${POSTGRES_DB:-capnong_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-capnong}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your_postgres_password_here}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U capnong -d capnong_prod"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-capnong}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -64,9 +64,9 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/capnong_prod
-      SPRING_DATASOURCE_USERNAME: capnong
-      SPRING_DATASOURCE_PASSWORD: capnongpassword123
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-capnong_dev}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-capnong}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-your_postgres_password_here}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
