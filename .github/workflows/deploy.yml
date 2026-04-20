@@ -44,13 +44,13 @@ jobs:
           script: |
             echo "Starting deployment at $(date)..."
 
-            if [ ! -d "/opt/capnong/.git" ]; then
-              echo "Error: /opt/capnong is not a git repository."
+            if [ ! -d "/opt/WDA2026-CAP-NONG/.git" ]; then
+              echo "Error: /opt/WDA2026-CAP-NONG is not a git repository."
               echo "Please run './deploy.sh setup' on the EC2 host first."
               exit 1
             fi
 
-            cd /opt/capnong
+            cd /opt/WDA2026-CAP-NONG
 
             # Preserve existing values for secrets not yet configured in GitHub
             REDIS_PASSWORD="${REDIS_PASSWORD:-$(grep '^REDIS_PASSWORD='          .env 2>/dev/null | cut -d= -f2- || true)}"
