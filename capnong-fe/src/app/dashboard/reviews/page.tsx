@@ -384,7 +384,7 @@ function SellerReviewsPage() {
 
 export default function DashboardReviewsPage() {
   return (
-    <ProtectedRoute allowedRoles={["FARMER", "HTX_MEMBER", "HTX_MANAGER"]}>
+    <ProtectedRoute roles={["FARMER", "HTX_MEMBER", "HTX_MANAGER"]}>
       <SellerReviewsPage />
     </ProtectedRoute>
   );

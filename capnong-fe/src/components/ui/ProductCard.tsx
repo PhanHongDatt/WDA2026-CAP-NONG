@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SafeImage } from "@/lib/safe-image";
 import Link from "next/link";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart, Minus, Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { shimmer } from "@/lib/image-placeholder";
 import { cartService } from "@/services";
@@ -24,6 +24,7 @@ export default function ProductCard({
 }: ProductCardProps) {
   const [liked, setLiked] = useState(false);
   const [added, setAdded] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   const badges: { label: string; color: string }[] = [];
   if (product.pesticide_free) badges.push({ label: "Không BVTV", color: "bg-green-600" });
@@ -35,8 +36,9 @@ export default function ProductCard({
     e.preventDefault();
     e.stopPropagation();
     try {
-      await cartService.addItem(product.id, 1);
+      await cartService.addItem(product.id, quantity);
       setAdded(true);
+      setQuantity(1); // Reset sau khi thêm
       setTimeout(() => setAdded(false), 1500);
     } catch (err) {
       console.error("Add to cart failed:", err);
@@ -122,19 +124,39 @@ export default function ProductCard({
           </span>
         </div>
 
-        {/* CTA — pill button */}
-        <button
-          type="button"
-          onClick={handleAddToCart}
-          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-full font-bold text-sm active:scale-[0.97] transition-all duration-200 ${
-            added
-              ? "bg-green-600 text-white"
-              : "bg-primary text-white hover:bg-primary-light hover:shadow-md hover:shadow-primary/20"
-          }`}
-        >
-          <ShoppingCart className="w-4 h-4" />
-          {added ? "Đã thêm ✓" : "Thêm vào giỏ"}
-        </button>
+        {/* CTA */}
+        <div className="flex items-center gap-2 mt-auto">
+          <div className="flex items-center bg-gray-100 dark:bg-surface-hover rounded-full">
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQuantity(Math.max(1, quantity - 1)); }}
+              className="w-8 h-8 flex items-center justify-center text-foreground-muted hover:text-foreground transition-colors"
+            >
+              <Minus className="w-3 h-3" />
+            </button>
+            <span className="w-6 text-center text-xs font-bold">{quantity}</span>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQuantity(quantity + 1); }}
+              className="w-8 h-8 flex items-center justify-center text-foreground-muted hover:text-foreground transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full font-bold text-sm active:scale-[0.97] transition-all duration-200 ${
+              added
+                ? "bg-green-600 text-white"
+                : "bg-primary text-white hover:bg-primary-light hover:shadow-md hover:shadow-primary/20"
+            }`}
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span className="truncate">{added ? "Đã thêm" : "Thêm vào giỏ"}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

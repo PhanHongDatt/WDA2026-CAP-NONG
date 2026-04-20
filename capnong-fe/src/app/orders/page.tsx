@@ -38,6 +38,7 @@ const STATUS_ORDER: OrderStatus[] = ["PENDING", "CONFIRMED", "PREPARING", "SHIPP
 const MOCK_BUYER_ORDERS: {
   id: string; status: OrderStatus; date: string; total: number;
   seller_name: string; seller_phone: string;
+  parentOrderId?: string;
   items: { productId?: string; orderItemId?: string; name: string; qty: number; price: number; image_url?: string }[];
   shipping_address: string;
   cancel_reason?: string;
@@ -135,8 +136,8 @@ function BuyerOrderContent() {
           const subOrders = order.sub_orders || [];
           for (const sub of subOrders) {
             flatSubOrders.push({
-               // ID of the sub-order is shown but prefixed with parent order code for context
                id: sub.id, 
+               parentOrderId: order.id,
                status: (sub.status || "PENDING") as OrderStatus,
                date: order.created_at ? new Date(order.created_at).toLocaleDateString("vi-VN") : "—",
                total: sub.subtotal || 0,
@@ -187,6 +188,34 @@ function BuyerOrderContent() {
   const [reviewedOrders, setReviewedOrders] = useState<Record<string, { rating: number; comment: string; reply?: string }>>({});
   const [reviewImages, setReviewImages] = useState<string[]>([]);
   const reviewFileRef = useRef<HTMLInputElement>(null);
+
+  const [cancelDialog, setCancelDialog] = useState<{ isOpen: boolean; subId?: string; parentId?: string } | null>(null);
+  const [isCanceling, setIsCanceling] = useState(false);
+
+  const handleCancelOrder = (subId: string, parentId?: string) => {
+    setCancelDialog({ isOpen: true, subId, parentId });
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelDialog?.subId) return;
+    setIsCanceling(true);
+    const { subId, parentId } = cancelDialog;
+    try {
+      const { apiOrderService } = await import("@/services/api/order");
+      if (parentId) {
+        await apiOrderService.cancelOrder(parentId);
+      }
+      setOrders(prev => prev.map(o => 
+        (o.parentOrderId === parentId && parentId) || o.id === subId 
+          ? { ...o, status: "CANCELLED", cancel_reason: "Khách hàng hủy" } : o
+      ));
+      setCancelDialog(null);
+    } catch {
+      alert("Không thể hủy đơn hàng. Có thể nhà vườn đã bắt đầu xử lý đơn.");
+    } finally {
+      setIsCanceling(false);
+    }
+  };
 
   // Fetch existing reviews to persist "Đã đánh giá" state across refreshes
   useEffect(() => {
@@ -445,6 +474,21 @@ function BuyerOrderContent() {
                     </div>
                   </div>
 
+                  {/* UC-Cancel: Buyer Cancel Button */}
+                  {order.status === "PENDING" && (
+                    <div className="border-t border-gray-100 dark:border-border pt-4 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleCancelOrder(order.id, order.parentOrderId)}
+                        disabled={isCanceling}
+                        className="flex items-center gap-1.5 text-sm px-4 py-2 border border-red-200 text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 font-bold transition-colors disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Hủy đơn hàng
+                      </button>
+                    </div>
+                  )}
+
                   {/* UC-27: Review section (only for DELIVERED) */}
                   {order.status === "DELIVERED" && (
                     <div className="border-t border-gray-100 dark:border-border pt-4">
@@ -564,6 +608,38 @@ function BuyerOrderContent() {
         </div>
       )}
       </>
+      )}
+
+      {/* Cancel Confirmation Dialog */}
+      {cancelDialog?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-surface rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-foreground mb-2 flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-red-500" />
+              Xác nhận hủy đơn
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-foreground-muted mb-6">
+              Bạn có chắc muốn hủy đơn hàng này không? Hành động này sẽ hủy toàn bộ các sản phẩm chung một mã đơn gốc.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelDialog(null)}
+                className="flex-1 px-4 py-2 bg-gray-100 dark:bg-surface-hover text-gray-700 dark:text-foreground rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                Giữ lại đơn
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancel}
+                disabled={isCanceling}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {isCanceling ? "Đang hủy..." : "Có, hủy đơn"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

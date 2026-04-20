@@ -14,6 +14,8 @@ import {
   Loader2,
   Download,
 } from "lucide-react";
+
+import { useToast } from "@/components/ui/Toast";
 import { generatePosterContent, type PosterContent } from "@/services/api/ai";
 
 type TabType = "caption" | "background" | "creative";
@@ -53,14 +55,40 @@ function ProcessingSimulator({ onDone }: { onDone: () => void }) {
 /* ─── Poster Result Display ─── */
 function PosterResultView({ content }: { content: PosterContent }) {
   const posterRef = useRef<HTMLDivElement>(null);
-  const cs = content.colorScheme || { primary: "#2d6a4f", accent: "#95d5b2", textOnPrimary: "#ffffff" };
+  const { showToast } = useToast();
+
+  const cs = content.colorScheme || { primary: "#FFFFFF", accent: "#A5D6A7", text_on_primary: "#333333", background: "#FFFFFF", textOnPrimary: "#333333" } as any;
+  const bgColor = cs.background || cs.primary || "#FFFFFF";
+  const textColor = cs.text_on_primary || cs.textOnPrimary || "#333333";
+  const accentColor = cs.accent || "#A5D6A7";
+
+  const handleDownloadHtml = async () => {
+    if (!posterRef.current) return;
+    try {
+      showToast("info", "Đang xử lý tải ảnh...");
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(posterRef.current, { scale: 2, useCORS: true, backgroundColor: bgColor });
+      const imgData = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = imgData;
+      a.download = `poster_${Date.now()}.png`;
+      a.click();
+      showToast("success", "Lưu layout thành công!");
+    } catch (e) {
+      console.error(e);
+      showToast("error", "Có lỗi xảy ra khi tạo ảnh.");
+    }
+  };
 
   // AI_IMAGE mode — show generated image
   if (content.imageUrl) {
     return (
       <div className="space-y-4">
-        <h4 className="font-bold text-lg text-success flex items-center gap-2">
-          <Check className="w-5 h-5" /> 🎨 Poster AI đã tạo thành công!
+        <h4 className="font-bold text-lg text-success flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2"><Check className="w-5 h-5" /> 🎨 Poster AI đã tạo thành công!</span>
+          <a href={content.imageUrl} download={`poster_${new Date().getTime()}.png`} className="border border-border px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-background-light flex gap-2 items-center text-foreground transition-colors">
+            <Download className="w-4 h-4" /> Tải ảnh
+          </a>
         </h4>
         <div className="rounded-2xl overflow-hidden shadow-xl border border-border bg-white">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -80,57 +108,79 @@ function PosterResultView({ content }: { content: PosterContent }) {
 
   // HTML template mode
   return (
-    <div className="space-y-4">
-      <h4 className="font-bold text-lg text-success flex items-center gap-2">
-        <Check className="w-5 h-5" /> Poster đã tạo thành công!
+    <div className="space-y-4 w-full">
+      <h4 className="font-bold text-lg text-success flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2"><Check className="w-5 h-5" /> Poster đã tạo thành công!</span>
+        <button type="button" onClick={handleDownloadHtml} className="border border-border px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-background-light flex gap-2 items-center text-foreground transition-colors shadow-sm">
+          <Download className="w-4 h-4" /> Lưu Layout
+        </button>
       </h4>
-      <div
-        ref={posterRef}
-        className="rounded-2xl overflow-hidden shadow-xl border border-border"
-        style={{ background: cs.primary || "#2d6a4f" }}
-      >
-        <div className="p-8 text-center space-y-4">
-          {content.badgeTexts && content.badgeTexts.length > 0 && (
-            <div className="flex flex-wrap gap-2 justify-center">
-              {content.badgeTexts.map((badge, i) => (
-                <span key={i} className="px-3 py-1 rounded-full text-xs font-bold"
-                  style={{ background: cs.accent, color: cs.primary }}>
-                  {badge}
-                </span>
-              ))}
+      <div className="flex justify-center bg-gray-50 dark:bg-background-light border border-border p-8 rounded-2xl overflow-hidden">
+        <div
+          ref={posterRef}
+          className="w-full max-w-sm mx-auto overflow-hidden shadow-2xl relative"
+          style={{ background: bgColor, aspectRatio: "3/4" }}
+        >
+          {/* Background Decorators */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `radial-gradient(circle at 20% 30%, ${accentColor} 0%, transparent 50%), radial-gradient(circle at 80% 80%, ${textColor} 0%, transparent 40%)` }} />
+          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
+          
+          <div className="p-8 h-full flex flex-col relative z-10 text-center">
+            {/* Top Badges */}
+            {content.badgeTexts && content.badgeTexts.length > 0 && (
+              <div className="flex flex-wrap gap-2 justify-center mb-10 mt-4">
+                {content.badgeTexts.map((badge, i) => (
+                  <span key={i} className="px-3.5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest shadow-sm ring-1 ring-black/5"
+                    style={{ background: accentColor, color: textColor }}>
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Center Content */}
+            <div className="space-y-6 my-auto pt-4 pb-8 flex-1 flex flex-col justify-center">
+              <h2 className="text-4xl sm:text-5xl font-black leading-[1.1] drop-shadow-sm tracking-tight"
+                style={{ color: textColor }}>
+                {content.headline}
+              </h2>
+              {content.tagline && (
+                <p className="text-sm font-medium mx-auto max-w-[280px] leading-relaxed" style={{ color: textColor, opacity: 0.85 }}>
+                  {content.tagline}
+                </p>
+              )}
+              {content.priceDisplay && (
+                <div className="inline-block mt-8 relative group mx-auto">
+                  <div className="absolute inset-0 blur-lg opacity-40 scale-110" style={{ background: accentColor }} />
+                  <div className="px-6 py-3 rounded-2xl text-2xl font-black shadow-lg transform -rotate-2 relative ring-2 ring-black/5"
+                    style={{ background: accentColor, color: textColor }}>
+                    {content.priceDisplay}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-          <h2 className="text-3xl font-black leading-tight"
-            style={{ color: cs.textOnPrimary || "#fff" }}>
-            {content.headline}
-          </h2>
-          {content.tagline && (
-            <p className="text-sm opacity-90" style={{ color: cs.textOnPrimary || "#fff" }}>
-              {content.tagline}
-            </p>
-          )}
-          {content.priceDisplay && (
-            <div className="inline-block px-6 py-3 rounded-xl text-2xl font-black"
-              style={{ background: cs.accent, color: cs.primary }}>
-              {content.priceDisplay}
+
+            {/* Bottom Footer */}
+            <div className="space-y-4 mt-auto mb-4">
+              {content.ctaText && (
+                <div className="px-8 py-3.5 rounded-xl font-black text-sm mx-auto inline-block shadow-lg uppercase tracking-wider"
+                  style={{ background: textColor, color: bgColor }}>
+                  {content.ctaText}
+                </div>
+              )}
+              {content.shopDisplay && (
+                <div className="flex items-center justify-center gap-2 text-xs font-bold pt-2 opacity-80" style={{ color: textColor }}>
+                  <span className="w-5 h-5 flex items-center justify-center rounded-full" style={{ background: "rgba(0,0,0,0.05)" }}>🛍️</span> 
+                  {content.shopDisplay}
+                </div>
+              )}
             </div>
-          )}
-          {content.shopDisplay && (
-            <p className="text-xs opacity-75" style={{ color: cs.textOnPrimary || "#fff" }}>
-              🏪 {content.shopDisplay}
-            </p>
-          )}
-          {content.ctaText && (
-            <button type="button" className="px-8 py-3 rounded-xl font-bold text-sm mt-2"
-              style={{ background: cs.textOnPrimary || "#fff", color: cs.primary }}>
-              {content.ctaText}
-            </button>
-          )}
+          </div>
         </div>
       </div>
       <details className="text-xs text-foreground-muted">
         <summary className="cursor-pointer hover:text-primary">Xem dữ liệu thô từ AI</summary>
-        <pre className="mt-2 p-3 bg-gray-50 rounded-lg overflow-auto max-h-48">
+        <pre className="mt-2 p-3 bg-gray-50 rounded-lg overflow-auto max-h-48 text-[10px]">
           {JSON.stringify(content, null, 2)}
         </pre>
       </details>
@@ -140,17 +190,28 @@ function PosterResultView({ content }: { content: PosterContent }) {
 
 export default function MarketingLabPage() {
   const [activeTab, setActiveTab] = useState<TabType>("caption");
-  const [productName, setProductName] = useState("Cam Sành Bến Tre");
+  const [productName, setProductName] = useState("");
   const [productDesc, setProductDesc] = useState("");
+  const [captionProvince, setCaptionProvince] = useState("");
+  const [captionStyle, setCaptionStyle] = useState<"FUNNY" | "RUSTIC" | "PROFESSIONAL">("FUNNY");
   const [generated, setGenerated] = useState(false);
   const [captionGenerating, setCaptionGenerating] = useState(false);
   const [captions, setCaptions] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [bgState, setBgState] = useState<"idle" | "processing" | "done">("idle");
+  const [bgInputImage, setBgInputImage] = useState<string | null>(null);
   const [posterTemplate, setPosterTemplate] = useState<string | null>(null);
+  const [uploadedPosterImage, setUploadedPosterImage] = useState<string | null>(null);
+  
+  const [posterProductName, setPosterProductName] = useState("");
+  const [posterDescription, setPosterDescription] = useState("");
+  const [posterPrice, setPosterPrice] = useState("35.000đ/KG");
+  const [posterProvince, setPosterProvince] = useState("Bến Tre");
+  const [posterShopName, setPosterShopName] = useState("Cạp Nông Shop");
+  
+  const { showToast } = useToast();
 
   // Poster AI state
-  const [posterProductName, setPosterProductName] = useState("Cam Sành Bến Tre");
   const [posterGenerating, setPosterGenerating] = useState(false);
   const [posterResult, setPosterResult] = useState<PosterContent | null>(null);
   const [posterError, setPosterError] = useState<string | null>(null);
@@ -167,15 +228,49 @@ export default function MarketingLabPage() {
     { id: "grok-imagine-image-pro", name: "Grok Image Pro", tag: "xAI Pro", price: "$0.07", color: "bg-red-600" },
   ];
 
-  const handleGenerate = () => {
-    if (!productName.trim()) return;
+  const handleGenerate = async () => {
+    if (!productName.trim()) {
+      showToast("error", "Vui lòng nhập tên sản phẩm!");
+      return;
+    }
+    if (!productDesc.trim()) {
+      showToast("error", "Vui lòng nhập mô tả ngắn gọn (Bắt buộc để AI viết caption)!");
+      return;
+    }
+    
     setCaptionGenerating(true);
     setGenerated(false);
-    setTimeout(() => {
-      setCaptions(generateCaptionsLocal(productName, productDesc));
-      setCaptionGenerating(false);
+    try {
+      const { generateCaptions } = await import("@/services/api/ai");
+      const res = await generateCaptions({
+        productName,
+        description: productDesc,
+        province: captionProvince,
+        style: captionStyle,
+      });
+
+      const mapped: Record<string, string> = {};
+      res.forEach(item => {
+        const lowerStyle = (item.style || "funny").toLowerCase();
+        let uiKey = "funny";
+        if (lowerStyle.includes("rustic") || lowerStyle.includes("authentic")) uiKey = "authentic";
+        if (lowerStyle.includes("pro") || lowerStyle.includes("chuyên")) uiKey = "professional";
+
+        const tags = Array.isArray(item.hashtags) ? item.hashtags.map(t => t.startsWith('#') ? t : `#${t}`).join(" ") : "";
+        mapped[uiKey] = `${item.text}\n\n${tags}`;
+      });
+
+      // Nếu backend trả về thiếu, xài local mock đắp vô
+      const localFallback = generateCaptionsLocal(productName, productDesc);
+      setCaptions({ ...localFallback, ...mapped });
       setGenerated(true);
-    }, 1500);
+      showToast("success", "Tạo caption thành công!");
+    } catch (e) {
+      console.error(e);
+      showToast("error", "AI đang bận hoặc có lỗi xảy ra! Vui lòng thử lại.");
+    } finally {
+      setCaptionGenerating(false);
+    }
   };
 
   const handleCopy = (style: string, text: string) => {
@@ -186,7 +281,14 @@ export default function MarketingLabPage() {
 
   /* ─── Poster GenAI Handler ─── */
   const handleGeneratePoster = async () => {
-    if (!posterProductName.trim() || !posterTemplate) return;
+    if (!posterProductName.trim()) {
+      showToast("error", "Vui lòng nhập tên sản phẩm!");
+      return;
+    }
+    if (!posterTemplate) {
+      showToast("error", "Vui lòng chọn template ấn phẩm!");
+      return;
+    }
 
     setPosterGenerating(true);
     setPosterResult(null);
@@ -195,17 +297,22 @@ export default function MarketingLabPage() {
     try {
       const isAiImage = posterTemplate === "ai_image";
       const templateMap: Record<string, string> = {
-        minimal: "FRESH_GREEN",
-        vibrant: "SUNSET_ORANGE",
-        pro: "DARK_PREMIUM",
+        minimal: "MINIMAL_WHITE",
+        vibrant: "WARM_HARVEST",
+        pro: "FRESH_GREEN",
       };
+
+      const parsedPrice = parseInt(posterPrice.replace(/\D/g, ""), 10) || 35000;
+      const unitCode = posterPrice.split("/")[1] || "KG";
 
       const result = await generatePosterContent({
         productName: posterProductName,
-        pricePerUnit: 35000,
-        unitCode: "KG",
-        shopName: "Cạp Nông Shop",
-        province: "Bến Tre",
+        description: posterDescription || posterProductName,
+        pricePerUnit: parsedPrice,
+        unitCode: unitCode,
+        shopName: posterShopName,
+        province: posterProvince,
+        bgRemovedImageUrl: uploadedPosterImage || undefined,
         mode: isAiImage ? "AI_IMAGE" : "HTML",
         templateId: isAiImage ? undefined : (templateMap[posterTemplate] || "FRESH_GREEN"),
         imageModel: isAiImage ? selectedImageModel : undefined,
@@ -263,22 +370,42 @@ export default function MarketingLabPage() {
               <div>
                 <label htmlFor="caption-product-name" className="block text-sm font-medium mb-2">Tên sản phẩm</label>
                 <input id="caption-product-name" type="text" value={productName}
+                  placeholder="Nhập tên sản phẩm"
                   onChange={(e) => setProductName(e.target.value)}
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
               </div>
               <div>
-                <label htmlFor="caption-product-desc" className="block text-sm font-medium mb-2">Mô tả ngắn (tùy chọn)</label>
+                <label htmlFor="caption-product-desc" className="block text-sm font-medium mb-2">Mô tả ngắn (bắt buộc)</label>
                 <input id="caption-product-desc" type="text" value={productDesc}
                   onChange={(e) => setProductDesc(e.target.value)}
                   placeholder="Ví dụ: Cam vừa hái vườn, ngọt lịm, thịt mọng"
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="caption-province" className="block text-sm font-medium mb-2">Tỉnh / Vùng miền (tùy chọn)</label>
+                  <input id="caption-province" type="text" value={captionProvince}
+                    onChange={(e) => setCaptionProvince(e.target.value)}
+                    placeholder="Ví dụ: Vĩnh Long, Miền Tây..."
+                    className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
+                </div>
+                <div>
+                  <label htmlFor="caption-style" className="block text-sm font-medium mb-2">Phong cách Caption</label>
+                  <select id="caption-style" value={captionStyle}
+                    onChange={(e) => setCaptionStyle(e.target.value as any)}
+                    className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-background">
+                    <option value="FUNNY">😄 Hài hước & Gần gũi</option>
+                    <option value="RUSTIC">🌾 Chân chất nông dân</option>
+                    <option value="PROFESSIONAL">💼 Khách mời / Chuyên nghiệp</option>
+                  </select>
+                </div>
+              </div>
               <button type="button" onClick={handleGenerate} disabled={captionGenerating || !productName.trim()}
-                className="w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50">
+                className="w-full bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-light transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-2">
                 {captionGenerating ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> AI đang viết caption...</>
                 ) : (
-                  <><Sparkles className="w-5 h-5" /> Tạo 3 caption bằng AI</>
+                  <><Sparkles className="w-5 h-5" /> Viết caption bằng AI</>
                 )}
               </button>
             </div>
@@ -309,33 +436,13 @@ export default function MarketingLabPage() {
       {activeTab === "background" && (
         <div className="bg-white border border-border rounded-xl p-6 shadow-sm">
           <h3 className="font-bold text-lg mb-4">Tách nền ảnh sản phẩm</h3>
-          {bgState === "idle" && (
-            <div className="border-2 border-dashed border-border rounded-xl p-10 text-center hover:border-primary transition-colors cursor-pointer"
-              onClick={() => setBgState("processing")}>
-              <Upload className="w-12 h-12 text-foreground-muted mx-auto mb-3" />
-              <p className="font-medium text-sm">Kéo thả hoặc nhấn để tải ảnh sản phẩm</p>
-              <p className="text-xs text-foreground-muted mt-1">PNG, JPG, WEBP • Tối đa 5MB</p>
-              <p className="text-xs text-primary font-bold mt-3">✨ AI tự động tách nền bằng WASM — không tốn server</p>
-            </div>
-          )}
-          {bgState === "processing" && <ProcessingSimulator onDone={() => setBgState("done")} />}
-          {bgState === "done" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl bg-gray-100 aspect-square flex items-center justify-center text-4xl">🍊</div>
-                <div className="rounded-xl aspect-square flex items-center justify-center text-4xl checkerboard-bg">🍊</div>
-              </div>
-              <div className="flex gap-3">
-                <button type="button" className="flex-1 bg-primary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary-light transition-colors">
-                  <Download className="w-4 h-4" /> Tải ảnh đã tách nền
-                </button>
-                <button type="button" onClick={() => setBgState("idle")}
-                  className="border border-border px-4 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
-                  Ảnh khác
-                </button>
-              </div>
-            </div>
-          )}
+          <div className="border border-dashed border-border rounded-xl p-12 text-center bg-gray-50/50 dark:bg-background-light">
+            <span className="text-4xl block mb-4">🚧</span>
+            <h4 className="font-bold text-foreground mb-2">Chức năng đang được xây dựng</h4>
+            <p className="text-sm text-foreground-muted max-w-sm mx-auto">
+              Tính năng tách nền WebAssembly trực tiếp trên trình duyệt hiện đang trong quá trình phát triển và sẽ sớm được ra mắt trong bản cập nhật tiếp theo.
+            </p>
+          </div>
         </div>
       )}
 
@@ -346,10 +453,38 @@ export default function MarketingLabPage() {
             <h3 className="font-bold text-lg mb-4">Tạo ấn phẩm quảng cáo bằng AI</h3>
             <div className="space-y-4">
               <div>
-                <label htmlFor="marketing-product-name" className="block text-sm font-medium mb-2">Tên sản phẩm</label>
+                <label htmlFor="marketing-product-name" className="block text-sm font-medium mb-2">Tên sản phẩm (Bắt buộc)</label>
                 <input id="marketing-product-name" type="text" value={posterProductName}
+                  placeholder="Nhập tên sản phẩm"
                   onChange={(e) => setPosterProductName(e.target.value)}
                   className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
+              </div>
+              <div>
+                <label htmlFor="marketing-description" className="block text-sm font-medium mb-2">Mô tả định hướng (Bắt buộc)</label>
+                <input id="marketing-description" type="text" value={posterDescription}
+                  placeholder="Ví dụ: trái to, đỏ mọng, phù hợp biếu tặng..."
+                  onChange={(e) => setPosterDescription(e.target.value)}
+                  className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="marketing-province" className="block text-sm font-medium mb-2">Tỉnh/Thành</label>
+                  <input id="marketing-province" type="text" value={posterProvince}
+                    onChange={(e) => setPosterProvince(e.target.value)}
+                    className="w-full px-4 py-3 text-sm border border-border rounded-xl outline-none" />
+                </div>
+                <div>
+                  <label htmlFor="marketing-price" className="block text-sm font-medium mb-2">Giá hiển thị</label>
+                  <input id="marketing-price" type="text" value={posterPrice}
+                    onChange={(e) => setPosterPrice(e.target.value)}
+                    className="w-full px-4 py-3 text-sm border border-border rounded-xl outline-none" />
+                </div>
+                <div>
+                  <label htmlFor="marketing-shop" className="block text-sm font-medium mb-2">Tên cửa hàng</label>
+                  <input id="marketing-shop" type="text" value={posterShopName}
+                    onChange={(e) => setPosterShopName(e.target.value)}
+                    className="w-full px-4 py-3 text-sm border border-border rounded-xl outline-none" />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-3">Chọn template poster (bắt buộc)</label>
@@ -412,10 +547,36 @@ export default function MarketingLabPage() {
                 </div>
               )}
               <div>
-                <label htmlFor="marketing-upload" className="block text-sm font-medium mb-2">Ảnh sản phẩm (để AI tách nền)</label>
-                <div className="border-2 border-dashed border-gray-300 dark:border-border rounded-xl p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-foreground-muted">Kéo thả hoặc click để chọn ảnh</p>
+                <label htmlFor="poster-image-upload" className="block text-sm font-medium mb-2">Ảnh sản phẩm (AI sẽ dùng làm tư liệu)</label>
+                <div 
+                  className="border-2 border-dashed border-gray-300 dark:border-border rounded-xl p-6 text-center hover:border-primary transition-colors cursor-pointer relative"
+                  onClick={() => document.getElementById("poster-image-upload")?.click()}
+                >
+                  <input 
+                    id="poster-image-upload" 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setUploadedPosterImage(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  {uploadedPosterImage ? (
+                    <div className="relative aspect-video rounded-lg overflow-hidden border border-border">
+                      <img src={uploadedPosterImage} alt="preview" className="w-full h-full object-contain" />
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-foreground-muted">Kéo thả hoặc click để chọn ảnh</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Nên dùng ảnh đã tách nền bên tab Tách Nền AI</p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -428,7 +589,7 @@ export default function MarketingLabPage() {
                 )}
               </button>
               <p className="text-xs text-foreground-muted text-center">
-                AI sẽ tách nền → generate nội dung → map vào template → xuất file PNG (html2canvas)
+                Quá trình này có thể kéo dài lên đến 1 phút.
               </p>
             </div>
           </div>

@@ -77,10 +77,10 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
 export default function OrderManagementPage() {
   const [activeFilter, setActiveFilter] = useState("all");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<{ id: string, buyer: string, phone: string, products: string, total: number, status: OrderStatus, date: string }[]>([]);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [customCancelReason, setCustomCancelReason] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingData, setLoadingData] = useState(true);
   const ITEMS_PER_PAGE = 5;
@@ -231,15 +231,19 @@ export default function OrderManagementPage() {
 
     setProcessingIds((prev) => new Set(prev).add(id));
 
+    const finalReason = cancelReason === "other" ? customCancelReason : cancelReason;
+    if (!finalReason) return;
+
     // Optimistic cancel + count
     setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: "CANCELLED" as OrderStatus } : o));
     adjustCounts(oldStatus, "CANCELLED");
     setCancellingId(null);
     setCancelReason("");
+    setCustomCancelReason("");
     
     try {
        const { apiOrderService } = await import("@/services/api/order");
-       await apiOrderService.updateSubOrderStatus(id, "CANCELLED");
+       await apiOrderService.updateSubOrderStatus(id, "CANCELLED", finalReason);
        fetchStatusCounts();
     } catch {
        // Rollback on fail
@@ -421,16 +425,25 @@ export default function OrderManagementPage() {
                     <option value="buyer_request">Khách yêu cầu hủy</option>
                     <option value="other">Lý do khác</option>
                   </select>
+                  {cancelReason === "other" && (
+                    <input
+                      type="text"
+                      value={customCancelReason}
+                      onChange={(e) => setCustomCancelReason(e.target.value)}
+                      placeholder="Nhập lý do cụ thể..."
+                      className="w-full px-3 py-2 bg-white dark:bg-background border border-red-200 dark:border-red-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+                    />
+                  )}
                   <div className="flex gap-2">
                     <button type="button"
                       onClick={() => cancelReason && handleCancel(order.id)}
-                      disabled={!cancelReason}
+                      disabled={!cancelReason || (cancelReason === "other" && !customCancelReason.trim())}
                       className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
                     >
                       Xác nhận hủy
                     </button>
                     <button type="button"
-                      onClick={() => { setCancellingId(null); setCancelReason(""); }}
+                      onClick={() => { setCancellingId(null); setCancelReason(""); setCustomCancelReason(""); }}
                       className="border border-gray-200 dark:border-border px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-foreground-muted hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors"
                     >
                       Thôi

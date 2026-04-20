@@ -138,7 +138,7 @@ export interface IOrderService {
   /** GET /api/orders/seller — Farmer xem đơn con */
   getSellerSubOrders(opts?: { status?: string; page?: number; size?: number }): Promise<unknown>;
   /** PATCH /api/orders/sub-orders/{subOrderId}/status */
-  updateSubOrderStatus(subOrderId: string, status: string): Promise<void>;
+  updateSubOrderStatus(subOrderId: string, status: string, cancelReason?: string): Promise<void>;
   /** GET /api/orders/sub-orders/{subOrderId} — Chi tiết đơn con */
   getSubOrderDetail(subOrderId: string): Promise<unknown>;
 }

@@ -80,8 +80,10 @@ export const apiOrderService: IOrderService = {
   },
 
   /** PATCH /api/orders/sub-orders/{subOrderId}/status — Farmer cập nhật trạng thái */
-  async updateSubOrderStatus(subOrderId: string, status: string): Promise<void> {
-    await api.patch(`/api/orders/sub-orders/${subOrderId}/status`, { status });
+  async updateSubOrderStatus(subOrderId: string, status: string, cancelReason?: string): Promise<void> {
+    const payload: Record<string, string> = { status };
+    if (cancelReason) payload.cancel_reason = cancelReason;
+    await api.patch(`/api/orders/sub-orders/${subOrderId}/status`, payload);
   },
 
   /** GET /api/orders/sub-orders/{subOrderId} — Farmer xem chi tiết 1 đơn con */
