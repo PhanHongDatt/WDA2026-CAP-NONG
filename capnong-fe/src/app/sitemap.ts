@@ -34,7 +34,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Product pages
   const productRoutes: MetadataRoute.Sitemap = productSlugs.map((slug) => ({
-    url: `${BASE_URL}/products/${slug}`,
+    url: `${BASE_URL}/product/${slug}`,
     lastModified: now,
     changeFrequency: "weekly" as const,
     priority: 0.7,

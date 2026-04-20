@@ -55,7 +55,7 @@ export async function extractFromTranscript(
   transcript: string,
   language: string = "vi-VN"
 ): Promise<VoiceExtractResult> {
-  const res = await api.post("/api/voice/extract", { transcript, language });
+  const res = await api.post("/api/voice/extract", { transcript, language }, { timeout: 60000 });
   return res.data.data || res.data;
 }
 

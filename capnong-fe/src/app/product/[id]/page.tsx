@@ -23,12 +23,22 @@ import { formatCurrency } from "@/lib/utils";
 import type { Product } from "@/types/product";
 import ProductCard from "@/components/ui/ProductCard";
 import { useWishlist } from "@/hooks/useWishlist";
+import { getProductReviews, type ReviewResponse } from "@/services/api/review";
 
 const FARMING_METHOD_LABEL: Record<string, string> = {
   ORGANIC: "🌿 Hữu cơ",
   VIETGAP: "✅ VietGAP",
   GLOBALGAP: "🌍 GlobalGAP",
   TRADITIONAL: "🌾 Truyền thống",
+};
+
+const CATEGORY_LABEL: Record<string, string> = {
+  FRUIT: "Trái cây",
+  VEGETABLE: "Rau củ",
+  MEAT: "Thịt gia súc/gia cầm",
+  SEAFOOD: "Thủy hải sản",
+  SPICE: "Gia vị",
+  GRAIN: "Lúa gạo & Ngũ cốc",
 };
 
 export default function ProductDetailPage() {
@@ -42,6 +52,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const wishlisted = isWishlisted(id);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
 
@@ -54,6 +65,10 @@ export default function ProductDetailPage() {
       try {
         const seasonal = await productService.getSeasonalProducts();
         setRelatedProducts(seasonal.filter((s) => s.id !== id).slice(0, 4));
+      } catch { /* ignore */ }
+      try {
+        const revs = await getProductReviews(id, 0, 5);
+        setReviews(revs.content || []);
       } catch { /* ignore */ }
       setLoading(false);
     }
@@ -265,9 +280,9 @@ export default function ProductDetailPage() {
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: "Xuất xứ", value: product.location_detail },
-              { label: "Phương pháp", value: FARMING_METHOD_LABEL[product.farming_method] },
+              { label: "Phương pháp", value: FARMING_METHOD_LABEL[product.farming_method] || "Truyền thống" },
               { label: "Thu hoạch", value: product.harvest_date || "—" },
-              { label: "Danh mục", value: product.category },
+              { label: "Danh mục", value: CATEGORY_LABEL[product.category || ""] || product.category || "—" },
             ].map((item) => (
               <div key={item.label} className="bg-gray-50 dark:bg-background-light rounded-lg p-3">
                 <p className="text-[10px] text-foreground-muted uppercase tracking-wider">{item.label}</p>
@@ -277,6 +292,78 @@ export default function ProductDetailPage() {
           </div>
         </section>
       )}
+
+      {/* Reviews Section */}
+      <section className="bg-white dark:bg-surface rounded-xl border border-border p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-foreground">Đánh giá từ khách hàng</h2>
+          <div className="text-sm text-primary font-bold">
+            {product.total_reviews > 0 ? `${product.total_reviews} đánh giá` : "Chưa có đánh giá"}
+          </div>
+        </div>
+        
+        {reviews.length > 0 ? (
+          <div className="space-y-6">
+            {reviews.map((review) => (
+              <div key={review.id} className="flex gap-4 border-b border-border pb-6 last:border-0 last:pb-0">
+                <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0 overflow-hidden">
+                  {review.author?.avatar_url ? (
+                    <Image
+                      src={review.author.avatar_url}
+                      alt={review.author.full_name || "User"}
+                      width={40}
+                      height={40}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                      {review.author?.full_name?.charAt(0) || "U"}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm text-foreground">{review.author?.full_name || "Người dùng ẩn danh"}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex text-yellow-500 gap-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-3 h-3 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200 dark:fill-gray-700 dark:text-gray-700"}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-foreground-muted">
+                      {new Date(review.created_at).toLocaleDateString("vi-VN")}
+                    </span>
+                  </div>
+                  {review.comment && (
+                    <p className="text-sm mt-3 text-gray-700 dark:text-gray-300">
+                      {review.comment}
+                    </p>
+                  )}
+                  {review.images && review.images.length > 0 && (
+                    <div className="flex gap-2 mt-3 overflow-x-auto">
+                      {review.images.map((img, idx) => (
+                        <div key={idx} className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden border border-border shrink-0">
+                          <Image src={img} alt="Review photo" width={64} height={64} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {review.seller_reply && (
+                    <div className="mt-4 bg-gray-50 dark:bg-background-light p-3 rounded-lg border border-border">
+                      <p className="text-xs font-bold text-primary mb-1">Phản hồi từ Nhà phân phối</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{review.seller_reply}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-foreground-muted text-sm mb-2">Chưa có đánh giá nào cho sản phẩm này.</p>
+            <p className="text-xs text-gray-400">Hãy là người đầu tiên trải nghiệm và để lại đánh giá nhé!</p>
+          </div>
+        )}
+      </section>
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

@@ -56,7 +56,10 @@ export default function LoginPage() {
                   access_token: string;
                   refresh_token: string;
                   username: string;
+                  phone?: string;
+                  email?: string;
                   role: string;
+                  shop_slug?: string;
                 };
               };
             }>("/api/auth/oauth/google", {
@@ -73,7 +76,8 @@ export default function LoginPage() {
               localStorage.setItem("capnong-user", JSON.stringify({
                 username: result.auth_response.username,
                 role: result.auth_response.role,
-                email: result.email,
+                email: result.auth_response.email || result.email,
+                phone: result.auth_response.phone,
               }));
               window.dispatchEvent(new Event("auth-changed"));
               showToast("success", "Đăng nhập Google thành công!");

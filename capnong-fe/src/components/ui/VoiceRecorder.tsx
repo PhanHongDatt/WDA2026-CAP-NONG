@@ -284,10 +284,10 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const safeConf = (obj: any) => {
         if (!obj) return 0;
+        if (typeof obj === "object" && obj.confidence !== undefined && obj.confidence !== null) return obj.confidence;
         if (typeof obj === "object" && obj.confidence_level) {
           return obj.confidence_level === "high" ? 0.95 : obj.confidence_level === "medium" ? 0.7 : 0.4;
         }
-        if (typeof obj === "object" && obj.confidence) return obj.confidence;
         return obj === "HIGH" ? 0.95 : obj === "MEDIUM" ? 0.7 : 0.4;
       };
 

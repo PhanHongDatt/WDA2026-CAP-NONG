@@ -92,7 +92,7 @@ export const apiAuthService: IAuthService = {
     const refreshToken = localStorage.getItem("refresh_token");
     if (refreshToken) {
       // Fire-and-forget
-      api.post("/api/auth/logout", { refreshToken }).catch(() => {});
+      api.post("/api/auth/logout", { refresh_token: refreshToken }).catch(() => {});
     }
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");

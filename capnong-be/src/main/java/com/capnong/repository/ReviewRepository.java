@@ -20,4 +20,15 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
 
     @Query("SELECT AVG(r.rating), COUNT(r) FROM Review r WHERE r.productId = :productId")
     Object[] getProductRatingStats(@Param("productId") UUID productId);
+
+    // Buyer: xem đánh giá của chính mình
+    Page<Review> findByAuthorIdOrderByCreatedAtDesc(UUID authorId, Pageable pageable);
+
+    // Seller: xem tất cả đánh giá về sản phẩm của shop mình
+    @Query("SELECT r FROM Review r WHERE r.productId IN (SELECT p.id FROM Product p WHERE p.shop.owner.username = :username)")
+    Page<Review> findByShopOwnerUsernameOrderByCreatedAtDesc(@Param("username") String username, Pageable pageable);
+
+    // Dashboard - Average rating across all farmer's products
+    @Query("SELECT COALESCE(AVG(r.rating), 0), COUNT(r) FROM Review r WHERE r.productId IN (SELECT p.id FROM Product p WHERE p.shop.owner.username = :username)")
+    Object[] getShopRatingStatsByOwnerUsername(@Param("username") String username);
 }

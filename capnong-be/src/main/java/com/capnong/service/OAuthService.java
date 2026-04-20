@@ -9,4 +9,5 @@ public interface OAuthService {
     OAuthCheckResponse checkGoogleLogin(String supabaseToken);
     AuthResponse registerWithGoogle(String supabaseToken, String username);
     void linkGoogleAccount(UUID userId, String supabaseToken);
+    void unlinkGoogleAccount(UUID userId);
 }

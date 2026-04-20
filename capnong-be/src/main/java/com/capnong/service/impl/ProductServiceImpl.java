@@ -26,6 +26,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
@@ -94,6 +96,14 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<ProductResponse> getSellerProducts(String username, Pageable pageable) {
+        Page<Product> products = productRepository.findByShop_Owner_Username(username, pageable);
+        return products.map(productMapper::toProductResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "products", key = "#productId")
     public ProductResponse getProductById(UUID productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
@@ -106,6 +116,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", key = "#productId")
     public ProductResponse updateProduct(UUID productId, ProductCreateRequest request, String username) {
         Product product = findProductOwnedBy(productId, username);
         Unit unit = findUnit(request.getUnitCode());
@@ -139,6 +150,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", key = "#productId")
     public ProductResponse updateStatus(UUID productId, String status, String username) {
         Product product = findProductOwnedBy(productId, username);
         try {
@@ -153,6 +165,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", key = "#productId")
     public ProductResponse updatePrice(UUID productId, BigDecimal newPrice, String username) {
         Product product = findProductOwnedBy(productId, username);
         if (newPrice == null || newPrice.compareTo(BigDecimal.ZERO) <= 0) {
@@ -164,6 +177,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", key = "#productId")
     public ProductResponse updateQuantity(UUID productId, BigDecimal newQuantity, String username) {
         Product product = findProductOwnedBy(productId, username);
         if (newQuantity == null || newQuantity.compareTo(BigDecimal.ZERO) < 0) {
@@ -183,6 +197,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", key = "#productId")
     public void softDeleteProduct(UUID productId, String username) {
         Product product = findProductOwnedBy(productId, username);
         product.softDelete(username);
@@ -195,6 +210,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", key = "#productId")
     public ProductResponse uploadProductImages(UUID productId, List<MultipartFile> files, String username) {
         Product product = findProductOwnedBy(productId, username);
 
@@ -224,6 +240,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", key = "#productId")
     public void deleteProductImage(UUID productId, UUID imageId, String username) {
         findProductOwnedBy(productId, username);
         ProductImage image = productImageRepository.findById(imageId)
@@ -238,6 +255,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "products", key = "#productId")
     public void deleteProductImages(UUID productId, List<UUID> imageIds, String username) {
         findProductOwnedBy(productId, username);
         for (UUID imageId : imageIds) {

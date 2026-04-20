@@ -48,21 +48,27 @@ export default function PriceAdvisor({ productName, currentPrice, onPriceChange 
 
     // Try real API first
     try {
-      const aiApi = await import("@/services/api/ai");
-      const result = await aiApi.getPriceAdvice({
+      const { getPriceAdvice } = await import("@/services/api/ai");
+      const result = await getPriceAdvice({
         productName,
         category: "",
         province: "",
         currentPrice: Number(currentPrice) || undefined,
       });
       if (result.priceRange) {
+        const avgPrice = result.suggestedPrice || Math.round((result.priceRange.min + result.priceRange.max) / 2);
         setData({
           min: result.priceRange.min,
-          avg: result.suggestedPrice || Math.round((result.priceRange.min + result.priceRange.max) / 2),
+          avg: avgPrice,
           max: result.priceRange.max,
           trend: result.marketTrend || "chưa có dữ liệu",
           matched: productName,
         });
+        
+        // Auto-fill price if currently empty
+        if (!currentPrice || Number(currentPrice) === 0) {
+          onPriceChange?.(String(avgPrice));
+        }
         return;
       }
     } catch {

@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,4 +23,40 @@ public interface SubOrderRepository extends JpaRepository<SubOrder, UUID> {
     // Paginated versions for seller dashboard
     Page<SubOrder> findByShop_IdAndStatusOrderByCreatedAtDesc(UUID shopId, OrderStatus status, Pageable pageable);
     Page<SubOrder> findByShop_IdOrderByCreatedAtDesc(UUID shopId, Pageable pageable);
+
+    // Dashboard - Farmer
+    @Query("SELECT COUNT(s) FROM SubOrder s WHERE s.shop.owner.username = :username")
+    long countOrdersByFarmerUsername(@Param("username") String username);
+
+    @Query("SELECT COUNT(s) FROM SubOrder s WHERE s.shop.owner.username = :username AND s.status IN ('PENDING', 'PROCESSING', 'SHIPPED')")
+    long countPendingOrdersByFarmerUsername(@Param("username") String username);
+
+    @Query("SELECT COALESCE(SUM(s.subtotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.username = :username")
+    java.math.BigDecimal calculateGrossRevenueByFarmerUsername(@Param("username") String username);
+
+    @Query("SELECT COALESCE(SUM(s.subtotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.username = :username AND s.status = 'COMPLETED'")
+    java.math.BigDecimal calculateNetRevenueByFarmerUsername(@Param("username") String username);
+
+    // Dashboard - HTX Manager
+    @Query("SELECT COUNT(s) FROM SubOrder s WHERE s.shop.owner.htx.id = :htxId")
+    long countOrdersByHtxId(@Param("htxId") UUID htxId);
+
+    @Query("SELECT COALESCE(SUM(s.subtotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.htx.id = :htxId")
+    java.math.BigDecimal calculateMemberRetailGrossRevenueByHtxId(@Param("htxId") UUID htxId);
+
+    @Query("SELECT COALESCE(SUM(s.subtotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.htx.id = :htxId AND s.status = 'COMPLETED'")
+    java.math.BigDecimal calculateMemberRetailNetRevenueByHtxId(@Param("htxId") UUID htxId);
+
+    // Dashboard - Monthly revenue for Farmer (group by month of the current year)
+    @Query("""
+        SELECT EXTRACT(MONTH FROM s.createdAt) AS month, COALESCE(SUM(s.subtotal + s.shippingFee), 0) AS revenue
+        FROM SubOrder s
+        WHERE s.shop.owner.username = :username
+          AND EXTRACT(YEAR FROM s.createdAt) = :year
+          AND s.status NOT IN ('CANCELLED')
+        GROUP BY EXTRACT(MONTH FROM s.createdAt)
+        ORDER BY month
+    """)
+    java.util.List<Object[]> getMonthlyRevenueByFarmerUsername(@Param("username") String username, @Param("year") int year);
 }
+
