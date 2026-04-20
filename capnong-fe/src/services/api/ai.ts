@@ -24,8 +24,12 @@ export interface RefineResult {
 }
 
 export async function refineDescription(rawText: string, productName?: string): Promise<RefineResult> {
-  const res = await api.post("/api/ai/refine-description", { rawText, productName });
-  return res.data.data || res.data;
+  const res = await api.post("/api/ai/refine-description", { rawText, productNameHint: productName }, { timeout: 60000 });
+  const data = res.data.data || res.data;
+  return {
+    refinedText: data.refined_text || data.refinedText,
+    changesSummary: data.changes_summary || data.changesSummary
+  };
 }
 
 /* ─── AI Session Polling ─── */
@@ -94,7 +98,13 @@ export async function generateCaptions(data: {
   style: CaptionStyle;
 }): Promise<CaptionResult[]> {
 
-  const res = await api.post("/api/ai/caption", data);
+  const body = {
+    product_name: data.productName,
+    description: data.description,
+    province: data.province,
+    style: data.style,
+  };
+  const res = await api.post("/api/ai/caption", body, { timeout: 30000 });
   const sessionData = res.data.data || res.data;
 
   // BE trả sessionId → poll để lấy kết quả
@@ -105,11 +115,34 @@ export async function generateCaptions(data: {
     }
     // Extract captions from session result
     const resultData = result.data as Record<string, unknown> | undefined;
-    return (result.captions || resultData?.captions || []) as CaptionResult[];
+    const captionData = result.captions || resultData?.caption || resultData?.captions;
+    
+    if (captionData && typeof captionData === 'object' && !Array.isArray(captionData)) {
+       const cd = captionData as Record<string, any>;
+       const caps = Array.isArray(cd.captions) ? cd.captions : [];
+       const globalTags = Array.isArray(cd.hashtags) ? cd.hashtags : [];
+       return caps.map((c: any) => ({
+         style: c.style,
+         text: c.text,
+         hashtags: c.hashtags || globalTags
+       }));
+    } else if (Array.isArray(captionData)) {
+       return captionData as CaptionResult[];
+    }
+    return [];
   }
 
   // Fallback: nếu BE trả trực tiếp (không async)
-  return sessionData.captions || sessionData || [];
+  if (sessionData.captions && typeof sessionData.captions === 'object' && !Array.isArray(sessionData.captions)) {
+     const caps = Array.isArray(sessionData.captions.captions) ? sessionData.captions.captions : [];
+     const globalTags = Array.isArray(sessionData.captions.hashtags) ? sessionData.captions.hashtags : [];
+     return caps.map((c: any) => ({
+       style: c.style,
+       text: c.text,
+       hashtags: c.hashtags || globalTags
+     }));
+  }
+  return Array.isArray(sessionData.captions) ? sessionData.captions : (Array.isArray(sessionData) ? sessionData : []);
 }
 
 /* ─── Poster Content (async) ─── */
@@ -137,6 +170,7 @@ export interface PosterContent {
  */
 export async function generatePosterContent(data: {
   productName: string;
+  description?: string;
   pricePerUnit?: number;
   unitCode?: string;
   availableQuantity?: number;
@@ -153,7 +187,7 @@ export async function generatePosterContent(data: {
   // BE nhận snake_case
   const body: Record<string, unknown> = {
     product_name: data.productName,
-    description: data.productName,
+    description: data.productName, // pass name as description
     province: data.province,
     price_display: data.pricePerUnit ? `${data.pricePerUnit.toLocaleString("vi-VN")}đ/${data.unitCode || "kg"}` : undefined,
     shop_name: data.shopName,
@@ -162,8 +196,8 @@ export async function generatePosterContent(data: {
     mode: data.mode || "HTML",
   };
   if (data.imageModel) body.image_model = data.imageModel;
-
-  const res = await api.post("/api/ai/poster", body, { timeout: 30000 });
+  // Image generation models via Gemini can take 20-30s. Allow 60s timeout.
+  const res = await api.post("/api/ai/poster", body, { timeout: 60000 });
   const sessionData = res.data.data || res.data;
 
   // BE trả sessionId hoặc session_id
@@ -174,7 +208,6 @@ export async function generatePosterContent(data: {
       throw new Error(result.errorMessage || "Poster generation failed");
     }
     // Extract poster data from session result
-    // BE (snake_case Jackson): { poster: { mode, image_base64?, mime_type?, headline?, ... } }
     const poster = (result.posterContent || {}) as Record<string, unknown>;
     console.log("[AI] Session result posterContent:", JSON.stringify(poster).substring(0, 300));
     console.log("[AI] poster.mode:", poster.mode, "| poster.image_base64 exists:", !!poster.image_base64);
@@ -255,6 +288,12 @@ export async function getPriceAdvice(data: {
   province: string;
   currentPrice?: number;
 }): Promise<PriceAdviceResult> {
-  const res = await api.post("/api/ai/price-advice", data);
-  return res.data.data || res.data;
+  const res = await api.post("/api/ai/price-advice", data, { timeout: 60000 });
+  const resData = res.data.data || res.data;
+  return {
+    suggestedPrice: resData.suggested_price || resData.suggestedPrice || 0,
+    priceRange: resData.price_range || resData.priceRange || { min: 0, max: 0 },
+    marketTrend: resData.market_trend || resData.marketTrend || "",
+    reasoning: resData.reasoning || ""
+  };
 }

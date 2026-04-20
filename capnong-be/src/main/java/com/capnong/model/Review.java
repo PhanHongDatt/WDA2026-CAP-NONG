@@ -31,7 +31,7 @@ public class Review {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String comment;
 
-    @Column(columnDefinition = "TEXT[]")
+    @Column(columnDefinition = "TEXT")
     private String images;
 
     @Column(name = "seller_reply", columnDefinition = "TEXT")

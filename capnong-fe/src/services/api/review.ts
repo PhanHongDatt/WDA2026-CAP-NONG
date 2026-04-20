@@ -19,14 +19,18 @@ export interface ReviewData {
 
 export interface ReviewResponse {
   id: string;
-  authorId: string;
-  productId: string;
-  orderItemId: string;
+  author: {
+    id: string;
+    full_name: string;
+    avatar_url?: string;
+  };
+  product_id: string;
+  order_item_id?: string;
   rating: number;
   comment?: string;
   images?: string[];
-  sellerReply?: string;
-  createdAt: string;
+  seller_reply?: string;
+  created_at: string;
 }
 
 /**
@@ -52,7 +56,14 @@ export async function getProductReviews(
  * Tạo đánh giá sản phẩm (BUYER only)
  */
 export async function createReview(review: ReviewData): Promise<ReviewResponse> {
-  const res = await api.post("/api/reviews", review);
+  const payload = {
+    product_id: review.productId,
+    order_item_id: review.orderItemId,
+    rating: review.rating,
+    comment: review.comment,
+    images: review.images,
+  };
+  const res = await api.post("/api/reviews", payload);
   return res.data.data || res.data;
 }
 
@@ -62,4 +73,36 @@ export async function createReview(review: ReviewData): Promise<ReviewResponse> 
 export async function replyToReview(reviewId: string, reply: string): Promise<ReviewResponse> {
   const res = await api.post(`/api/reviews/${reviewId}/reply`, { reply });
   return res.data.data || res.data;
+}
+
+/**
+ * Lấy danh sách review của buyer hiện tại
+ */
+export async function getMyReviews(
+  page: number = 0,
+  size: number = 100
+): Promise<{ content: ReviewResponse[]; totalElements: number; totalPages: number }> {
+  const res = await api.get("/api/reviews/me", { params: { page, size } });
+  const data = res.data.data || res.data;
+  return {
+    content: data.content || [],
+    totalElements: data.totalElements || data.total_elements || 0,
+    totalPages: data.totalPages || data.total_pages || 0,
+  };
+}
+
+/**
+ * Lấy danh sách review về shop của seller hiện tại
+ */
+export async function getSellerReviews(
+  page: number = 0,
+  size: number = 10
+): Promise<{ content: ReviewResponse[]; totalElements: number; totalPages: number }> {
+  const res = await api.get("/api/reviews/seller", { params: { page, size } });
+  const data = res.data.data || res.data;
+  return {
+    content: data.content || [],
+    totalElements: data.totalElements || data.total_elements || 0,
+    totalPages: data.totalPages || data.total_pages || 0,
+  };
 }

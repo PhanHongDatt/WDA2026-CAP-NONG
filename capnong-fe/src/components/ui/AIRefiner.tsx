@@ -73,8 +73,8 @@ export default function AIRefiner({
     if (!original.trim()) return;
     setState("loading");
     try {
-      const aiApi = await import("@/services/api/ai");
-      const result = await aiApi.refineDescription(original);
+      const { refineDescription } = await import("@/services/api/ai");
+      const result = await refineDescription(original);
       if (result.refinedText) {
         setRefined(result.refinedText);
         setState("preview");

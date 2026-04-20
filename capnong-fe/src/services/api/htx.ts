@@ -57,11 +57,11 @@ export async function createHtx(data: {
 }): Promise<unknown> {
   const payload = {
     name: data.name,
-    officialCode: data.officialCode,
+    official_code: data.officialCode,
     province: data.province,
     district: data.district,
     description: data.description,
-    documentUrl: data.documentUrl,
+    document_url: data.documentUrl,
   };
   const res = await api.post("/api/htx", payload);
   return res.data.data || res.data;

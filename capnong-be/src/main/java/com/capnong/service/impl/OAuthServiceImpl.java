@@ -92,7 +92,8 @@ public class OAuthServiceImpl implements OAuthService {
         }
 
         if (userRepository.existsByEmail(email)) {
-            throw new AppException("Email đã được sử dụng. Vui lòng đăng nhập và liên kết tài khoản Google.", HttpStatus.CONFLICT);
+            throw new AppException("Email đã được sử dụng. Vui lòng đăng nhập và liên kết tài khoản Google.",
+                    HttpStatus.CONFLICT);
         }
 
         if (userRepository.existsByUsername(username)) {
@@ -138,9 +139,31 @@ public class OAuthServiceImpl implements OAuthService {
             }
             user.setEmail(googleEmail);
         }
+        user.setGoogleEmail(googleEmail);
 
         userRepository.save(user);
         logger.info("Liên kết Google thành công cho userId: {}", userId);
+    }
+
+    @Override
+    @Transactional
+    public void unlinkGoogleAccount(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException("Không tìm thấy user", HttpStatus.NOT_FOUND));
+
+        if (user.getGoogleId() == null) {
+            throw new AppException("Tài khoản chưa liên kết Google", HttpStatus.BAD_REQUEST);
+        }
+
+        // Đảm bảo user có password trước khi unlink (tránh lock-out)
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new AppException("Không thể hủy liên kết Google vì tài khoản chưa đặt mật khẩu", HttpStatus.BAD_REQUEST);
+        }
+
+        user.setGoogleId(null);
+        user.setGoogleEmail(null);
+        userRepository.save(user);
+        logger.info("Hủy liên kết Google thành công cho userId: {}", userId);
     }
 
     // ─── Helpers ────────────────────────────────────────
@@ -193,8 +216,7 @@ public class OAuthServiceImpl implements OAuthService {
                     "sub", sub,
                     "email", email,
                     "fullName", fullName,
-                    "avatarUrl", avatarUrl
-            );
+                    "avatarUrl", avatarUrl);
         } catch (AppException e) {
             throw e;
         } catch (Exception e) {
@@ -209,8 +231,7 @@ public class OAuthServiceImpl implements OAuthService {
                 user.getUsername(),
                 user.getEmail(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-        );
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
 
         String accessToken = jwtUtils.generateToken(userDetails);
         var refreshToken = refreshTokenService.createRefreshToken(user);

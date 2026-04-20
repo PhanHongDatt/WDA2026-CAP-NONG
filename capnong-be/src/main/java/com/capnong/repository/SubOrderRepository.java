@@ -46,5 +46,17 @@ public interface SubOrderRepository extends JpaRepository<SubOrder, UUID> {
 
     @Query("SELECT COALESCE(SUM(s.subtotal + s.shippingFee), 0) FROM SubOrder s WHERE s.shop.owner.htx.id = :htxId AND s.status = 'COMPLETED'")
     java.math.BigDecimal calculateMemberRetailNetRevenueByHtxId(@Param("htxId") UUID htxId);
+
+    // Dashboard - Monthly revenue for Farmer (group by month of the current year)
+    @Query("""
+        SELECT EXTRACT(MONTH FROM s.createdAt) AS month, COALESCE(SUM(s.subtotal + s.shippingFee), 0) AS revenue
+        FROM SubOrder s
+        WHERE s.shop.owner.username = :username
+          AND EXTRACT(YEAR FROM s.createdAt) = :year
+          AND s.status NOT IN ('CANCELLED')
+        GROUP BY EXTRACT(MONTH FROM s.createdAt)
+        ORDER BY month
+    """)
+    java.util.List<Object[]> getMonthlyRevenueByFarmerUsername(@Param("username") String username, @Param("year") int year);
 }
 

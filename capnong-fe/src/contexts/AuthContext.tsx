@@ -85,11 +85,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (mode === "SELL" || mode === "BUY") setViewMode(mode);
 
     // Listen for auth changes from other components (e.g., Google OAuth login)
-    const handleAuthChanged = () => {
+    const handleAuthChanged = async () => {
+      // 1. Set partial user immediately for fast UI response
       const stored = localStorage.getItem("capnong-user");
       if (stored) {
         try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
       }
+      // 2. Fetch full profile from /users/me to get full_name, avatar_url, google_id, etc.
+      try {
+        const profile = await userService.getProfile();
+        setUser(profile);
+      } catch { /* token might not be ready yet, restoreSession will handle on next mount */ }
     };
     window.addEventListener("auth-changed", handleAuthChanged);
     return () => window.removeEventListener("auth-changed", handleAuthChanged);

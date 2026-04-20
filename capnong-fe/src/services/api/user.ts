@@ -8,6 +8,7 @@
  *   PUT    /api/users/me/password     → Change password
  *   POST   /api/users/me/send-update-otp  → Send OTP for update
  *   POST   /api/users/me/link-google  → Link Google account
+ *   DELETE /api/users/me/unlink-google → Unlink Google account
  */
 import api from "../api";
 import type { IUserService } from "../types";
@@ -63,6 +64,11 @@ export async function linkGoogleAccount(supabaseToken: string): Promise<void> {
   await api.post("/api/users/me/link-google", { supabase_token: supabaseToken });
 }
 
+/* ─── Unlink Google account ─── */
+export async function unlinkGoogleAccount(): Promise<void> {
+  await api.delete("/api/users/me/unlink-google");
+}
+
 /* ─── Normalize BE UserResponse → FE User ─── */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeUserProfile(p: any): User {
@@ -75,6 +81,8 @@ function normalizeUserProfile(p: any): User {
     role: p.role as User["role"],
     avatar_url: p.avatar_url || p.avatarUrl,
     is_banned: !(p.active ?? true),
+    google_id: p.google_id || p.googleId,
+    google_email: p.google_email || p.googleEmail,
     created_at: p.created_at || p.createdAt || new Date().toISOString(),
   };
 }

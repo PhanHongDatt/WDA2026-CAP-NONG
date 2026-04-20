@@ -88,4 +88,13 @@ public class UserController {
         oAuthService.linkGoogleAccount(userDetails.getId(), request.getSupabaseToken());
         return ResponseEntity.ok(ApiResponse.success("Liên kết tài khoản Google thành công"));
     }
+
+    @DeleteMapping("/me/unlink-google")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Hủy liên kết Google", description = "Gỡ liên kết tài khoản Google ra khỏi tài khoản hiện tại. Yêu cầu tài khoản đã có mật khẩu.")
+    public ResponseEntity<ApiResponse<Void>> unlinkGoogle(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        oAuthService.unlinkGoogleAccount(userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.success("Hủy liên kết tài khoản Google thành công"));
+    }
 }

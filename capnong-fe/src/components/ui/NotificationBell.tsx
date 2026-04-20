@@ -66,13 +66,14 @@ export default function NotificationBell() {
 
     try {
       const result = await notificationApi.getNotifications(0, 20);
-      const mapped: Notification[] = result.notifications.map((n) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped: Notification[] = result.notifications.map((n: any) => ({
         id: n.id,
         type: n.type,
         title: n.title,
         message: n.body,
-        created_at: n.createdAt,
-        is_read: n.isRead,
+        created_at: n.created_at || n.createdAt,
+        is_read: n.is_read !== undefined ? n.is_read : (n.isRead || false),
       }));
       setNotifications(mapped.length > 0 ? mapped : (USE_MOCK ? MOCK_NOTIFICATIONS : []));
       setUnreadCount(result.unreadCount || mapped.filter((n) => !n.is_read).length);
@@ -155,14 +156,25 @@ export default function NotificationBell() {
     } catch { /* silent fallback */ }
   };
 
-  const markRead = async (id: string) => {
+  const markRead = async (n: Notification) => {
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      prev.map((item) => (item.id === n.id ? { ...item, is_read: true } : item))
     );
-    setUnreadCount((c) => Math.max(0, c - 1));
-    try {
-      await notificationApi.markAsRead(id);
-    } catch { /* silent fallback */ }
+    if (!n.is_read) {
+      setUnreadCount((c) => Math.max(0, c - 1));
+      try {
+        await notificationApi.markAsRead(n.id);
+      } catch { /* silent fallback */ }
+    }
+    
+    setOpen(false);
+    
+    // Simple redirect based on type
+    if (n.type === "ORDER_NEW" || n.type === "NEW_ORDER") {
+      window.location.href = "/dashboard/orders";
+    } else if (n.type.includes("ORDER")) {
+      window.location.href = "/orders";
+    }
   };
 
   if (!isLoggedIn) return null;
@@ -212,7 +224,7 @@ export default function NotificationBell() {
             {notifications.map((n) => (
               <button type="button"
                 key={n.id}
-                onClick={() => markRead(n.id)}
+                onClick={() => markRead(n)}
                 className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors ${
                   !n.is_read ? "bg-primary/5 dark:bg-primary/10" : ""
                 }`}
