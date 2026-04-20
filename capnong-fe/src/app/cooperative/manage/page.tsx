@@ -206,6 +206,8 @@ function CoopManageContent() {
   const [newTarget, setNewTarget] = useState("");
   const [newPrice, setNewPrice] = useState("");
   const [newDeadline, setNewDeadline] = useState("");
+  const [deadlineError, setDeadlineError] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
 
   /* join request actions → API + optimistic */
   const handleApproveJoin = async (id: string) => {
@@ -238,28 +240,65 @@ function CoopManageContent() {
       await htxApi.cancelBundle(id);
     } catch { /* optimistic */ }
   };
-  const handleCreateBundle = () => {
-    if (!newProduct.trim() || !newTarget || !newPrice) return;
-    const newBundle: Bundle = {
-      id: `b-${Date.now()}`,
-      product_name: newProduct,
-      target_kg: parseInt(newTarget),
-      current_kg: 0,
-      price_per_kg: parseInt(newPrice),
-      deadline: newDeadline || new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
-      status: "OPEN",
-      pledges: [],
-    };
-    setBundles((prev) => [newBundle, ...prev]);
-    setShowNewBundle(false);
-    setNewProduct(""); setNewTarget(""); setNewPrice(""); setNewDeadline("");
-    // Fire-and-forget API call
-    (async () => {
-      try {
-        const htxApi = await import("@/services/api/htx");
-        await htxApi.createBundle({ productCategory: "OTHER", productName: newProduct, unitCode: "KG", targetQuantity: parseInt(newTarget), pricePerUnit: parseInt(newPrice), deadline: newDeadline || new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0] });
-      } catch { /* optimistic already added */ }
-    })();
+  const handleCreateBundle = async () => {
+    if (!newProduct.trim() || !newTarget || !newPrice) {
+      setActionMessage({ type: "error", text: "Vui lòng điền đầy đủ: Loại nông sản, Mục tiêu (kg), Giá/kg" });
+      return;
+    }
+
+    // === CHỐT CHẶN: Validate deadline ngay tại Frontend ===
+    const todayStr = new Date().toISOString().split("T")[0];
+    const finalDeadline = newDeadline || new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0];
+
+    if (finalDeadline < todayStr) {
+      setDeadlineError("Hạn chót phải từ hôm nay trở đi!");
+      setActionMessage({ type: "error", text: "❌ Hạn chót không hợp lệ — không được chọn ngày trong quá khứ!" });
+      return;
+    }
+    setDeadlineError("");
+
+    setIsCreating(true);
+    try {
+      const htxApi = await import("@/services/api/htx");
+      const res: any = await htxApi.createBundle({
+        productCategory: "OTHER",
+        productName: newProduct,
+        unitCode: "KG",
+        targetQuantity: parseInt(newTarget),
+        pricePerUnit: parseInt(newPrice),
+        deadline: finalDeadline,
+      });
+
+      const newBundle: Bundle = {
+        id: res?.id || `b-${Date.now()}`,
+        product_name: res?.product_name || newProduct,
+        target_kg: res?.target_kg || parseInt(newTarget),
+        current_kg: 0,
+        price_per_kg: res?.price_per_kg || parseInt(newPrice),
+        deadline: res?.deadline || finalDeadline,
+        status: "OPEN",
+        pledges: [],
+      };
+
+      setBundles((prev) => [newBundle, ...prev]);
+      setShowNewBundle(false);
+      setNewProduct(""); setNewTarget(""); setNewPrice(""); setNewDeadline("");
+      setActionMessage({ type: "success", text: "✅ Tạo bundle gom đơn thành công!" });
+    } catch (err: any) {
+      // Parse lỗi validation từ backend (400 Bad Request)
+      const backendData = err?.response?.data?.data;
+      const backendMsg = err?.response?.data?.message;
+      if (backendData && typeof backendData === "object") {
+        // Backend trả field-level errors: { deadline: "...", productName: "..." }
+        const msgs = Object.values(backendData).join("; ");
+        setActionMessage({ type: "error", text: `❌ ${msgs}` });
+        if (backendData.deadline) setDeadlineError(backendData.deadline);
+      } else {
+        setActionMessage({ type: "error", text: `❌ ${backendMsg || "Lỗi tạo bundle"}` });
+      }
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const pendingJoin = joinRequests.filter((r) => r.status === "PENDING").length;
@@ -484,12 +523,21 @@ function CoopManageContent() {
                   <input id="bundle-price" type="number" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} placeholder="35000" className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div>
-                  <label htmlFor="bundle-deadline" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Deadline gom</label>
-                  <input id="bundle-deadline" type="date" value={newDeadline} onChange={(e) => setNewDeadline(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <label htmlFor="bundle-deadline" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Deadline gom *</label>
+                  <input id="bundle-deadline" type="date" min={new Date().toISOString().split("T")[0]} value={newDeadline} onChange={(e) => {
+                    setNewDeadline(e.target.value);
+                    const today = new Date().toISOString().split("T")[0];
+                    if (e.target.value && e.target.value < today) {
+                      setDeadlineError("Hạn chót phải từ hôm nay trở đi!");
+                    } else {
+                      setDeadlineError("");
+                    }
+                  }} className={`w-full px-3 py-2 bg-white dark:bg-background border rounded-lg text-sm focus:outline-none focus:ring-2 ${deadlineError ? "border-red-500 focus:ring-red-300" : "border-gray-200 dark:border-border focus:ring-primary/30"}`} />
+                  {deadlineError && <p className="text-red-500 text-xs mt-1 font-medium">⚠️ {deadlineError}</p>}
                 </div>
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={handleCreateBundle} disabled={!newProduct.trim() || !newTarget || !newPrice} className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">Tạo Bundle</button>
+                <button type="button" onClick={handleCreateBundle} disabled={isCreating || !newProduct.trim() || !newTarget || !newPrice || !!deadlineError} className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">{isCreating ? "Đang tạo..." : "Tạo Bundle"}</button>
                 <button type="button" onClick={() => setShowNewBundle(false)} className="border border-gray-200 dark:border-border px-6 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-foreground-muted hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">Hủy</button>
               </div>
             </div>

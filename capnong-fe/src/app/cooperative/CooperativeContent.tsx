@@ -17,11 +17,33 @@ import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import ProgressBar from "@/components/ui/ProgressBar";
 
-/* ─── Mock Data ─── */
-const POOLS = [
-  { id: 1, productName: "Cam sành Vĩnh Long - Bến Tre", targetQty: 1000, currentQty: 650, pricePerUnit: 35000, participants: 12, deadline: "17/03/2026", status: "OPEN" as const },
-  { id: 2, productName: "Sầu riêng Ri6 Đắk Lắk", targetQty: 500, currentQty: 500, pricePerUnit: 115000, participants: 8, deadline: "12/03/2026", status: "FULFILLED" as const },
-  { id: 3, productName: "Bưởi da xanh Bến Tre", targetQty: 800, currentQty: 320, pricePerUnit: 58000, participants: 6, deadline: "20/03/2026", status: "OPEN" as const },
+/* ─── Display interface — khớp 1:1 với BE BundleResponseDto (snake_case qua WebConfig) ─── */
+interface PoolDisplay {
+  id: string;
+  productName: string;       // ← BE: product_name
+  targetQty: number;         // ← BE: target_quantity
+  currentQty: number;        // ← BE: current_pledged_quantity
+  pricePerUnit: number;      // ← BE: price_per_unit
+  unitCode: string;          // ← BE: unit_code
+  participants: number;      // ← BE: pledges.length
+  deadline: string;          // ← BE: deadline (LocalDate)
+  status: "OPEN" | "FULFILLED";
+}
+
+/* ─── Display interface — khớp 1:1 với BE HtxResponse (snake_case qua WebConfig) ─── */
+interface HtxDisplay {
+  id: string;
+  name: string;              // ← BE: name
+  province: string;          // ← BE: province
+  members: number;           // ← BE: HtxResponse KHÔNG có totalMembers, dùng 0 fallback
+  manager: string;           // ← BE: manager_full_name || manager_username
+}
+
+/* ─── Mock Data (fallback khi API chưa sẵn) ─── */
+const MOCK_POOLS: PoolDisplay[] = [
+  { id: "mock-1", productName: "Cam sành Vĩnh Long - Bến Tre", targetQty: 1000, currentQty: 650, pricePerUnit: 35000, unitCode: "KG", participants: 12, deadline: "17/03/2026", status: "OPEN" },
+  { id: "mock-2", productName: "Sầu riêng Ri6 Đắk Lắk", targetQty: 500, currentQty: 500, pricePerUnit: 115000, unitCode: "KG", participants: 8, deadline: "12/03/2026", status: "FULFILLED" },
+  { id: "mock-3", productName: "Bưởi da xanh Bến Tre", targetQty: 800, currentQty: 320, pricePerUnit: 58000, unitCode: "KG", participants: 6, deadline: "20/03/2026", status: "OPEN" },
 ];
 
 const PROFIT_TABLE = [
@@ -31,13 +53,64 @@ const PROFIT_TABLE = [
   { farmer: "Vườn Cần Thơ", qty: 120, percentage: 18.4, revenue: 4200000 },
 ];
 
-const MOCK_ACTIVE_HTX = [
+const MOCK_ACTIVE_HTX: HtxDisplay[] = [
   { id: "htx-001", name: "HTX Trái Cây Bến Tre", province: "Bến Tre", members: 15, manager: "Nguyễn Văn A" },
   { id: "htx-002", name: "HTX Nông Sản Vĩnh Long", province: "Vĩnh Long", members: 22, manager: "Trần Thị B" },
   { id: "htx-003", name: "HTX Cam Hà Giang", province: "Hà Giang", members: 10, manager: "Lê Văn C" },
 ];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
+/**
+ * Map BE snake_case BundleResponseDto → FE PoolDisplay (camelCase UI).
+ *
+ * BE BundleResponseDto fields (after SNAKE_CASE serialization):
+ *   id, htx_shop, product_category, product_name, unit_code,
+ *   target_quantity, current_pledged_quantity, progress_percent,
+ *   price_per_unit, deadline, status, description, min_pledge_quantity,
+ *   pledges (List<PledgeResponseDto>), created_at
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapBundleToPool(b: any): PoolDisplay {
+  return {
+    id: String(b.id || ""),
+    productName: b.product_name || "",
+    targetQty: Number(b.target_quantity) || 0,
+    currentQty: Number(b.current_pledged_quantity) || 0,
+    pricePerUnit: Number(b.price_per_unit) || 0,
+    unitCode: b.unit_code || "KG",
+    participants: Array.isArray(b.pledges) ? b.pledges.length : 0,
+    deadline: b.deadline
+      ? new Date(b.deadline).toLocaleDateString("vi-VN")
+      : "—",
+    status:
+      b.status === "FULL" ||
+      b.status === "CONFIRMED" ||
+      Number(b.current_pledged_quantity) >= Number(b.target_quantity)
+        ? "FULFILLED"
+        : "OPEN",
+  };
+}
+
+/**
+ * Map BE snake_case HtxResponse → FE HtxDisplay (camelCase UI).
+ *
+ * BE HtxResponse fields (after SNAKE_CASE serialization):
+ *   id, name, official_code, province, district, description,
+ *   document_url, status, admin_note, created_at,
+ *   manager_id, manager_username, manager_full_name,
+ *   created_by_user_id, created_by_username
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapHtxToDisplay(h: any): HtxDisplay {
+  return {
+    id: String(h.id || ""),
+    name: h.name || "",
+    province: h.province || "",
+    members: 0, // HtxResponse không có totalMembers, chỉ HtxResponseDto có
+    manager: h.manager_full_name || h.manager_username || "",
+  };
+}
 
 export default function CooperativeContent() {
   const { user, isLoggedIn } = useAuth();
@@ -48,13 +121,13 @@ export default function CooperativeContent() {
   const [joinRequested, setJoinRequested] = useState<string | null>(null);
 
   /* UC-31: Pledge into Bundle */
-  const [pledgingPoolId, setPledgingPoolId] = useState<number | null>(null);
+  const [pledgingPoolId, setPledgingPoolId] = useState<string | null>(null);
   const [pledgeKg, setPledgeKg] = useState("");
-  const [pledgedPools, setPledgedPools] = useState<Set<number>>(new Set());
+  const [pledgedPools, setPledgedPools] = useState<Set<string>>(new Set());
 
   /* ─── API-first fetch for bundles + HTX list ─── */
-  const [pools, setPools] = useState(USE_MOCK ? POOLS : []);
-  const [activeHtx, setActiveHtx] = useState(USE_MOCK ? MOCK_ACTIVE_HTX : []);
+  const [pools, setPools] = useState<PoolDisplay[]>(USE_MOCK ? MOCK_POOLS : []);
+  const [activeHtx, setActiveHtx] = useState<HtxDisplay[]>(USE_MOCK ? MOCK_ACTIVE_HTX : []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -63,22 +136,23 @@ export default function CooperativeContent() {
         htxApi.getOpenBundles(),
         htxApi.getAllHtx(),
       ]);
+
+      // Map bundles: BE snake_case → FE camelCase
       if (Array.isArray(apiBundles) && apiBundles.length > 0) {
-        setPools(apiBundles as unknown as typeof POOLS);
+        setPools(apiBundles.map(mapBundleToPool));
+      } else if (USE_MOCK) {
+        setPools(MOCK_POOLS);
       }
+
+      // Map HTX list: BE snake_case → FE camelCase
       if (Array.isArray(apiHtxList) && apiHtxList.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setActiveHtx(apiHtxList.map((h: any) => ({
-          id: String(h.id || ""),
-          name: h.name || "",
-          province: h.province || "",
-          members: h.memberCount || h.members || 0,
-          manager: h.managerFullName || h.managerUsername || h.managerName || h.manager || "",
-        })));
+        setActiveHtx(apiHtxList.map(mapHtxToDisplay));
+      } else if (USE_MOCK) {
+        setActiveHtx(MOCK_ACTIVE_HTX);
       }
     } catch {
       if (USE_MOCK) {
-        setPools(POOLS);
+        setPools(MOCK_POOLS);
         setActiveHtx(MOCK_ACTIVE_HTX);
       }
     }
@@ -94,7 +168,7 @@ export default function CooperativeContent() {
     } catch { /* optimistic — UI already updated */ }
   };
 
-  const handlePledge = async (poolId: number) => {
+  const handlePledge = async (poolId: string) => {
     if (!pledgeKg || Number(pledgeKg) <= 0) return;
     setPledgedPools((prev) => new Set(prev).add(poolId));
     setPledgingPoolId(null);
@@ -102,18 +176,30 @@ export default function CooperativeContent() {
     setPledgeKg("");
     try {
       const htxApi = await import("@/services/api/htx");
-      await htxApi.addPledge(String(poolId), qty);
+      await htxApi.addPledge(poolId, qty);
+      // Reload data after pledge
+      fetchData();
     } catch { /* optimistic */ }
   };
 
   /* UC-33: Cancel pledge */
-  const handleCancelPledge = (poolId: number) => {
+  const handleCancelPledge = async (poolId: string) => {
     setPledgedPools((prev) => {
       const next = new Set(prev);
       next.delete(poolId);
       return next;
     });
+    // Note: Để withdraw thật cần pledgeId, không phải poolId.
+    // Hiện tại xóa local state trước, khi có pledgeId sẽ gọi htxApi.withdrawPledge()
   };
+
+  /* ─── Computed stats từ data thật ─── */
+  const openPools = pools.filter((p) => p.status === "OPEN").length;
+  const totalParticipants = pools.reduce((s, p) => s + p.participants, 0);
+  const fulfilledPools = pools.filter((p) => p.status === "FULFILLED").length;
+  const totalRevenue = pools
+    .filter((p) => p.status === "FULFILLED")
+    .reduce((s, p) => s + p.currentQty * p.pricePerUnit, 0);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
@@ -132,13 +218,13 @@ export default function CooperativeContent() {
         )}
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards — computed từ API data */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Pool đang mở", value: "2", icon: Flame, color: "text-accent bg-red-50 dark:bg-red-900/20" },
-          { label: "Tổng người tham gia", value: "26", icon: Users, color: "text-info bg-blue-50 dark:bg-blue-900/20" },
-          { label: "Đã hoàn thành", value: "15", icon: CheckCircle2, color: "text-success bg-green-50 dark:bg-green-900/20" },
-          { label: "Doanh thu gom đơn", value: formatCurrency(87500000), icon: TrendingUp, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
+          { label: "Pool đang mở", value: String(openPools), icon: Flame, color: "text-accent bg-red-50 dark:bg-red-900/20" },
+          { label: "Tổng người tham gia", value: String(totalParticipants), icon: Users, color: "text-info bg-blue-50 dark:bg-blue-900/20" },
+          { label: "Đã hoàn thành", value: String(fulfilledPools), icon: CheckCircle2, color: "text-success bg-green-50 dark:bg-green-900/20" },
+          { label: "Doanh thu gom đơn", value: formatCurrency(totalRevenue), icon: TrendingUp, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white dark:bg-surface border border-border rounded-xl p-5 flex items-center gap-4 shadow-sm">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
@@ -164,7 +250,7 @@ export default function CooperativeContent() {
                 <h3 className="font-bold text-gray-900 dark:text-foreground">{htx.name}</h3>
                 <div className="text-sm text-gray-500 dark:text-foreground-muted space-y-1">
                   <p>📍 {htx.province}</p>
-                  <p>👥 {htx.members} thành viên</p>
+                  {htx.members > 0 && <p>👥 {htx.members} thành viên</p>}
                   <p>👤 QL: {htx.manager}</p>
                 </div>
                 {joinRequested === htx.id ? (
@@ -191,7 +277,9 @@ export default function CooperativeContent() {
         <h2 className="text-xl font-bold mb-4">Danh sách Pool</h2>
         <div className="space-y-4">
           {pools.map((pool) => {
-            const progress = Math.round((pool.currentQty / pool.targetQty) * 100);
+            const progress = pool.targetQty > 0
+              ? Math.round((pool.currentQty / pool.targetQty) * 100)
+              : 0;
             const isFulfilled = pool.status === "FULFILLED";
             const hasPledged = pledgedPools.has(pool.id);
             const isPledging = pledgingPoolId === pool.id;
@@ -212,7 +300,7 @@ export default function CooperativeContent() {
                     </div>
                     <h3 className="text-lg font-bold text-foreground">{pool.productName}</h3>
                     <p className="text-sm text-foreground-muted">
-                      Giá: {formatCurrency(pool.pricePerUnit)}/kg • {pool.participants} người tham gia • Hạn: {pool.deadline}
+                      Giá: {formatCurrency(pool.pricePerUnit)}/{pool.unitCode.toLowerCase()} • {pool.participants} người tham gia • Hạn: {pool.deadline}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -247,7 +335,7 @@ export default function CooperativeContent() {
                     <p className="text-sm font-medium text-gray-900 dark:text-foreground">Nhập số kg bạn cam kết đóng góp:</p>
                     <div className="flex items-end gap-3">
                       <div>
-                        <label htmlFor={`pledge-${pool.id}`} className="text-[10px] text-gray-400">Sản lượng (kg)</label>
+                        <label htmlFor={`pledge-${pool.id}`} className="text-[10px] text-gray-400">Sản lượng ({pool.unitCode.toLowerCase()})</label>
                         <input
                           id={`pledge-${pool.id}`}
                           type="number"
@@ -255,7 +343,7 @@ export default function CooperativeContent() {
                           max={pool.targetQty - pool.currentQty}
                           value={pledgeKg}
                           onChange={(e) => setPledgeKg(e.target.value)}
-                          placeholder={`Tối đa ${pool.targetQty - pool.currentQty} kg`}
+                          placeholder={`Tối đa ${pool.targetQty - pool.currentQty} ${pool.unitCode.toLowerCase()}`}
                           className="w-40 px-3 py-2 border border-gray-200 dark:border-border rounded-lg text-sm bg-white dark:bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
                       </div>
@@ -277,7 +365,7 @@ export default function CooperativeContent() {
                     />
                   </div>
                   <span className="text-sm font-bold text-foreground-muted shrink-0">
-                    {pool.currentQty.toLocaleString()}/{pool.targetQty.toLocaleString()} kg ({progress}%)
+                    {pool.currentQty.toLocaleString()}/{pool.targetQty.toLocaleString()} {pool.unitCode.toLowerCase()} ({progress}%)
                   </span>
                 </div>
               </div>

@@ -75,6 +75,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/units/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/seasonal-configs").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/seasonal-configs/**").permitAll()
+                        // Bundles
+                        .requestMatchers(HttpMethod.GET, "/api/v1/cooperatives/bundles").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/cooperatives/bundles/**").permitAll()
                         // Admin endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // All other endpoints require authentication

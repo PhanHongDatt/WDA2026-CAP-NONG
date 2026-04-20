@@ -57,11 +57,11 @@ export async function createHtx(data: {
 }): Promise<unknown> {
   const payload = {
     name: data.name,
-    officialCode: data.officialCode,
+    official_code: data.officialCode,
     province: data.province,
     district: data.district,
     description: data.description,
-    documentUrl: data.documentUrl,
+    document_url: data.documentUrl,
   };
   const res = await api.post("/api/htx", payload);
   return res.data.data || res.data;
@@ -178,6 +178,8 @@ export async function createBundle(data: {
   description?: string;
   minPledgeQuantity?: number;
 }): Promise<unknown> {
+  // WebConfig.java dùng PropertyNamingStrategies.SNAKE_CASE toàn cục
+  // → Jackson deserialize kỳ vọng snake_case keys trong JSON body
   const payload = {
     product_category: data.productCategory,
     product_name: data.productName,
