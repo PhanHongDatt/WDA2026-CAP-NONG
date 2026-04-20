@@ -10,6 +10,7 @@ import {
 import { apiUserService, linkGoogleAccount, unlinkGoogleAccount } from "@/services/api/user";
 import { apiUserAddressService, UserAddress, UserAddressRequest, getProvinces, getWards, Province, Ward } from "@/services/api/address";
 import { useToast } from "@/components/ui/Toast";
+import { getTelegramLink, getTelegramStatus, unlinkTelegram } from "@/services/api/notification";
 
 function ProfileContent() {
   const { user, refreshProfile } = useAuth();
@@ -72,8 +73,8 @@ function ProfileContent() {
   useEffect(() => {
     // Fetch Telegram status when mounted or user changes
     if (user?.id) {
-      notificationApi.getTelegramStatus().then(setTelegramEnabled).catch(console.error);
-      notificationApi.getTelegramLink().then(setTelegramLink).catch(console.error);
+      getTelegramStatus().then(setTelegramEnabled).catch(console.error);
+      getTelegramLink().then(setTelegramLink).catch(console.error);
     }
   }, [user?.id]);
 
@@ -360,18 +361,48 @@ function ProfileContent() {
     setShowUnlinkConfirm(false);
     setGoogleLinking(true);
     try {
+      await unlinkGoogleAccount();
+      await refreshProfile?.();
+      setGoogleLinked(false);
+      showToast("success", "Đã hủy liên kết tài khoản Google");
+    } catch (err) {
+      showToast("error", "Lỗi hủy liên kết: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setGoogleLinking(false);
+    }
+  };
+
+  // Method to manually refresh status after opening link
+  const handleRefreshTelegramStatus = useCallback(async () => {
+    setTelegramLoading(true);
+    try {
+      const linked = await getTelegramStatus();
+      setTelegramEnabled(linked);
+      if (linked) {
+        showToast("success", "Đã xác nhận liên kết Telegram!");
+      }
+    } catch {
+      // silent
+    } finally {
+      setTelegramLoading(false);
+    }
+  }, [showToast]);
+
+  const handleTelegramToggle = useCallback(async () => {
+    setTelegramLoading(true);
+    try {
       if (telegramEnabled) {
-        await notificationApi.unlinkTelegram();
+        await unlinkTelegram();
         setTelegramEnabled(false);
         showToast("success", "Đã hủy liên kết Telegram");
       } else {
-        // Fallback: If telegramLink is missing from state (e.g., clicked too fast), fetch it now
+        // Fallback: If telegramLink is missing from state, fetch it now
         let link = telegramLink;
         if (!link) {
-          link = await notificationApi.getTelegramLink();
+          link = await getTelegramLink();
           setTelegramLink(link);
         }
-        
+
         if (link && typeof link === 'string') {
           window.open(link, "_blank");
           showToast("success", "Vui lòng mở ứng dụng Telegram và ấn START");
@@ -384,31 +415,7 @@ function ProfileContent() {
     } finally {
       setTelegramLoading(false);
     }
-  }, [telegramEnabled, showToast]);
-  
-  // Method to manually refresh status after opening link
-  const handleRefreshTelegramStatus = useCallback(async () => {
-    setTelegramLoading(true);
-    try {
-      const linked = await notificationApi.getTelegramStatus();
-      setTelegramEnabled(linked);
-      if (linked) {
-        showToast("success", "Đã xác nhận liên kết Telegram!");
-      }
-    } catch {
-      // silent
-      await unlinkGoogleAccount();
-      await refreshProfile?.();
-      setGoogleLinked(false);
-      showToast("success", "Đã hủy liên kết tài khoản Google");
-    } catch (err) {
-      showToast("error", "Lỗi hủy liên kết: " + (err instanceof Error ? err.message : String(err)));
-    } finally {
-      setGoogleLinking(false);
-    }
-  };
-
-  const handleTelegramToggle = () => setTelegramEnabled(!telegramEnabled);
+  }, [telegramEnabled, telegramLink, showToast]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
