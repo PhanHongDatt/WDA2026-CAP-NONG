@@ -63,11 +63,14 @@ services:
         condition: service_started
     env_file: .env
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-capnong_dev}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-capnong}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-your_postgres_password_here}
+      # Keep other env vars that are not datasource (they are provided by .env)
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
