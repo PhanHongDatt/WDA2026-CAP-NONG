@@ -128,7 +128,7 @@ export interface IOrderService {
     paymentMethod?: string;
   }): Promise<unknown>;
   /** GET /api/orders — Lịch sử đơn hàng (paginated) */
-  getMyOrders(status?: string, page?: number, size?: number): Promise<unknown>;
+  getMyOrders(params?: { status?: string; page?: number; size?: number; sort?: string }): Promise<unknown>;
   /** GET /api/orders/{orderId} — Chi tiết đơn hàng */
   getOrderDetail(orderId: string): Promise<unknown>;
   /** GET /api/orders/guest/{orderCode}?phone=... */
@@ -136,7 +136,7 @@ export interface IOrderService {
   /** POST /api/orders/{orderId}/cancel */
   cancelOrder(orderId: string): Promise<void>;
   /** GET /api/orders/seller — Farmer xem đơn con */
-  getSellerSubOrders(status?: string): Promise<unknown[]>;
+  getSellerSubOrders(opts?: { status?: string; page?: number; size?: number }): Promise<unknown>;
   /** PATCH /api/orders/sub-orders/{subOrderId}/status */
   updateSubOrderStatus(subOrderId: string, status: string): Promise<void>;
   /** GET /api/orders/sub-orders/{subOrderId} — Chi tiết đơn con */

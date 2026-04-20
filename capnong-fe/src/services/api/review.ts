@@ -19,14 +19,18 @@ export interface ReviewData {
 
 export interface ReviewResponse {
   id: string;
-  authorId: string;
-  productId: string;
-  orderItemId: string;
+  author: {
+    id: string;
+    full_name: string;
+    avatar_url?: string;
+  };
+  product_id: string;
+  order_item_id?: string;
   rating: number;
   comment?: string;
   images?: string[];
-  sellerReply?: string;
-  createdAt: string;
+  seller_reply?: string;
+  created_at: string;
 }
 
 /**
@@ -52,7 +56,14 @@ export async function getProductReviews(
  * Tạo đánh giá sản phẩm (BUYER only)
  */
 export async function createReview(review: ReviewData): Promise<ReviewResponse> {
-  const res = await api.post("/api/reviews", review);
+  const payload = {
+    product_id: review.productId,
+    order_item_id: review.orderItemId,
+    rating: review.rating,
+    comment: review.comment,
+    images: review.images,
+  };
+  const res = await api.post("/api/reviews", payload);
   return res.data.data || res.data;
 }
 

@@ -67,7 +67,13 @@ export async function createSeasonalConfig(data: SeasonalConfigRequest): Promise
 
 /** Cập nhật config mùa vụ */
 export async function updateSeasonalConfig(id: string, data: SeasonalConfigRequest): Promise<SeasonalConfig> {
-  const res = await api.put(`/api/seasonal-configs/${id}`, data);
+  const res = await api.put(`/api/seasonal-configs/${id}`, {
+    province: data.province,
+    product_category: data.productCategory,
+    start_month: data.startMonth,
+    end_month: data.endMonth,
+    note: data.note || "",
+  });
   return res.data.data || res.data;
 }
 

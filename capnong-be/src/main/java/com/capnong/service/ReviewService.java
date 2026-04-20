@@ -126,10 +126,24 @@ public class ReviewService implements IReviewService {
      */
     private void updateProductRating(UUID productId) {
         Object[] stats = reviewRepository.getProductRatingStats(productId);
-        if (stats == null || stats[0] == null) return;
+        if (stats == null || stats.length == 0) return;
 
-        Double avg = ((Number) stats[0]).doubleValue();
-        Long count = ((Number) stats[1]).longValue();
+        // JPA may return Object[] directly [avg, count] or nested [[avg, count]]
+        Object avgObj;
+        Object countObj;
+        if (stats[0] instanceof Object[]) {
+            Object[] row = (Object[]) stats[0];
+            if (row[0] == null) return;
+            avgObj = row[0];
+            countObj = row[1];
+        } else {
+            if (stats[0] == null) return;
+            avgObj = stats[0];
+            countObj = stats[1];
+        }
+
+        Double avg = ((Number) avgObj).doubleValue();
+        Long count = ((Number) countObj).longValue();
 
         BigDecimal averageRating = BigDecimal.valueOf(avg).setScale(2, RoundingMode.HALF_UP);
 

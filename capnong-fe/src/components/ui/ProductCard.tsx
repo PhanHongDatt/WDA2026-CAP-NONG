@@ -52,7 +52,7 @@ export default function ProductCard({
   return (
     <div className="group bg-gradient-to-b from-white to-green-50/40 dark:from-surface dark:to-surface rounded-2xl overflow-hidden relative border border-gray-100 dark:border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300">
       {/* Image Container */}
-      <Link href={`/products/${product.id}`} className="block relative">
+      <Link href={`/product/${product.id}`} className="block relative">
         <div className="aspect-square bg-gray-50 dark:bg-background-light overflow-hidden rounded-t-2xl">
           {/* Cache buster */}
           <SafeImage
@@ -99,7 +99,7 @@ export default function ProductCard({
       {/* Content */}
       <div className="p-3.5">
         {/* Name */}
-        <Link href={`/products/${product.id}`}>
+        <Link href={`/product/${product.id}`}>
           <h3 className="font-bold text-sm text-gray-900 dark:text-foreground leading-tight line-clamp-2 hover:text-primary transition-colors mb-1">
             {product.name}
           </h3>

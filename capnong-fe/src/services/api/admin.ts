@@ -65,14 +65,14 @@ export async function changeUserRole(userId: string | number, role: string): Pro
  * Duyệt HTX — PATCH /api/admin/htx-requests/{htxId} body { action: "APPROVE", adminNote }
  */
 export async function approveHtx(htxId: string | number, adminNote?: string): Promise<void> {
-  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "APPROVE", adminNote });
+  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "APPROVE", admin_note: adminNote });
 }
 
 /**
  * Từ chối HTX — PATCH /api/admin/htx-requests/{htxId} body { action: "REJECT", adminNote }
  */
 export async function rejectHtx(htxId: string | number, adminNote?: string): Promise<void> {
-  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "REJECT", adminNote });
+  await api.patch(`/api/admin/htx-requests/${htxId}`, { action: "REJECT", admin_note: adminNote });
 }
 
 /* ─── Admin HTX Listing ─── */

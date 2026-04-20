@@ -58,6 +58,9 @@ public class User extends BaseEntity {
     @Column(name = "google_id", unique = true)
     private String googleId;
 
+    @Column(name = "google_email", length = 100)
+    private String googleEmail;
+
     @Column(name = "username_updated_at")
     private LocalDateTime usernameUpdatedAt;
 

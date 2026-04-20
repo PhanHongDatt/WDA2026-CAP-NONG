@@ -42,11 +42,12 @@ export const apiOrderService: IOrderService = {
   },
 
   /** GET /api/orders — Lịch sử đơn hàng (paginated) */
-  async getMyOrders(status?: string, page?: number, size?: number): Promise<unknown> {
+  async getMyOrders(opts?: { status?: string; page?: number; size?: number; sort?: string }): Promise<unknown> {
     const params: Record<string, string> = {};
-    if (status) params.status = status;
-    params.page = String(page || 0);
-    params.size = String(size || 20);
+    if (opts?.status && opts.status !== "all") params.status = opts.status;
+    params.page = String(opts?.page || 0);
+    params.size = String(opts?.size || 20);
+    if (opts?.sort) params.sort = opts.sort;
     const res = await api.get("/api/orders", { params });
     return res.data.data || res.data;
   },
@@ -69,9 +70,11 @@ export const apiOrderService: IOrderService = {
   },
 
   /** GET /api/orders/seller — Farmer xem danh sách đơn con */
-  async getSellerSubOrders(status?: string): Promise<unknown[]> {
+  async getSellerSubOrders(opts?: { status?: string; page?: number; size?: number }): Promise<unknown> {
     const params: Record<string, string> = {};
-    if (status) params.status = status;
+    if (opts?.status && opts.status !== "all") params.status = opts.status;
+    params.page = String(opts?.page || 0);
+    params.size = String(opts?.size || 5); // Default 5 for dashboard
     const res = await api.get("/api/orders/seller", { params });
     return res.data.data || res.data || [];
   },

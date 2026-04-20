@@ -77,68 +77,178 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
 export default function OrderManagementPage() {
   const [activeFilter, setActiveFilter] = useState("all");
-  const [orders, setOrders] = useState(USE_MOCK ? INITIAL_ORDERS : []);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [orders, setOrders] = useState<any[]>([]);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [_loadingData, setLoadingData] = useState(true); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [loadingData, setLoadingData] = useState(true);
   const ITEMS_PER_PAGE = 5;
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  
+  // Dashboard states
+  const [stats, setStats] = useState({ totalOrders: 0, grossRevenue: 0, pendingOrders: 0, deliveredOrders: 0 });
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+
+  /* Reusable: fetch status counts from API */
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      const { apiOrderService } = await import("@/services/api/order");
+      const fetchCount = async (st: string) => {
+         const res = await apiOrderService.getSellerSubOrders({ status: st === "all" ? undefined : st, page: 0, size: 1 });
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         const count = (res as any).total_elements ?? (res as any).totalElements ?? 0;
+         return { [st]: count };
+      };
+      const countsArray = await Promise.all(STATUS_FILTERS.map(f => fetchCount(f.value)));
+      const newCounts = countsArray.reduce((acc, curr) => ({ ...acc, ...curr }), {});
+      setStatusCounts(newCounts);
+      setStats(prev => ({ 
+        ...prev, 
+        pendingOrders: newCounts["PENDING"] || 0,
+        deliveredOrders: newCounts["DELIVERED"] || 0 
+      }));
+    } catch { /* silent */ }
+  }, []);
+
+  /* Fetch KPIs + counts on mount */
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const { apiDashboardService } = await import("@/services/api/dashboard");
+        const summary = await apiDashboardService.getFarmerSummary();
+        setStats(prev => ({ ...prev, grossRevenue: summary.grossRevenue || 0, totalOrders: summary.totalOrders || 0 }));
+      } catch { /* silent */ }
+      fetchStatusCounts();
+    }
+    loadDashboard();
+  }, [fetchStatusCounts]);
 
   /* Fetch real orders from API, fallback to mock */
   const fetchOrders = useCallback(async () => {
     setLoadingData(true);
     try {
-      const { orderService } = await import("@/services");
-      const apiOrders = await orderService.getMyOrders();
-      if (Array.isArray(apiOrders) && apiOrders.length > 0) {
+      const { apiOrderService } = await import("@/services/api/order");
+      const apiOrders = await apiOrderService.getSellerSubOrders({
+        status: activeFilter,
+        page: currentPage - 1,
+        size: ITEMS_PER_PAGE
+      });
+      // The endpoint returns a paginated list or array. If paginated, it's .content
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const orderList = (apiOrders as any).content || apiOrders;
+      if (Array.isArray(orderList) && orderList.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapped = apiOrders.map((o: any) => ({
+        const mapped = orderList.map((o: any) => ({
+          // subOrders might have parent order code if backend passes it, else fallback to id
           id: o.orderCode || o.id || "#???",
-          buyer: o.buyerName || o.guestName || "—",
-          phone: o.buyerPhone || o.guestPhone || "—",
+          buyer: o.buyerName || o.guestName || o.buyer_name || o.guest_name || "Khách hàng",
+          phone: o.buyerPhone || o.guestPhone || o.buyer_phone || o.guest_phone || "—",
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          products: (o.items || []).map((i: any) => `${i.productName || "SP"} x${i.quantity || 1}`).join(", ") || "—",
-          total: o.totalAmount || 0,
+          products: (o.items || []).map((i: any) => `${i.productName || i.product?.name || "SP"} x${i.quantity || 1}`).join(", ") || "—",
+          total: o.subtotal || o.totalAmount || 0,
           status: (o.status || "PENDING") as OrderStatus,
-          date: o.createdAt ? new Date(o.createdAt).toLocaleDateString("vi-VN") : "—",
+          date: o.createdAt || o.created_at ? new Date(o.createdAt || o.created_at).toLocaleDateString("vi-VN") : "—",
         }));
         setOrders(mapped);
+        
+        // Update pagination from BE if returning Page
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const apiTotalElements = (apiOrders as any).total_elements ?? (apiOrders as any).totalElements;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const apiTotalPages = (apiOrders as any).total_pages ?? (apiOrders as any).totalPages;
+        
+        if (apiTotalElements !== undefined) {
+          setTotalElements(apiTotalElements);
+          setTotalPages(apiTotalPages);
+        } else {
+          setTotalElements(mapped.length);
+          setTotalPages(Math.ceil(mapped.length / ITEMS_PER_PAGE));
+        }
+      } else {
+        setOrders([]);
+        setTotalElements(0);
+        setTotalPages(1);
       }
     } catch {
       if (USE_MOCK) { setOrders(INITIAL_ORDERS); }
     } finally {
       setLoadingData(false);
     }
-  }, []);
+  }, [activeFilter, currentPage]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  const filtered = activeFilter === "all" ? orders : orders.filter((o) => o.status === activeFilter);
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  /* Optimistic count adjustment helper */
+  const adjustCounts = (fromStatus: string, toStatus: string) => {
+    setStatusCounts((prev) => {
+      const next = { ...prev };
+      if (next[fromStatus] !== undefined) next[fromStatus] = Math.max(0, next[fromStatus] - 1);
+      if (next[toStatus] !== undefined) next[toStatus] = (next[toStatus] || 0) + 1;
+      if (next["all"] !== undefined) { /* total stays same */ }
+      return next;
+    });
+  };
 
   /* advance status */
-  const handleAdvance = (id: string) => {
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id !== id) return o;
-        const ns = NEXT_STATUS[o.status];
-        return ns ? { ...o, status: ns.next } : o;
-      })
-    );
+  const handleAdvance = async (id: string) => {
+    if (processingIds.has(id)) return; // prevent double-click
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+    const ns = NEXT_STATUS[order.status as OrderStatus];
+    if (!ns) return;
+    const oldStatus = order.status;
+    
+    // Lock this order
+    setProcessingIds((prev) => new Set(prev).add(id));
+    
+    // Optimistic UI + count
+    setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: ns.next } : o));
+    adjustCounts(oldStatus, ns.next);
+
+    try {
+       const { apiOrderService } = await import("@/services/api/order");
+       await apiOrderService.updateSubOrderStatus(id, ns.next);
+       // Refresh real counts in background after success
+       fetchStatusCounts();
+    } catch {
+       // Rollback on fail
+       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: oldStatus } : o)));
+       adjustCounts(ns.next, oldStatus);
+    } finally {
+       setProcessingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }
   };
 
   /* cancel order */
-  const handleCancel = (id: string) => {
+  const handleCancel = async (id: string) => {
+    if (processingIds.has(id)) return;
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+    const oldStatus = order.status;
+
+    setProcessingIds((prev) => new Set(prev).add(id));
+
+    // Optimistic cancel + count
     setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: "CANCELLED" as OrderStatus } : o));
+    adjustCounts(oldStatus, "CANCELLED");
     setCancellingId(null);
     setCancelReason("");
+    
+    try {
+       const { apiOrderService } = await import("@/services/api/order");
+       await apiOrderService.updateSubOrderStatus(id, "CANCELLED");
+       fetchStatusCounts();
+    } catch {
+       // Rollback on fail
+       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: oldStatus } : o)));
+       adjustCounts("CANCELLED", oldStatus);
+    } finally {
+       setProcessingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }
   };
-
-  /* stats */
-  const totalRevenue = orders.filter((o) => o.status === "DELIVERED").reduce((s, o) => s + o.total, 0);
-  const pendingCount = orders.filter((o) => o.status === "PENDING").length;
-  const deliveredCount = orders.filter((o) => o.status === "DELIVERED").length;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
@@ -157,8 +267,8 @@ export default function OrderManagementPage() {
             <DollarSign className="w-5 h-5 text-success" />
           </div>
           <div>
-            <p className="text-xs text-gray-500 dark:text-foreground-muted">Doanh thu</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-foreground">{formatCurrency(totalRevenue)}</p>
+            <p className="text-xs text-gray-500 dark:text-foreground-muted">Tổng doanh thu</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-foreground">{formatCurrency(stats.grossRevenue)}</p>
           </div>
         </div>
         <div className="bg-white dark:bg-surface rounded-xl p-4 border border-gray-100 dark:border-border flex items-center gap-3">
@@ -167,7 +277,7 @@ export default function OrderManagementPage() {
           </div>
           <div>
             <p className="text-xs text-gray-500 dark:text-foreground-muted">Chờ xác nhận</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-foreground">{pendingCount}</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-foreground">{stats.pendingOrders}</p>
           </div>
         </div>
         <div className="bg-white dark:bg-surface rounded-xl p-4 border border-gray-100 dark:border-border flex items-center gap-3">
@@ -175,8 +285,8 @@ export default function OrderManagementPage() {
             <TrendingUp className="w-5 h-5 text-info" />
           </div>
           <div>
-            <p className="text-xs text-gray-500 dark:text-foreground-muted">Đã hoàn thành</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-foreground">{deliveredCount}</p>
+            <p className="text-xs text-gray-500 dark:text-foreground-muted">Thành công</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-foreground">{stats.deliveredOrders}</p>
           </div>
         </div>
       </div>
@@ -186,21 +296,51 @@ export default function OrderManagementPage() {
         {STATUS_FILTERS.map((f) => (
           <button type="button"
             key={f.value}
-            onClick={() => setActiveFilter(f.value)}
+            onClick={() => { setActiveFilter(f.value); setCurrentPage(1); }}
             className={
               activeFilter === f.value
                 ? "whitespace-nowrap rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white"
-                : "whitespace-nowrap rounded-full bg-white dark:bg-surface border border-border px-5 py-2 text-sm font-medium hover:border-primary transition-colors"
+                : "whitespace-nowrap rounded-full bg-white dark:bg-surface border border-border px-5 py-2 text-sm font-medium text-foreground hover:border-primary transition-colors flex items-center gap-1.5"
             }
           >
             {f.label}
+            {statusCounts[f.value] !== undefined && (
+              <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                activeFilter === f.value ? "bg-white/20 text-white" : "bg-gray-100 dark:bg-surface-hover text-foreground-muted"
+              }`}>
+                {statusCounts[f.value]}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* Orders List */}
-      <div className="space-y-3">
-        {paginated.map((order) => {
+      {/* Orders List / Loading */}
+      <div className="space-y-3 relative">
+        {loadingData ? (
+          /* Skeletons */
+          Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-5">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 animate-pulse">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                    <div className="h-5 w-20 bg-gray-100 dark:bg-gray-800 rounded-full"></div>
+                  </div>
+                  <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                  <div className="h-4 w-full max-w-sm bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                  <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                  <div className="h-9 w-20 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <>
+            {orders.map((order) => {
           const ns = NEXT_STATUS[order.status];
           return (
             <div key={order.id} className="bg-white dark:bg-surface rounded-xl border border-gray-100 dark:border-border p-5 hover:shadow-sm transition-shadow">
@@ -231,9 +371,16 @@ export default function OrderManagementPage() {
                   {ns && (
                     <button type="button"
                       onClick={() => handleAdvance(order.id)}
-                      className="flex items-center gap-1.5 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                      disabled={processingIds.has(order.id)}
+                      className={`flex items-center gap-1.5 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium transition-opacity ${
+                        processingIds.has(order.id) ? "opacity-50 cursor-wait" : "hover:opacity-90"
+                      }`}
                     >
-                      <ns.icon className="w-4 h-4" />
+                      {processingIds.has(order.id) ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <ns.icon className="w-4 h-4" />
+                      )}
                       {ns.label}
                       <ChevronRight className="w-3 h-3" />
                     </button>
@@ -243,7 +390,10 @@ export default function OrderManagementPage() {
                   {(order.status === "PENDING" || order.status === "CONFIRMED" || order.status === "PREPARING") && (
                     <button type="button"
                       onClick={() => setCancellingId(cancellingId === order.id ? null : order.id)}
-                      className="flex items-center gap-1.5 text-red-500 border border-red-200 dark:border-red-800 px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      disabled={processingIds.has(order.id)}
+                      className={`flex items-center gap-1.5 text-red-500 border border-red-200 dark:border-red-800 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        processingIds.has(order.id) ? "opacity-50 cursor-wait" : "hover:bg-red-50 dark:hover:bg-red-900/20"
+                      }`}
                     >
                       <XCircle className="w-4 h-4" />
                       Hủy
@@ -291,9 +441,11 @@ export default function OrderManagementPage() {
             </div>
           );
         })}
+          </>
+        )}
       </div>
 
-      {filtered.length === 0 && (
+      {!loadingData && orders.length === 0 && (
         <div className="text-center py-12 text-foreground-muted">
           <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p>Không có đơn hàng nào</p>
@@ -303,7 +455,7 @@ export default function OrderManagementPage() {
       <div className="mt-6 flex flex-col items-center gap-3">
         <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         <p className="text-xs text-foreground-muted">
-          Trang {currentPage}/{totalPages || 1} — {filtered.length}/{orders.length} đơn hàng
+          Trang {currentPage}/{totalPages || 1} — {totalElements} đơn hàng
         </p>
       </div>
     </div>
