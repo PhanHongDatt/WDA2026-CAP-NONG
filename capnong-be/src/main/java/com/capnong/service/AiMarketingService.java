@@ -55,6 +55,10 @@ public class AiMarketingService {
     //  CAPTION
     // ═══════════════════════════════════════════════════════════════
 
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private AiMarketingService self;
+
     /**
      * Tạo caption session (sync) + trigger async processing.
      */
@@ -73,8 +77,8 @@ public class AiMarketingService {
 
         UUID sessionId = session.getId();
 
-        // Trigger async processing
-        processCaptionAsync(sessionId, request);
+        // Trigger async processing via 'self' proxy so @Async actually works
+        self.processCaptionAsync(sessionId, request);
 
         log.info("Caption session started: {}", sessionId);
         return sessionId;
@@ -137,7 +141,7 @@ public class AiMarketingService {
 
         UUID sessionId = session.getId();
 
-        processPosterAsync(sessionId, request, request.getMode());
+        self.processPosterAsync(sessionId, request, request.getMode());
 
         log.info("Poster session started: {} (mode: {})", sessionId, request.getMode());
         return sessionId;

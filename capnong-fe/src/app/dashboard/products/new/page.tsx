@@ -17,6 +17,7 @@ export default function NewProductPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -134,29 +135,23 @@ export default function NewProductPage() {
         setSubmitError(null);
         setSubmittingProduct(true);
         try {
-          if (productService.createProduct) {
-            await productService.createProduct({
-              name,
-              description,
-              category,
-              unitCode: unit,
-              pricePerUnit: Number(price),
-              availableQuantity: Number(quantity),
-              locationDetail: location,
-            });
-          } else {
-            // Direct API call as fallback
-            const { createProduct } = await import("@/services/api/product");
-            await createProduct({
-              name,
-              description,
-              category,
-              unitCode: unit,
-              pricePerUnit: Number(price),
-              availableQuantity: Number(quantity),
-              locationDetail: location,
-            });
+          const { createProduct, uploadProductImages } = await import("@/services/api/product");
+          // Tạo sản phẩm trước
+          const result: any = await createProduct({
+            name,
+            description,
+            category,
+            unitCode: unit,
+            pricePerUnit: Number(price),
+            availableQuantity: Number(quantity),
+            locationDetail: location,
+          });
+
+          // Upload hình ảnh nếu có và nếu tạo SP thành công
+          if (imageFiles.length > 0 && result && result.id) {
+            await uploadProductImages(result.id, imageFiles);
           }
+
           setSubmitSuccess(true);
           setTimeout(() => router.push("/dashboard"), 1500);
         } catch (err: unknown) {
@@ -224,13 +219,13 @@ export default function NewProductPage() {
                 className={`w-full px-4 py-3 text-sm border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none ${fieldClass("unit")}`}
               >
                 <option value="KG">Kg</option>
-                <option value="PIECE">Trái/Quả</option>
-                <option value="BOX">Thùng/Hộp</option>
-                <option value="BUNCH">Bó/Chùm</option>
-                <option value="BAG">Bao/Túi</option>
+                <option value="TRAI">Trái/Quả</option>
+                <option value="HOP">Thùng/Hộp</option>
+                <option value="BO">Bó/Chùm</option>
+                <option value="BAO">Bao/Túi</option>
                 <option value="YEN">Yến</option>
                 <option value="TA">Tạ</option>
-                <option value="TON">Tấn</option>
+                <option value="TAN">Tấn</option>
               </select>
             </div>
             <div>
@@ -286,8 +281,10 @@ export default function NewProductPage() {
               className="hidden" 
               onChange={(e) => {
                 if (e.target.files) {
-                  const newImages = Array.from(e.target.files).map(f => URL.createObjectURL(f));
+                  const filesArray = Array.from(e.target.files);
+                  const newImages = filesArray.map(f => URL.createObjectURL(f));
                   setImages([...images, ...newImages].slice(0, 6)); // max 6 images
+                  setImageFiles([...imageFiles, ...filesArray].slice(0, 6));
                 }
               }}
             />
