@@ -183,28 +183,48 @@ function BuyerOrderContent() {
   const [reviewingOrderId, setReviewingOrderId] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewedOrders, setReviewedOrders] = useState<Record<string, { rating: number; comment: string; reply?: string }>>({});
   const [reviewImages, setReviewImages] = useState<string[]>([]);
   const reviewFileRef = useRef<HTMLInputElement>(null);
 
+  // Fetch existing reviews to persist "Đã đánh giá" state across refreshes
+  useEffect(() => {
+    if (!isLoggedIn || orders.length === 0) return;
+    (async () => {
+      try {
+        const { getMyReviews } = await import("@/services/api/review");
+        const res = await getMyReviews(0, 100);
+        const map: Record<string, { rating: number; comment: string; reply?: string }> = {};
+        for (const review of res.content) {
+          // Match review.order_item_id to sub-order id in our orders list
+          const orderItemId = review.order_item_id;
+          if (!orderItemId) continue;
+          // Find which order contains this item
+          const matchedOrder = orders.find(o =>
+            o.items?.some((item: { orderItemId?: string }) => item.orderItemId === orderItemId)
+          );
+          if (matchedOrder) {
+            map[matchedOrder.id] = {
+              rating: review.rating,
+              comment: review.comment || "",
+              reply: review.seller_reply || undefined,
+            };
+          }
+        }
+        if (Object.keys(map).length > 0) {
+          setReviewedOrders(prev => ({ ...prev, ...map }));
+        }
+      } catch {
+        // silently ignore — reviews just won't show as persisted
+      }
+    })();
+  }, [isLoggedIn, orders]);
+
   const handleSubmitReview = async (orderId: string) => {
     if (reviewRating === 0 || reviewComment.length < 10) return;
-    // Optimistic UI update
-    setReviewedOrders((prev) => ({
-      ...prev,
-      [orderId]: {
-        rating: reviewRating,
-        comment: reviewComment,
-      }
-    }));
-    setReviewingOrderId(null);
-    const savedRating = reviewRating;
-    const savedComment = reviewComment;
-    const savedImages = [...reviewImages];
-    setReviewRating(0);
-    setReviewComment("");
-    setReviewImages([]);
-    // Call API in background
+    
+    setIsSubmittingReview(true);
     try {
       const { createReview } = await import("@/services/api/review");
       // Find the order to get product/item IDs
@@ -215,13 +235,29 @@ function BuyerOrderContent() {
       await createReview({
         productId: firstItem.productId,
         orderItemId: firstItem.orderItemId,
-        rating: savedRating,
-        comment: savedComment,
-        images: savedImages.length > 0 ? savedImages : undefined,
+        rating: reviewRating,
+        comment: reviewComment,
+        images: reviewImages.length > 0 ? reviewImages : undefined,
       });
+
+      // Optimistic UI update only on success
+      setReviewedOrders((prev) => ({
+        ...prev,
+        [orderId]: {
+          rating: reviewRating,
+          comment: reviewComment,
+        }
+      }));
+      setReviewingOrderId(null);
+      setReviewRating(0);
+      setReviewComment("");
+      setReviewImages([]);
+
     } catch (e) {
       console.error(e);
-      /* optimistic — UI already updated, silent fail */
+      alert("Đã xảy ra lỗi khi gửi đánh giá, vui lòng thử lại sau!");
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
 
@@ -498,8 +534,8 @@ function BuyerOrderContent() {
                             </div>
                           )}
                           <div className="flex gap-2">
-                            <button type="button" onClick={() => handleSubmitReview(order.id)} disabled={reviewRating === 0 || reviewComment.length < 10} className="bg-primary text-white px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
-                              Gửi đánh giá
+                            <button type="button" onClick={() => handleSubmitReview(order.id)} disabled={reviewRating === 0 || reviewComment.length < 10 || isSubmittingReview} className="bg-primary text-white px-5 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
+                              {isSubmittingReview ? "Đang gửi..." : "Gửi đánh giá"}
                             </button>
                             <button type="button" onClick={() => { setReviewingOrderId(null); setReviewRating(0); setReviewComment(""); }} className="text-sm text-foreground-muted hover:underline">
                               Hủy

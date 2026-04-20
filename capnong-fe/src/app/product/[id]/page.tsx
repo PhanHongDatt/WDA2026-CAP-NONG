@@ -32,6 +32,15 @@ const FARMING_METHOD_LABEL: Record<string, string> = {
   TRADITIONAL: "🌾 Truyền thống",
 };
 
+const CATEGORY_LABEL: Record<string, string> = {
+  FRUIT: "Trái cây",
+  VEGETABLE: "Rau củ",
+  MEAT: "Thịt gia súc/gia cầm",
+  SEAFOOD: "Thủy hải sản",
+  SPICE: "Gia vị",
+  GRAIN: "Lúa gạo & Ngũ cốc",
+};
+
 export default function ProductDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -273,7 +282,7 @@ export default function ProductDetailPage() {
               { label: "Xuất xứ", value: product.location_detail },
               { label: "Phương pháp", value: FARMING_METHOD_LABEL[product.farming_method] || "Truyền thống" },
               { label: "Thu hoạch", value: product.harvest_date || "—" },
-              { label: "Danh mục", value: product.category },
+              { label: "Danh mục", value: CATEGORY_LABEL[product.category || ""] || product.category || "—" },
             ].map((item) => (
               <div key={item.label} className="bg-gray-50 dark:bg-background-light rounded-lg p-3">
                 <p className="text-[10px] text-foreground-muted uppercase tracking-wider">{item.label}</p>

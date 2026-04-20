@@ -34,7 +34,7 @@ export default function EmojiPicker({ onSelect }: EmojiPickerProps) {
         <Smile className="w-5 h-5" />
       </button>
       {open && (
-        <div className="absolute bottom-full mb-2 left-0 bg-white dark:bg-surface border border-border rounded-xl shadow-lg p-3 z-50 w-[260px]">
+        <div className="absolute bottom-full mb-2 right-0 bg-white dark:bg-surface border border-border rounded-xl shadow-lg p-3 z-50 w-[260px]">
           <p className="text-[10px] text-foreground-muted uppercase tracking-wider mb-2 font-medium">Chọn emoji</p>
           <div className="grid grid-cols-10 gap-1">
             {EMOJI_LIST.map((e) => (
