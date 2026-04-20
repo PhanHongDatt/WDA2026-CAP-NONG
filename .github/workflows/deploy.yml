@@ -78,15 +78,18 @@ jobs:
               "CLOUDINARY_API_SECRET=$CLOUDINARY_API_SECRET" \
               > .env
 
+            # Add safe directory for git to prevent dubious ownership error
+            sudo git config --global --add safe.directory /opt/WDA2026-CAP-NONG
+
             # Reset local changes and pull latest
-            git fetch --all
-            git reset --hard origin/main
+            sudo git fetch --all
+            sudo git reset --hard origin/main
 
             # Rebuild images and start containers
-            docker compose -f docker-compose.prod.yml build --no-cache
-            docker compose -f docker-compose.prod.yml up -d
+            sudo docker-compose -f docker-compose.prod.yml build --no-cache
+            sudo docker-compose -f docker-compose.prod.yml up -d
 
             # Prune old images to prevent disk space issues
-            docker system prune -f
+            sudo docker system prune -f
 
             echo "Deployment completed at $(date)"
