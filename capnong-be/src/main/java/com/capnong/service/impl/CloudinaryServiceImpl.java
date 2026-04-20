@@ -42,6 +42,25 @@ public class CloudinaryServiceImpl implements CloudinaryService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public String uploadBase64Image(String base64, String folder) {
+        try {
+            Map<String, Object> uploadResult = cloudinary.uploader().upload(base64,
+                    ObjectUtils.asMap(
+                            "folder", folder,
+                            "resource_type", "image",
+                            "transformation", "c_fill,w_800,h_800,c_limit,q_auto"
+                    ));
+            String url = (String) uploadResult.get("secure_url");
+            logger.info("Uploaded base64 image to Cloudinary: {}", url);
+            return url;
+        } catch (IOException e) {
+            logger.error("Failed to upload base64 image to Cloudinary", e);
+            throw new RuntimeException("Upload ảnh thất bại: " + e.getMessage());
+        }
+    }
+
+    @Override
     public void deleteImage(String publicId) {
         try {
             cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());

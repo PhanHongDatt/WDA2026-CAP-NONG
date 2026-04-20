@@ -19,7 +19,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 8000, // 8s — đủ cho API bình thường, tránh SW hiểu nhầm offline
+  timeout: 60000, // 60s — nới rộng để hỗ trợ upload ảnh và gọi AI model
 });
 
 /* ─── Request Interceptor ─── */

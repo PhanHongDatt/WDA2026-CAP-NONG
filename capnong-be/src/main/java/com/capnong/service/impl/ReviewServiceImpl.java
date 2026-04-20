@@ -13,6 +13,7 @@ import com.capnong.repository.ProductRepository;
 import com.capnong.repository.ReviewRepository;
 import com.capnong.service.OrderEventNotifier;
 import com.capnong.service.ReviewService;
+import com.capnong.service.CloudinaryService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -30,15 +31,18 @@ public class ReviewServiceImpl implements ReviewService {
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
     private final OrderEventNotifier orderEventNotifier;
+    private final CloudinaryService cloudinaryService;
 
     public ReviewServiceImpl(ReviewRepository reviewRepository,
-                             OrderItemRepository orderItemRepository,
-                             ProductRepository productRepository,
-                             OrderEventNotifier orderEventNotifier) {
+            OrderItemRepository orderItemRepository,
+            ProductRepository productRepository,
+            OrderEventNotifier orderEventNotifier,
+            CloudinaryService cloudinaryService) {
         this.reviewRepository = reviewRepository;
         this.orderItemRepository = orderItemRepository;
         this.productRepository = productRepository;
         this.orderEventNotifier = orderEventNotifier;
+        this.cloudinaryService = cloudinaryService;
     }
 
     @Override
@@ -84,6 +88,19 @@ public class ReviewServiceImpl implements ReviewService {
             throw new AppException("Mục đơn hàng này đã được đánh giá", HttpStatus.CONFLICT);
         }
 
+        // Upload images if they are base64
+        java.util.List<String> imageUrls = new java.util.ArrayList<>();
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            for (String img : request.getImages()) {
+                if (img.startsWith("data:image")) {
+                    String url = cloudinaryService.uploadBase64Image(img, "reviews");
+                    imageUrls.add(url);
+                } else if (img.startsWith("http")) {
+                    imageUrls.add(img);
+                }
+            }
+        }
+
         // Create review
         Review review = Review.builder()
                 .productId(request.getProductId())
@@ -91,7 +108,7 @@ public class ReviewServiceImpl implements ReviewService {
                 .authorId(authorId)
                 .rating(request.getRating().shortValue())
                 .comment(request.getComment())
-                .images(request.getImages() != null ? String.join(",", request.getImages()) : null)
+                .images(imageUrls.isEmpty() ? null : String.join(",", imageUrls))
                 .build();
 
         Review saved = reviewRepository.save(review);
@@ -128,10 +145,27 @@ public class ReviewServiceImpl implements ReviewService {
      */
     private void updateProductRating(UUID productId) {
         Object[] stats = reviewRepository.getProductRatingStats(productId);
-        if (stats == null || stats[0] == null) return;
+        if (stats == null || stats.length == 0)
+            return;
 
-        Double avg = ((Number) stats[0]).doubleValue();
-        Long count = ((Number) stats[1]).longValue();
+        // JPA may return Object[] directly [avg, count] or nested [[avg, count]]
+        Object avgObj;
+        Object countObj;
+        if (stats[0] instanceof Object[]) {
+            Object[] row = (Object[]) stats[0];
+            if (row[0] == null)
+                return;
+            avgObj = row[0];
+            countObj = row[1];
+        } else {
+            if (stats[0] == null)
+                return;
+            avgObj = stats[0];
+            countObj = stats[1];
+        }
+
+        Double avg = ((Number) avgObj).doubleValue();
+        Long count = ((Number) countObj).longValue();
 
         BigDecimal averageRating = BigDecimal.valueOf(avg).setScale(2, RoundingMode.HALF_UP);
 

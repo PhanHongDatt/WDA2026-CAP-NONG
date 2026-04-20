@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/ui/Toast";
 import {
   ArrowLeft,
   Plus,
@@ -45,6 +46,7 @@ export default function ProductListPage() {
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState("");
   const [editQty, setEditQty] = useState("");
 
@@ -76,17 +78,33 @@ export default function ProductListPage() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleToggleHide = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p;
-        return { ...p, status: p.status === "HIDDEN" ? "IN_SEASON" as ProductStatus : "HIDDEN" as ProductStatus };
-      })
-    );
+  const { showToast } = useToast();
+
+  const handleToggleHide = async (id: string, currentStatus: ProductStatus) => {
+    const newStatus = currentStatus === "HIDDEN" ? "IN_SEASON" : "HIDDEN";
+    try {
+      const { updateProductStatus } = await import("@/services/api/product");
+      await updateProductStatus(id, newStatus);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, status: newStatus as ProductStatus } : p))
+      );
+      showToast("success", `Đã ${newStatus === "HIDDEN" ? "ẩn" : "hiện"} sản phẩm.`);
+    } catch {
+      showToast("error", "Đổi trạng thái thất bại.");
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      const { deleteProduct } = await import("@/services/api/product");
+      await deleteProduct(id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      setDeletingId(null);
+      showToast("success", "Đã xóa sản phẩm.");
+    } catch {
+      showToast("error", "Xóa sản phẩm thất bại.");
+      setDeletingId(null);
+    }
   };
 
   const handleStartEdit = (p: typeof INITIAL_PRODUCTS[0]) => {
@@ -95,13 +113,23 @@ export default function ProductListPage() {
     setEditQty(String(p.quantity));
   };
 
-  const handleSaveEdit = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, price: Number(editPrice), quantity: Number(editQty) } : p
-      )
-    );
-    setEditingId(null);
+  const handleSaveEdit = async (id: string) => {
+    try {
+      const { updateProductPrice, updateProductQuantity } = await import("@/services/api/product");
+      const newPrice = Number(editPrice);
+      const newQty = Number(editQty);
+      await Promise.all([
+        updateProductPrice(id, newPrice),
+        updateProductQuantity(id, newQty)
+      ]);
+      setProducts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, price: newPrice, quantity: newQty } : p))
+      );
+      setEditingId(null);
+      showToast("success", "Cập nhật sản phẩm thành công.");
+    } catch {
+      showToast("error", "Cập nhật thất bại.");
+    }
   };
 
   return (
@@ -188,10 +216,10 @@ export default function ProductListPage() {
                     <button type="button" onClick={() => handleStartEdit(p)} className="p-2 hover:bg-gray-100 dark:hover:bg-surface-hover rounded-lg transition-colors" aria-label="Sửa sản phẩm">
                       <Pencil className="w-4 h-4 text-gray-500" />
                     </button>
-                    <button type="button" onClick={() => handleToggleHide(p.id)} className="p-2 hover:bg-gray-100 dark:hover:bg-surface-hover rounded-lg transition-colors" aria-label={p.status === "HIDDEN" ? "Hiện sản phẩm" : "Ẩn sản phẩm"}>
+                    <button type="button" onClick={() => handleToggleHide(p.id, p.status)} className="p-2 hover:bg-gray-100 dark:hover:bg-surface-hover rounded-lg transition-colors" aria-label={p.status === "HIDDEN" ? "Hiện sản phẩm" : "Ẩn sản phẩm"}>
                       {p.status === "HIDDEN" ? <Eye className="w-4 h-4 text-gray-500" /> : <EyeOff className="w-4 h-4 text-gray-500" />}
                     </button>
-                    <button type="button" onClick={() => handleDelete(p.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" aria-label="Xóa sản phẩm">
+                    <button type="button" onClick={() => setDeletingId(p.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" aria-label="Xóa sản phẩm">
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </button>
                   </div>
@@ -212,6 +240,34 @@ export default function ProductListPage() {
       <p className="text-sm text-foreground-muted text-center">
         {filtered.length} sản phẩm
       </p>
+
+      {/* Delete Confirmation Modal */}
+      {deletingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-surface rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-border">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-foreground mb-2">
+              Xóa sản phẩm
+            </h3>
+            <p className="text-gray-500 dark:text-foreground-muted mb-6 text-sm">
+              Bạn có chắc chắn muốn xóa sản phẩm này không? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeletingId(null)}
+                className="px-4 py-2 font-medium text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-hover rounded-xl transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => handleDelete(deletingId)}
+                className="px-4 py-2 font-medium text-sm text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-sm"
+              >
+                Xóa ngay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
