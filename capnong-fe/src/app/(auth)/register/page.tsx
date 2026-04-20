@@ -110,9 +110,11 @@ function GoogleRegisterForm() {
         <div className="bg-white dark:bg-surface rounded-2xl shadow-lg border border-border p-8">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary/10 rounded-2xl mb-3">
-              <Leaf className="w-7 h-7 text-primary" />
-            </div>
+            <img
+              src="/images/logo.png"
+              alt="Cạp Nông Logo"
+              className="w-16 h-16 object-contain mb-1 mx-auto block"
+            />
             <h1 className="text-2xl font-black text-foreground">
               Hoàn tất đăng ký
             </h1>
@@ -390,9 +392,11 @@ function RegisterContent() {
             </button>
 
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-primary/10 rounded-2xl mb-3">
-                <Leaf className="w-7 h-7 text-primary" />
-              </div>
+              <img
+                src="/images/logo.png"
+                alt="Cạp Nông Logo"
+                className="w-16 h-16 object-contain mb-1 mx-auto block"
+              />
               <h1 className="text-2xl font-black text-foreground">Xác nhận OTP</h1>
               <p className="text-foreground-muted text-sm mt-1">
                 Nhập mã 6 số đã gửi đến <span className="font-bold text-foreground">{phone}</span>
@@ -457,9 +461,11 @@ function RegisterContent() {
         <div className="bg-white dark:bg-surface rounded-2xl shadow-lg border border-border p-8">
           {/* Logo */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary/10 rounded-2xl mb-3">
-              <Leaf className="w-7 h-7 text-primary" />
-            </div>
+            <img
+              src="/images/logo.png"
+              alt="Cạp Nông Logo"
+              className="w-16 h-16 object-contain mb-1 mx-auto block"
+            />
             <h1 className="text-2xl font-black text-foreground">
               Tạo tài khoản
             </h1>

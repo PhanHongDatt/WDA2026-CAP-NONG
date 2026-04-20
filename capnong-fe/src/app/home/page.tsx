@@ -6,8 +6,11 @@ import FarmCard from "@/components/ui/FarmCard";
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryGrid from "@/components/ui/CategoryGrid";
 import FlashDeal from "@/components/ui/FlashDeal";
+import CoopPoolCard from "@/components/ui/CoopPoolCard";
 import { productService, shopService } from "@/services";
-import { MOCK_SEASONAL_PRODUCTS, MOCK_NEW_PRODUCTS, MOCK_SHOPS } from "@/lib/mock-data";
+import { getOpenBundles } from "@/services/api/htx";
+import { MOCK_SEASONAL_PRODUCTS, MOCK_NEW_PRODUCTS, MOCK_SHOPS, MOCK_BUNDLE } from "@/lib/mock-data";
+import type { Bundle } from "@/types/order";
 
 
 
@@ -58,7 +61,7 @@ const jsonLd = {
 };
 
 export default async function HomePage() {
-  const [seasonalProducts, newProducts, shops] = await Promise.all([
+  const [seasonalProducts, newProducts, shops, openBundles] = await Promise.all([
     productService.getSeasonalProducts().then((result) => {
       // If the backend API returns an empty list, forcibly inject mock data to ensure the UI is not empty
       if (result && result.length > 0) return result;
@@ -74,6 +77,15 @@ export default async function HomePage() {
       if (result && result.length > 0) return result;
       return MOCK_SHOPS;
     }).catch(() => MOCK_SHOPS),
+
+    // Fetch open bundles — BE: GET /api/v1/cooperatives/bundles (snake_case response)
+    getOpenBundles().then((result) => {
+      if (Array.isArray(result) && result.length > 0) {
+        // BE response already snake_case — khớp với Bundle type trong types/order.ts
+        return result as unknown as Bundle[];
+      }
+      return [MOCK_BUNDLE];
+    }).catch(() => [MOCK_BUNDLE]),
   ]);
   return (
     <>
@@ -187,8 +199,10 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* SECTION: Cooperative Pool — hiện khi có API gom đơn thật */}
-        {/* TODO: Tích hợp API /api/bundles/open khi sẵn sàng */}
+        {/* SECTION: Cooperative Pool — Gom đơn nông sản */}
+        {openBundles.length > 0 && openBundles.filter(b => b.status === "OPEN").slice(0, 1).map((bundle) => (
+          <CoopPoolCard key={bundle.id} pool={bundle} />
+        ))}
 
         {/* SECTION: Featured Farms — giống hình tham khảo carousel */}
         <section className="mb-12 relative">

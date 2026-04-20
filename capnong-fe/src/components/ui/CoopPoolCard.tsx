@@ -9,14 +9,25 @@ interface CoopPoolCardProps {
 
 /**
  * CoopPoolCard — matching home.html lines 273-308 exactly
+ *
+ * NOTE: BE BundleResponseDto.unitCode serializes to `unit_code` (string),
+ * but FE Bundle type defines `unit` as UnitResponse (object with symbol).
+ * We handle both cases gracefully.
  */
 export default function CoopPoolCard({ pool }: CoopPoolCardProps) {
   const progress = pool.progress_percent;
 
+  // Handle unit: could be UnitResponse object (from mock) or string (from API)
+  const unitSymbol =
+    typeof pool.unit === "object" && pool.unit !== null
+      ? pool.unit.symbol
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      : (pool as any).unit_code || "kg";
+
   return (
     <section className="mb-12">
       {/* matches home.html line 274: bg-green-50 rounded-2xl p-8 border border-green-100 flex items-center gap-12 */}
-      <div className="bg-green-50 rounded-2xl p-8 border border-green-100 flex items-center gap-12">
+      <div className="bg-green-50 rounded-2xl p-8 border border-green-100 flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
         {/* Left - Info */}
         <div className="flex-shrink-0">
           <div className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full mb-4 inline-block uppercase tracking-wider">
@@ -32,7 +43,7 @@ export default function CoopPoolCard({ pool }: CoopPoolCardProps) {
           <div className="flex items-center gap-3 text-sm text-gray-500 mb-6">
             <span className="flex items-center gap-1">
               <Users className="w-4 h-4" />
-              {pool.pledges.length} người tham gia
+              {Array.isArray(pool.pledges) ? pool.pledges.length : 0} người tham gia
             </span>
           </div>
           <Link
@@ -44,7 +55,7 @@ export default function CoopPoolCard({ pool }: CoopPoolCardProps) {
         </div>
 
         {/* Right - Progress */}
-        <div className="flex-grow">
+        <div className="flex-grow w-full lg:w-auto">
           <div className="bg-white p-6 rounded-xl shadow-sm">
             <div className="flex justify-between items-end mb-2">
               <span className="text-sm font-semibold text-gray-700">
@@ -65,7 +76,7 @@ export default function CoopPoolCard({ pool }: CoopPoolCardProps) {
                 <p className="text-gray-500 mb-1">Đã gom</p>
                 <p className="font-bold text-gray-900">
                   {pool.current_pledged_quantity.toLocaleString("vi-VN")} /{" "}
-                  {pool.target_quantity.toLocaleString("vi-VN")} {pool.unit.symbol}
+                  {pool.target_quantity.toLocaleString("vi-VN")} {unitSymbol}
                 </p>
               </div>
               <div className="bg-gray-50 p-3 rounded-lg">

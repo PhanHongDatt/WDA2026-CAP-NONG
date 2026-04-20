@@ -178,6 +178,8 @@ export async function createBundle(data: {
   description?: string;
   minPledgeQuantity?: number;
 }): Promise<unknown> {
+  // WebConfig.java dùng PropertyNamingStrategies.SNAKE_CASE toàn cục
+  // → Jackson deserialize kỳ vọng snake_case keys trong JSON body
   const payload = {
     product_category: data.productCategory,
     product_name: data.productName,

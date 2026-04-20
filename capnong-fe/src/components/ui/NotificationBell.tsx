@@ -15,15 +15,6 @@ interface Notification {
   is_read: boolean;
 }
 
-/* ─── Mock fallback (khi BE chưa có data) ─── */
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: "n-001", type: "ORDER_NEW", title: "Đơn hàng mới", message: "Nguyễn Thu Hà vừa đặt 2kg Xoài Cát Hòa Lộc", created_at: "2026-03-20T15:30:00Z", is_read: false },
-  { id: "n-002", type: "ORDER_STATUS", title: "Cập nhật đơn hàng", message: "Đơn #CN-0042 đã chuyển sang trạng thái Đang giao", created_at: "2026-03-20T14:00:00Z", is_read: false },
-  { id: "n-003", type: "BUNDLE_THRESHOLD", title: "Bundle đạt ngưỡng", message: "Bundle Cam Sành đã gom đủ 500kg — chờ xác nhận", created_at: "2026-03-20T10:00:00Z", is_read: false },
-  { id: "n-004", type: "HTX_JOIN_REQUEST", title: "Yêu cầu gia nhập HTX", message: "Trần Văn Minh muốn gia nhập HTX Trái Cây Bến Tre", created_at: "2026-03-19T16:00:00Z", is_read: true },
-  { id: "n-005", type: "REVIEW_NEW", title: "Đánh giá mới", message: "⭐⭐⭐⭐⭐ — \"Xoài rất ngon, sẽ mua lại!\"", created_at: "2026-03-19T09:00:00Z", is_read: true },
-];
-
 function notificationIcon(type: string) {
   switch (type) {
     case "ORDER_NEW": case "NEW_ORDER": return <ShoppingCart className="w-4 h-4 text-primary" />;
@@ -38,6 +29,7 @@ function notificationIcon(type: string) {
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Vừa xong";
   if (mins < 60) return `${mins} phút trước`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours} giờ trước`;
@@ -48,10 +40,8 @@ function timeAgo(dateStr: string) {
 /**
  * NotificationBell — Bell icon với badge + dropdown danh sách thông báo
  * UC-38: Nhận & đọc thông báo in-app
- * Gọi API thật → fallback mock nếu BE chưa lên
+ * Gọi API thật từ BE — không có mock data
  */
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
-
 export default function NotificationBell() {
   const { isLoggedIn } = useAuth();
   const [open, setOpen] = useState(false);
@@ -60,7 +50,7 @@ export default function NotificationBell() {
   const [loaded, setLoaded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  /* Fetch notifications from API on mount or when dropdown opens */
+  /* Fetch notifications from API */
   const fetchNotifications = useCallback(async () => {
     if (!isLoggedIn) return;
 
@@ -71,20 +61,18 @@ export default function NotificationBell() {
         id: n.id,
         type: n.type,
         title: n.title,
-        message: n.body,
+        message: n.body || n.message,
         created_at: n.created_at || n.createdAt,
         is_read: n.is_read !== undefined ? n.is_read : (n.isRead || false),
       }));
-      setNotifications(mapped.length > 0 ? mapped : (USE_MOCK ? MOCK_NOTIFICATIONS : []));
+      setNotifications(mapped);
       setUnreadCount(result.unreadCount || mapped.filter((n) => !n.is_read).length);
       setLoaded(true);
     } catch {
-      // API unavailable → use mock only when USE_MOCK is enabled
+      // API unavailable — show empty
       if (!loaded) {
-        if (USE_MOCK) {
-          setNotifications(MOCK_NOTIFICATIONS);
-          setUnreadCount(MOCK_NOTIFICATIONS.filter((n) => !n.is_read).length);
-        }
+        setNotifications([]);
+        setUnreadCount(0);
         setLoaded(true);
       }
     }
