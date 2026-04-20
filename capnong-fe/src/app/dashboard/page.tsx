@@ -61,40 +61,72 @@ function DashboardContent() {
     ? `Tổng quan hợp tác xã${user?.htx_name ? " — " + user.htx_name : ""}`
     : "Tổng quan hoạt động gian hàng của bạn";
 
-  const [stats, setStats] = useState(USE_MOCK ? STATS : EMPTY_STATS);
+  const [stats, setStats] = useState<any[]>(USE_MOCK ? STATS : EMPTY_STATS);
   const [recentOrders, setRecentOrders] = useState(USE_MOCK ? RECENT_ORDERS : []);
+  const [revenueData, setRevenueData] = useState(USE_MOCK ? REVENUE_DATA : [] as { label: string; value: number }[]);
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const { orderService, productService } = await import("@/services");
-      const [apiOrders, productResult] = await Promise.allSettled([
-        orderService.getMyOrders(),
-        productService.search({ page: 0, size: 1 }),
+      const { orderService } = await import("@/services");
+      const { apiDashboardService } = await import("@/services/api/dashboard");
+      
+      const [summaryRes, ordersRes, revenueRes] = await Promise.allSettled([
+        apiDashboardService.getFarmerSummary(),
+        orderService.getSellerSubOrders({ size: 3 }),
+        apiDashboardService.getMonthlyRevenue(),
       ]);
+
+      const summary = summaryRes.status === "fulfilled" 
+        ? summaryRes.value 
+        : { totalOrders: 0, pendingOrders: 0, totalProducts: 0, grossRevenue: 0, netRevenue: 0, averageRating: 0, totalReviews: 0 };
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const orders: any[] = apiOrders.status === "fulfilled" && Array.isArray(apiOrders.value) ? apiOrders.value : [];
-      const totalProducts = productResult.status === "fulfilled" ? (productResult.value as { total_elements: number }).total_elements : 12;
-      const totalRevenue = orders.reduce((s: number, o: { totalAmount?: number }) => s + (o.totalAmount || 0), 0);
+      const apiOrders: any = ordersRes.status === "fulfilled" ? ordersRes.value : {};
+      const orders = Array.isArray(apiOrders.content) ? apiOrders.content : (Array.isArray(apiOrders) ? apiOrders : []);
+
+      const ratingDisplay = summary.averageRating > 0 ? (
+        <span className="flex items-baseline md:items-end xl:items-baseline">
+          {summary.averageRating.toFixed(1)}
+          <span className="text-sm font-medium text-foreground-muted ml-0.5">/{summary.totalReviews}</span>
+        </span>
+      ) : "—";
+
+      setStats([
+        { label: "Đơn hàng", value: String(summary.totalOrders || 0), icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
+        { label: "Sản phẩm", value: String(summary.totalProducts || 0), icon: ShoppingCart, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
+        { label: "Doanh thu", value: formatCurrency(summary.grossRevenue || 0), icon: TrendingUp, color: "text-success bg-green-50 dark:bg-green-900/30" },
+        { label: "Đánh giá", value: ratingDisplay, icon: Star, color: "text-warning bg-yellow-50 dark:bg-yellow-900/30" },
+      ]);
 
       if (orders.length > 0) {
-        setStats([
-          { label: "Đơn hàng", value: String(orders.length), icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
-          { label: "Sản phẩm", value: String(totalProducts), icon: ShoppingCart, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
-          { label: "Doanh thu", value: formatCurrency(totalRevenue), icon: TrendingUp, color: "text-success bg-green-50 dark:bg-green-900/30" },
-          { label: "Đánh giá", value: "4.8", icon: Star, color: "text-warning bg-yellow-50 dark:bg-yellow-900/30" },
-        ]);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setRecentOrders(orders.slice(0, 3).map((o: any) => ({
-          id: o.orderCode || o.id || "#???",
-          buyer: o.buyerName || o.guestName || "—",
-          product: (o.items || []).map((i: { productName?: string; quantity?: number }) => `${i.productName || "SP"} x${i.quantity || 1}`).join(", ") || "—",
-          total: o.totalAmount || 0,
-          status: o.status === "DELIVERED" ? "Đã nhận" : o.status === "SHIPPED" ? "Đang giao" : "Đã xác nhận",
-          statusColor: o.status === "DELIVERED" ? "text-success bg-green-50" : o.status === "SHIPPED" ? "text-primary bg-primary-50" : "text-info bg-blue-50",
-        })));
+        setRecentOrders(orders.slice(0, 3).map((o: any) => {
+          // Map items: nested product object has name, quantity is on item level
+          const itemsText = (o.items || []).map((i: any) => {
+            const pName = i.product?.name || i.productName || i.product_name || "SP";
+            const qty = i.quantity || 1;
+            return `${pName} x${Math.round(qty)}`;
+          }).join(", ") || "—";
+
+          return {
+            id: o.subOrderCode || String(o.id || "").substring(0, 8) || "#???",
+            buyer: o.buyerName || o.order?.buyerName || o.order?.guestName || o.order?.buyer_name || o.order?.guest_name || "Khách",
+            product: itemsText,
+            total: o.subtotal || o.totalAmount || 0,
+            status: o.status === "DELIVERED" ? "Đã nhận" : o.status === "SHIPPED" ? "Đang giao" : o.status === "PENDING" ? "Chờ xác nhận" : o.status === "CANCELLED" ? "Đã hủy" : "Đã xác nhận",
+            statusColor: o.status === "DELIVERED" ? "text-success bg-green-50" : o.status === "SHIPPED" ? "text-primary bg-primary-50" : o.status === "CANCELLED" ? "text-red-600 bg-red-50" : "text-info bg-blue-50",
+          };
+        }));
+      } else {
+        setRecentOrders([]);
+      }
+
+      // Monthly revenue chart
+      if (revenueRes.status === "fulfilled" && revenueRes.value.length > 0) {
+        setRevenueData(revenueRes.value.map(r => ({ label: r.label, value: r.revenue })));
       }
     } catch {
-      if (USE_MOCK) { setStats(STATS); setRecentOrders(RECENT_ORDERS); }
+      if (USE_MOCK) { setStats(STATS); setRecentOrders(RECENT_ORDERS); setRevenueData(REVENUE_DATA); }
     }
   }, []);
 
@@ -191,7 +223,7 @@ function DashboardContent() {
                 Năm 2026
               </span>
             </div>
-            <SimpleBarChart data={REVENUE_DATA} height={180} />
+            <SimpleBarChart data={revenueData} height={180} />
           </div>
 
           {/* Recent Orders */}

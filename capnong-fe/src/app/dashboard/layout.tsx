@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Store, Package, ShoppingCart, BarChart3, FileText, Plus, Megaphone } from "lucide-react";
+import { Store, Package, ShoppingCart, BarChart3, FileText, Plus, Megaphone, MessageSquare } from "lucide-react";
 
 export const metadata: Metadata = {
   title: {
@@ -15,6 +15,7 @@ const sidebarLinks = [
   { href: "/dashboard/products", label: "Sản phẩm", icon: Package },
   { href: "/dashboard/products/new", label: "Đăng sản phẩm", icon: Plus },
   { href: "/dashboard/orders", label: "Đơn hàng", icon: ShoppingCart },
+  { href: "/dashboard/reviews", label: "Đánh giá", icon: MessageSquare },
   { href: "/dashboard/products/drafts", label: "Bản nháp", icon: FileText },
   { href: "/dashboard/marketing", label: "Marketing AI", icon: Megaphone },
 ];

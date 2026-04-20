@@ -40,6 +40,19 @@ export default function Header() {
 
   const { user, isLoggedIn, isFarmer, isHtxMember, isHtxManager, isAdmin, logout } = useAuth();
   const [cartCount, setCartCount] = useState(0);
+  const [orderCount, setOrderCount] = useState(0);
+
+  useEffect(() => {
+    if (user && user.role === "BUYER") {
+      import("@/services/api/order").then(({ apiOrderService }) => {
+        apiOrderService.getMyOrders({ page: 0, size: 1, sort: "createdAt,desc" })
+          .then((res: any) => {
+            setOrderCount(res.totalElements || 0);
+          })
+          .catch(() => {});
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     cartService.getItemCount().then(setCartCount).catch(() => {});
@@ -222,7 +235,11 @@ export default function Header() {
                         <Package className="w-4 h-4" />
                         <span>Đơn hàng của tôi</span>
                         {/* Badge đơn đang giao */}
-                        <span className="ml-auto text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded-full">2</span>
+                        {orderCount > 0 && (
+                          <span className="ml-auto text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded-full">
+                            {orderCount > 99 ? "99+" : orderCount}
+                          </span>
+                        )}
                       </Link>
                     )}
 

@@ -21,5 +21,7 @@ public class UserResponse {
     private String avatarUrl;
     private String role;
     private Boolean active;
+    private String googleId;
+    private String googleEmail;
     private LocalDateTime createdAt;
 }

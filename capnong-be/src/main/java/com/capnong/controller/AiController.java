@@ -65,6 +65,16 @@ public class AiController {
         return ResponseEntity.ok(ApiResponse.success("AI đã trau chuốt mô tả thành công", response));
     }
 
+    @PostMapping("/price-advice")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "AI Price Advisor",
+            description = "Gợi ý giá thị trường dựa trên tên sản phẩm và phân loại.")
+    public ResponseEntity<ApiResponse<com.capnong.dto.response.PriceAdviceResponse>> getPriceAdvice(
+            @Valid @RequestBody com.capnong.dto.request.PriceAdviceRequest request) {
+        com.capnong.dto.response.PriceAdviceResponse response = aiListingService.getPriceAdvice(request);
+        return ResponseEntity.ok(ApiResponse.success("Phân tích giá thị trường thành công", response));
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  AI Caption Generator
     // ═══════════════════════════════════════════════════════════════

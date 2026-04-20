@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from app.schemas.voice_schema import RefineRequest, RefineResponse
+from app.schemas.voice_schema import RefineRequest, RefineResponse, PriceAdviceRequest, PriceAdviceResponse
 from app.services.gemini_service import refine_description
 
 router = APIRouter(prefix="/ai", tags=["AI Features"])
@@ -10,5 +10,19 @@ async def refine_desc(request: RefineRequest) -> RefineResponse:
     try:
         result = await refine_description(request.raw_description, request.product_name)
         return RefineResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+@router.post("/price-advice", response_model=PriceAdviceResponse)
+async def price_advice(request: PriceAdviceRequest) -> PriceAdviceResponse:
+    try:
+        from app.services.gemini_service import get_price_advice
+        result = await get_price_advice(
+            product_name=request.product_name,
+            category=request.category,
+            province=request.province,
+            current_price=request.current_price
+        )
+        return PriceAdviceResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
