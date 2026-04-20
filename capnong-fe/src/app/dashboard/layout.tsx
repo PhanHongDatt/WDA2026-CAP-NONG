@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 const sidebarLinks = [
+  { href: "/dashboard/shop", label: "Gian hàng", icon: Store },
   { href: "/dashboard", label: "Tổng quan", icon: BarChart3 },
   { href: "/dashboard/products", label: "Sản phẩm", icon: Package },
   { href: "/dashboard/products/new", label: "Đăng sản phẩm", icon: Plus },

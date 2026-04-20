@@ -12,11 +12,30 @@
  * Response: ApiResponse<ShopResponse> (camelCase)
  */
 import api from "../api";
-import type { IShopService } from "../types";
+import type { IShopService, ShopFormData } from "../types";
 import type { Product } from "@/types/product";
 import type { Shop } from "@/types/shop";
 import { normalizeShop } from "../normalizers/shop";
 import { normalizeProducts } from "../normalizers/product";
+
+/**
+ * Convert FE ShopFormData (snake_case) → BE payload (camelCase)
+ * BE Jackson đã config SNAKE_CASE nên gửi snake_case cũng OK,
+ * nhưng gửi camelCase để khớp DTO field names trực tiếp.
+ */
+function toBePayload(data: ShopFormData) {
+  return {
+    name: data.name,
+    slug: data.slug,
+    province: data.province,
+    district: data.district,
+    bio: data.bio || undefined,
+    yearsExperience: data.years_experience ?? undefined,
+    farmAreaM2: data.farm_area_m2 ?? undefined,
+    avatarUrl: data.avatar_url || undefined,
+    coverUrl: data.cover_url || undefined,
+  };
+}
 
 export const apiShopService: IShopService = {
   async getBySlug(slug: string): Promise<Shop | null> {
@@ -52,25 +71,13 @@ export const apiShopService: IShopService = {
     }
   },
 
-  async createShop(data: {
-    name: string;
-    slug: string;
-    province: string;
-    district: string;
-    bio?: string;
-  }): Promise<unknown> {
-    const res = await api.post("/api/shops", data);
+  async createShop(data: ShopFormData): Promise<unknown> {
+    const res = await api.post("/api/shops", toBePayload(data));
     return res.data.data || res.data;
   },
 
-  async updateShop(slug: string, data: {
-    name: string;
-    slug: string;
-    province: string;
-    district: string;
-    bio?: string;
-  }): Promise<unknown> {
-    const res = await api.put(`/api/shops/${slug}`, data);
+  async updateShop(slug: string, data: ShopFormData): Promise<unknown> {
+    const res = await api.put(`/api/shops/${slug}`, toBePayload(data));
     return res.data.data || res.data;
   },
 };
