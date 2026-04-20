@@ -4,10 +4,12 @@ import com.capnong.service.TelegramBotService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.annotation.PostConstruct;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -22,6 +24,12 @@ public class TelegramBotServiceImpl implements TelegramBotService {
 
     @Value("${app.telegram.bot-username:}")
     private String botUsername;
+
+    @Value("${app.telegram.webhook-url:}")
+    private String webhookUrl;
+
+    @Value("${app.telegram.webhook-secret-token:}")
+    private String webhookSecretToken;
 
     private final RestTemplate restTemplate;
 
@@ -70,5 +78,39 @@ public class TelegramBotServiceImpl implements TelegramBotService {
     @Override
     public String getBotUsername() {
         return botUsername;
+    }
+
+    @Override
+    @PostConstruct
+    public void registerWebhook() {
+        if (botToken == null || botToken.isBlank() || webhookUrl == null || webhookUrl.isBlank()) {
+            logger.info("Telegram Webhook registration skipped: Token or URL not configured");
+            return;
+        }
+
+        try {
+            String url = TELEGRAM_API_URL + botToken + "/setWebhook";
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("url", webhookUrl);
+            if (webhookSecretToken != null && !webhookSecretToken.isBlank()) {
+                requestBody.put("secret_token", webhookSecretToken);
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url, HttpMethod.POST, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                logger.info("Telegram Webhook registered successfully: {}", webhookUrl);
+            } else {
+                logger.error("Failed to register Telegram Webhook. Status: {}", response.getStatusCode());
+            }
+        } catch (Exception e) {
+            logger.error("Error registering Telegram Webhook: {}", e.getMessage());
+        }
     }
 }

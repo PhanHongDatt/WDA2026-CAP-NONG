@@ -70,10 +70,34 @@ public class NotificationController {
     }
 
     /**
-     * POST /api/v1/notifications/telegram/register
+     * GET /api/v1/notifications/telegram/link
      */
+    @GetMapping("/telegram/link")
+    @Operation(summary = "Lấy link liên kết Telegram", description = "Trả về URL t.me/{bot}?start={token} để người dùng click mở bot và tự động liên kết.")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getTelegramLink(
+            @AuthenticationPrincipal UserDetailsImpl user) {
+        String link = telegramNotificationService.generateLinkingUrl(user.getId());
+        return ResponseEntity.ok(ApiResponse.success("OK", Map.of("link", link)));
+    }
+
+    /**
+     * GET /api/v1/notifications/telegram/status
+     */
+    @GetMapping("/telegram/status")
+    @Operation(summary = "Kiểm tra trạng thái liên kết Telegram", description = "Trả về thông tin xem người dùng đã liên kết với Telegram chưa.")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getTelegramStatus(
+            @AuthenticationPrincipal UserDetailsImpl user) {
+        boolean isLinked = telegramNotificationService.isTelegramLinked(user.getId());
+        return ResponseEntity.ok(ApiResponse.success("OK", Map.of("is_linked", isLinked)));
+    }
+
+    /**
+     * POST /api/v1/notifications/telegram/register
+     * @deprecated Use /telegram/link for better UX with auto-linking
+     */
+    @Deprecated
     @PostMapping("/telegram/register")
-    @Operation(summary = "Cấu hình liên kết tài khoản Telegram", description = "Cho phép người dùng lưu chat ID để hệ thống bắn Notification thông qua bot Telegram.")
+    @Operation(summary = "Cấu hình liên kết tài khoản Telegram (Thủ công)", description = "Cho phép người dùng lưu chat ID thủ công. Khuyến khích dùng /telegram/link để tự động hóa.")
     public ResponseEntity<ApiResponse<Void>> registerTelegram(
             @AuthenticationPrincipal UserDetailsImpl user,
             @RequestBody Map<String, String> body) {

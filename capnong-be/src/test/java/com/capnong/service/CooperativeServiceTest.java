@@ -8,6 +8,7 @@ import com.capnong.model.*;
 import com.capnong.model.enums.BundleStatus;
 import com.capnong.model.enums.PledgeStatus;
 import com.capnong.repository.*;
+import com.capnong.service.impl.CooperativeServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,10 +34,11 @@ class CooperativeServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private ProductRepository productRepository;
     @Mock private ShopRepository shopRepository;
+    @Mock private UnitRepository unitRepository;
     @Mock private TelegramNotificationService telegramNotificationService;
     @Mock private BundleMapper bundleMapper;
 
-    @InjectMocks private CooperativeService cooperativeService;
+    @InjectMocks private CooperativeServiceImpl cooperativeService;
 
     private UUID bundleId;
     private UUID farmerId;

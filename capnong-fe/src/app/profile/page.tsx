@@ -10,6 +10,7 @@ import {
 import { apiUserService, linkGoogleAccount, unlinkGoogleAccount } from "@/services/api/user";
 import { apiUserAddressService, UserAddress, UserAddressRequest, getProvinces, getWards, Province, Ward } from "@/services/api/address";
 import { useToast } from "@/components/ui/Toast";
+import { getTelegramLink, getTelegramStatus, unlinkTelegram } from "@/services/api/notification";
 
 function ProfileContent() {
   const { user, refreshProfile } = useAuth();
@@ -28,6 +29,7 @@ function ProfileContent() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(form.avatar_url || null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  /* UC-39: Telegram notification */
   /* OTP flow for Email/Phone update */
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otpCode, setOtpCode] = useState(["", "", "", "", "", ""]);
@@ -66,6 +68,15 @@ function ProfileContent() {
   const [telegramHandle, setTelegramHandle] = useState("");
   const [telegramEnabled, setTelegramEnabled] = useState(false);
   const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramLink, setTelegramLink] = useState("");
+
+  useEffect(() => {
+    // Fetch Telegram status when mounted or user changes
+    if (user?.id) {
+      getTelegramStatus().then(setTelegramEnabled).catch(console.error);
+      getTelegramLink().then(setTelegramLink).catch(console.error);
+    }
+  }, [user?.id]);
 
   /* Password change */
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -361,7 +372,50 @@ function ProfileContent() {
     }
   };
 
-  const handleTelegramToggle = () => setTelegramEnabled(!telegramEnabled);
+  // Method to manually refresh status after opening link
+  const handleRefreshTelegramStatus = useCallback(async () => {
+    setTelegramLoading(true);
+    try {
+      const linked = await getTelegramStatus();
+      setTelegramEnabled(linked);
+      if (linked) {
+        showToast("success", "Đã xác nhận liên kết Telegram!");
+      }
+    } catch {
+      // silent
+    } finally {
+      setTelegramLoading(false);
+    }
+  }, [showToast]);
+
+  const handleTelegramToggle = useCallback(async () => {
+    setTelegramLoading(true);
+    try {
+      if (telegramEnabled) {
+        await unlinkTelegram();
+        setTelegramEnabled(false);
+        showToast("success", "Đã hủy liên kết Telegram");
+      } else {
+        // Fallback: If telegramLink is missing from state, fetch it now
+        let link = telegramLink;
+        if (!link) {
+          link = await getTelegramLink();
+          setTelegramLink(link);
+        }
+
+        if (link && typeof link === 'string') {
+          window.open(link, "_blank");
+          showToast("success", "Vui lòng mở ứng dụng Telegram và ấn START");
+        } else {
+          showToast("error", "Chưa cấu hình Telegram Bot trên hệ thống (thiếu link)");
+        }
+      }
+    } catch (err: unknown) {
+      showToast("error", "Có lỗi xảy ra kết nối Telegram");
+    } finally {
+      setTelegramLoading(false);
+    }
+  }, [telegramEnabled, telegramLink, showToast]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
@@ -686,34 +740,49 @@ function ProfileContent() {
           <Send className="w-5 h-5 text-primary" />
           Kênh thông báo Telegram
         </h2>
-        <div className="flex flex-col sm:flex-row gap-4">
+        <p className="text-sm text-foreground-muted">
+          Nhận thông báo đơn hàng mới, Bundle gom đơn, và tin nhắn quan trọng qua Telegram.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
           <div className="flex-1">
-            <label htmlFor="profile-telegram" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">
-              Telegram username
-            </label>
-            <input
-              id="profile-telegram"
-              type="text"
-              value={telegramHandle}
-              onChange={(e) => setTelegramHandle(e.target.value)}
-              placeholder="@your_username"
-              className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            <div className={`flex items-center gap-2 text-sm font-medium ${telegramEnabled ? "text-success" : "text-foreground-muted"}`}>
+              {telegramEnabled ? "✅ Đã kết nối với Telegram Bot" : "⚪ Chưa kết nối Telegram"}
+            </div>
+            {!telegramEnabled && (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs text-foreground-muted">
+                  Click vào nút bên cạnh để mở Telegram và ấn Start.
+                </p>
+                <p className="text-[11px] text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 inline-block px-2 py-0.5 rounded border border-amber-100 dark:border-amber-900/50">
+                  <span className="font-bold">Lưu ý:</span> Bạn cần có sẵn ứng dụng Telegram trên máy tính hoặc đang thao tác trên điện thoại.
+                </p>
+              </div>
+            )}
           </div>
-          <div className="flex items-end gap-3">
+          <div className="flex items-center gap-3">
+             {!telegramEnabled && (
+               <button
+                 type="button"
+                 onClick={handleRefreshTelegramStatus}
+                 disabled={telegramLoading}
+                 className="text-xs text-primary hover:underline font-medium px-2"
+               >
+                 🔄 Tải lại trạng thái
+               </button>
+             )}
             <button
-              type="button"
-              onClick={handleTelegramToggle}
-              disabled={telegramLoading}
-              className={`relative w-12 h-7 rounded-full transition-colors ${telegramEnabled ? "bg-primary" : "bg-gray-300 dark:bg-gray-600"}`}
-              aria-label={telegramEnabled ? "Tắt thông báo Telegram" : "Bật thông báo Telegram"}
+               type="button"
+               onClick={handleTelegramToggle}
+               disabled={telegramLoading}
+               className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                 telegramEnabled 
+                   ? "bg-gray-100 dark:bg-surface-hover text-foreground hover:bg-gray-200 dark:hover:bg-border" 
+                   : "bg-[#2AABEE] text-white hover:bg-[#229ED9] shadow-sm"
+               } disabled:opacity-50`}
             >
-              <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${telegramEnabled ? "left-[calc(100%-1.625rem)]" : "left-0.5"}`} />
+              {telegramLoading ? "Đang xử lý..." : telegramEnabled ? "Hủy liên kết" : "Liên kết Telegram"}
             </button>
           </div>
-        </div>
-        <div className={`flex items-center gap-2 text-sm font-medium ${telegramEnabled ? "text-success" : "text-foreground-muted"}`}>
-          {telegramEnabled ? "✅ Đã bật nhận thông báo Telegram" : "⚪ Chưa kết nối Telegram"}
         </div>
       </div>
 
