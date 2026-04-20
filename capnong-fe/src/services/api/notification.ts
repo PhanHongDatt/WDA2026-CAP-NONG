@@ -6,7 +6,8 @@
  *   GET  /unread-count            → Số thông báo chưa đọc
  *   PATCH /{id}/read              → Đánh dấu đã đọc
  *   PATCH /read-all               → Đánh dấu tất cả đã đọc
- *   POST /telegram/register       → Liên kết Telegram { telegram_chat_id }
+ *   GET /telegram/link            → Nhận link auto-link telegram bot
+ *   GET /telegram/status          → Lấy trạng thái liên kết telegram
  *   DELETE /telegram              → Hủy liên kết Telegram
  */
 import api from "../api";
@@ -67,12 +68,25 @@ export async function markAllAsRead(): Promise<void> {
 }
 
 /**
- * Liên kết Telegram để nhận thông báo
+ * Lấy link liên kết Telegram tự động
  */
-export async function registerTelegram(telegramChatId: string): Promise<void> {
-  await api.post("/api/v1/notifications/telegram/register", {
-    telegram_chat_id: telegramChatId,
-  });
+export async function getTelegramLink(): Promise<string> {
+  const res = await api.get("/api/v1/notifications/telegram/link");
+  // Unwrap until we find the link string
+  let payload = res.data;
+  if (payload?.data) payload = payload.data;
+  if (payload?.data) payload = payload.data; // Just in case double nested
+  
+  return payload?.link || payload || "";
+}
+
+/**
+ * Lấy trạng thái liên kết Telegram
+ */
+export async function getTelegramStatus(): Promise<boolean> {
+  const res = await api.get("/api/v1/notifications/telegram/status");
+  const data = res.data.data || res.data;
+  return data.is_linked === true;
 }
 
 /**

@@ -48,6 +48,7 @@ public class HtxServiceImpl implements HtxService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"htx_all", "htx_active"}, allEntries = true)
     public HtxResponse createHtx(HtxCreateRequest request, String username) {
         User creator = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));

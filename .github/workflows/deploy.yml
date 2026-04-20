@@ -44,23 +44,23 @@ jobs:
           script: |
             echo "Starting deployment at $(date)..."
 
-            if [ ! -d "/opt/capnong/.git" ]; then
-              echo "Error: /opt/capnong is not a git repository."
+            if [ ! -d "/opt/WDA2026-CAP-NONG/.git" ]; then
+              echo "Error: /opt/WDA2026-CAP-NONG is not a git repository."
               echo "Please run './deploy.sh setup' on the EC2 host first."
               exit 1
             fi
 
-            cd /opt/capnong
+            cd /opt/WDA2026-CAP-NONG
 
             # Preserve existing values for secrets not yet configured in GitHub
-            [ -z "$REDIS_PASSWORD" ]          && REDIS_PASSWORD=$(grep '^REDIS_PASSWORD='          .env 2>/dev/null | cut -d= -f2-)
-            [ -z "$JWT_SECRET" ]              && JWT_SECRET=$(grep '^JWT_SECRET='              .env 2>/dev/null | cut -d= -f2-)
-            [ -z "$GEMINI_API_KEY" ]          && GEMINI_API_KEY=$(grep '^GEMINI_API_KEY='          .env 2>/dev/null | cut -d= -f2-)
-            [ -z "$TELEGRAM_BOT_TOKEN" ]      && TELEGRAM_BOT_TOKEN=$(grep '^TELEGRAM_BOT_TOKEN='      .env 2>/dev/null | cut -d= -f2-)
-            [ -z "$TELEGRAM_BOT_USERNAME" ]   && TELEGRAM_BOT_USERNAME=$(grep '^TELEGRAM_BOT_USERNAME='   .env 2>/dev/null | cut -d= -f2-)
-            [ -z "$CLOUDINARY_CLOUD_NAME" ]   && CLOUDINARY_CLOUD_NAME=$(grep '^CLOUDINARY_CLOUD_NAME='   .env 2>/dev/null | cut -d= -f2-)
-            [ -z "$CLOUDINARY_API_KEY" ]      && CLOUDINARY_API_KEY=$(grep '^CLOUDINARY_API_KEY='      .env 2>/dev/null | cut -d= -f2-)
-            [ -z "$CLOUDINARY_API_SECRET" ]   && CLOUDINARY_API_SECRET=$(grep '^CLOUDINARY_API_SECRET='   .env 2>/dev/null | cut -d= -f2-)
+            REDIS_PASSWORD="${REDIS_PASSWORD:-$(grep '^REDIS_PASSWORD='          .env 2>/dev/null | cut -d= -f2- || true)}"
+            JWT_SECRET="${JWT_SECRET:-$(grep '^JWT_SECRET='              .env 2>/dev/null | cut -d= -f2- || true)}"
+            GEMINI_API_KEY="${GEMINI_API_KEY:-$(grep '^GEMINI_API_KEY='          .env 2>/dev/null | cut -d= -f2- || true)}"
+            TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-$(grep '^TELEGRAM_BOT_TOKEN='      .env 2>/dev/null | cut -d= -f2- || true)}"
+            TELEGRAM_BOT_USERNAME="${TELEGRAM_BOT_USERNAME:-$(grep '^TELEGRAM_BOT_USERNAME='   .env 2>/dev/null | cut -d= -f2- || true)}"
+            CLOUDINARY_CLOUD_NAME="${CLOUDINARY_CLOUD_NAME:-$(grep '^CLOUDINARY_CLOUD_NAME='   .env 2>/dev/null | cut -d= -f2- || true)}"
+            CLOUDINARY_API_KEY="${CLOUDINARY_API_KEY:-$(grep '^CLOUDINARY_API_KEY='      .env 2>/dev/null | cut -d= -f2- || true)}"
+            CLOUDINARY_API_SECRET="${CLOUDINARY_API_SECRET:-$(grep '^CLOUDINARY_API_SECRET='   .env 2>/dev/null | cut -d= -f2- || true)}"
 
             # Write .env from injected secrets
             printf '%s\n' \
@@ -78,15 +78,18 @@ jobs:
               "CLOUDINARY_API_SECRET=$CLOUDINARY_API_SECRET" \
               > .env
 
+            # Add safe directory for git to prevent dubious ownership error
+            sudo git config --global --add safe.directory /opt/WDA2026-CAP-NONG
+
             # Reset local changes and pull latest
-            git fetch --all
-            git reset --hard origin/main
+            sudo git fetch --all
+            sudo git reset --hard origin/main
 
             # Rebuild images and start containers
-            docker compose -f docker-compose.prod.yml build --no-cache
-            docker compose -f docker-compose.prod.yml up -d
+            sudo docker-compose -f docker-compose.prod.yml build --no-cache
+            sudo docker-compose -f docker-compose.prod.yml up -d
 
             # Prune old images to prevent disk space issues
-            docker system prune -f
+            sudo docker system prune -f
 
             echo "Deployment completed at $(date)"

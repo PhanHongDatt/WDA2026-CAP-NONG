@@ -113,9 +113,16 @@ export default function Header() {
           {/* Logo */}
           <Link
             href="/"
-            className="text-3xl font-black text-primary tracking-tight shrink-0"
+            className="flex items-center gap-2 shrink-0"
           >
-            CẠP NÔNG
+            <img
+              src="/images/logo.png"
+              alt="Cạp Nông Logo"
+              className="w-10 h-10 object-contain"
+            />
+            <span className="text-2xl font-black text-primary tracking-tight hidden sm:inline">
+              CẠP NÔNG
+            </span>
           </Link>
 
           {/* Category Toggle → link to catalog */}

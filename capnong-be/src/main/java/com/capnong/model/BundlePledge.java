@@ -37,7 +37,7 @@ public class BundlePledge {
     @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal quantity;
 
-    @Column(name = "contribution_percent", precision = 6, scale = 4)
+    @Column(name = "contribution_percent", precision = 10, scale = 4)
     private BigDecimal contributionPercent;
 
     @Column(name = "estimated_revenue", precision = 15, scale = 2)

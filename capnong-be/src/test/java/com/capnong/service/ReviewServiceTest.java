@@ -7,6 +7,7 @@ import com.capnong.model.enums.OrderStatus;
 import com.capnong.repository.OrderItemRepository;
 import com.capnong.repository.ProductRepository;
 import com.capnong.repository.ReviewRepository;
+import com.capnong.service.impl.ReviewServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +29,7 @@ class ReviewServiceTest {
     @Mock private OrderItemRepository orderItemRepository;
     @Mock private ProductRepository productRepository;
     @Mock private OrderEventNotifier orderEventNotifier;
-    @InjectMocks private ReviewService reviewService;
+    @InjectMocks private ReviewServiceImpl reviewService;
 
     private UUID authorId;
     private UUID orderItemId;

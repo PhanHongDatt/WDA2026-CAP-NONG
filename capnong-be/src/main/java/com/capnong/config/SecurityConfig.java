@@ -4,6 +4,7 @@ import com.capnong.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -47,6 +48,10 @@ public class SecurityConfig {
                 )
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) -> 
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                )
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
@@ -83,8 +88,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/units/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/seasonal-configs").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/seasonal-configs/**").permitAll()
+                        // Bundles
+                        .requestMatchers(HttpMethod.GET, "/api/v1/cooperatives/bundles").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/cooperatives/bundles/**").permitAll()
                         // Admin endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // Telegram webhook endpoint
+                        .requestMatchers("/api/v1/notifications/telegram/webhook").permitAll()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )

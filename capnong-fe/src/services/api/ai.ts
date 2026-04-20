@@ -187,7 +187,7 @@ export async function generatePosterContent(data: {
   // BE nhận snake_case
   const body: Record<string, unknown> = {
     product_name: data.productName,
-    description: data.productName, // pass name as description
+    description: data.description || data.productName, // fallback to product name if no description
     province: data.province,
     price_display: data.pricePerUnit ? `${data.pricePerUnit.toLocaleString("vi-VN")}đ/${data.unitCode || "kg"}` : undefined,
     shop_name: data.shopName,
