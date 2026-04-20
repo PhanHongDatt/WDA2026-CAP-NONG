@@ -121,9 +121,6 @@ export default function CooperativeContent() {
   const [pledgedPools, setPledgedPools] = useState<Set<string>>(new Set());
 
   /* ─── API-first fetch for bundles + HTX list ─── */
-  const [pools, setPools] = useState(USE_MOCK ? POOLS : []);
-  const [activeHtx, setActiveHtx] = useState(USE_MOCK ? MOCK_ACTIVE_HTX : []);
-
   /* Dashboard Summary Data */
   const [summaryData, setSummaryData] = useState<{
     totalOrders: number;

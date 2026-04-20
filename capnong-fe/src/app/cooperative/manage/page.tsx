@@ -185,7 +185,25 @@ function CoopManageContent() {
         })));
       }
       if (Array.isArray(apiBundles) && apiBundles.length > 0) {
-        setBundles(apiBundles as unknown as Bundle[]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setBundles(apiBundles.map((b: any) => ({
+          id: String(b.id || ""),
+          product_name: b.product_name || "",
+          target_kg: Number(b.target_quantity) || 0,
+          current_kg: Number(b.current_pledged_quantity) || 0,
+          price_per_kg: Number(b.price_per_unit) || 0,
+          deadline: b.deadline || "",
+          status: (b.status || "OPEN") as BundleStatus,
+          pledges: Array.isArray(b.pledges) ? b.pledges.map((p: any) => ({
+            id: String(p.id || ""),
+            farmer_name: p.farmer_full_name || p.farmer_name || p.farmer_username || "",
+            farmer_phone: p.farmer_phone || "",
+            quantity_kg: Number(p.quantity) || 0,
+            status: (p.status || "COMMITTED") as PledgeStatus,
+            note: p.note || "",
+            created_at: p.created_at || "",
+          })) : [],
+        })));
       }
       if (Array.isArray(apiJoinReqs) && apiJoinReqs.length > 0) {
         setJoinRequests(apiJoinReqs as typeof MOCK_JOIN_REQUESTS);
