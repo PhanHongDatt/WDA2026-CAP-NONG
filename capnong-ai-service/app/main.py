@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
-from app.routers import voice, refiner, caption, poster
+from app.routers import voice, voice_chat, tts, refiner, caption, poster
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,6 +37,8 @@ app.add_middleware(
 
 # Đăng ký routers
 app.include_router(voice.router)
+app.include_router(voice_chat.router)
+app.include_router(tts.router)
 app.include_router(refiner.router)
 app.include_router(caption.router)
 app.include_router(poster.router)

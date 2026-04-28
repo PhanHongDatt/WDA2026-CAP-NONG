@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 
 // Lazy-load heavy AI components — not needed in initial bundle
 const VoiceRecorder = lazy(() => import("@/components/ui/VoiceRecorder"));
+const ConversationalVoiceRecorder = lazy(() => import("@/components/ui/ConversationalVoiceRecorder"));
 const AIRefiner = lazy(() => import("@/components/ui/AIRefiner"));
 const PriceAdvisor = lazy(() => import("@/components/ui/PriceAdvisor"));
 
@@ -21,6 +22,9 @@ export default function NewProductPage() {
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  
+  /* ── AI Mode Selection ── */
+  const [aiMode, setAiMode] = useState<"manual" | "voice" | "convo">("manual");
 
   /* ── Form fields (controlled) ── */
   const [name, setName] = useState("");
@@ -80,7 +84,7 @@ export default function NewProductPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-4 mb-6">
         <Link
           href="/dashboard"
           className="p-2 hover:bg-gray-100 dark:hover:bg-background-light rounded-full transition-colors"
@@ -93,17 +97,56 @@ export default function NewProductPage() {
             Đăng sản phẩm mới
           </h1>
           <p className="text-sm text-foreground-muted">
-            Điền thông tin sản phẩm hoặc dùng giọng nói AI để tự động điền
+            Điền thông tin sản phẩm hoặc dùng trợ lý AI
           </p>
         </div>
       </div>
 
-      {/* Voice-to-Product — lazy loaded */}
-      <div className="mb-6">
-        <Suspense fallback={<div className="h-48 bg-primary/5 border border-primary/20 rounded-xl animate-pulse flex items-center justify-center text-sm text-foreground-muted">Đang tải Voice AI...</div>}>
-          <VoiceRecorder onResult={handleVoiceResult} />
-        </Suspense>
+      {/* Mode Selection */}
+      <div className="flex gap-2 mb-6 bg-gray-100 dark:bg-surface p-1 rounded-xl">
+        <button
+          onClick={() => setAiMode("manual")}
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${aiMode === "manual" ? "bg-white dark:bg-background shadow-sm text-primary" : "text-foreground-muted hover:text-foreground"}`}
+        >
+          ⌨️ Nhập thủ công
+        </button>
+        <button
+          onClick={() => setAiMode("voice")}
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${aiMode === "voice" ? "bg-white dark:bg-background shadow-sm text-primary" : "text-foreground-muted hover:text-foreground"}`}
+        >
+          🎤 Nói 1 lần
+        </button>
+        <button
+          onClick={() => setAiMode("convo")}
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${aiMode === "convo" ? "bg-white dark:bg-background shadow-sm text-primary" : "text-foreground-muted hover:text-foreground"}`}
+        >
+          🤖 Trợ lý nhắn nói
+        </button>
       </div>
+
+      {/* Voice-to-Product — lazy loaded */}
+      {aiMode === "voice" && (
+        <div className="mb-6">
+          <Suspense fallback={<div className="h-48 bg-primary/5 border border-primary/20 rounded-xl animate-pulse flex items-center justify-center text-sm text-foreground-muted">Đang tải Voice AI...</div>}>
+            <VoiceRecorder onResult={(res) => { handleVoiceResult(res as any); }} />
+          </Suspense>
+        </div>
+      )}
+
+      {/* Conversational AI */}
+      {aiMode === "convo" && (
+         <div className="mb-6">
+           <Suspense fallback={<div className="h-48 bg-primary/5 border border-primary/20 rounded-xl animate-pulse flex items-center justify-center text-sm text-foreground-muted">Đang tải AI Hội Thoại...</div>}>
+             <ConversationalVoiceRecorder 
+                onResult={(res) => { 
+                   handleVoiceResult(res as any); 
+                   setAiMode("manual");
+                }} 
+                onCancel={() => setAiMode("manual")}
+             />
+           </Suspense>
+         </div>
+      )}
 
       {/* Confidence warning */}
       {voiceFilled && (
