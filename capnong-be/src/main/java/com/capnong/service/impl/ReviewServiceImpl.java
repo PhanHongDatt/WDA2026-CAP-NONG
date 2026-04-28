@@ -11,6 +11,7 @@ import com.capnong.model.enums.OrderStatus;
 import com.capnong.repository.OrderItemRepository;
 import com.capnong.repository.ProductRepository;
 import com.capnong.repository.ReviewRepository;
+import com.capnong.repository.UserRepository;
 import com.capnong.service.OrderEventNotifier;
 import com.capnong.service.ReviewService;
 import com.capnong.service.CloudinaryService;
@@ -32,32 +33,45 @@ public class ReviewServiceImpl implements ReviewService {
     private final ProductRepository productRepository;
     private final OrderEventNotifier orderEventNotifier;
     private final CloudinaryService cloudinaryService;
+    private final UserRepository userRepository;
 
     public ReviewServiceImpl(ReviewRepository reviewRepository,
             OrderItemRepository orderItemRepository,
             ProductRepository productRepository,
             OrderEventNotifier orderEventNotifier,
-            CloudinaryService cloudinaryService) {
+            CloudinaryService cloudinaryService,
+            UserRepository userRepository) {
         this.reviewRepository = reviewRepository;
         this.orderItemRepository = orderItemRepository;
         this.productRepository = productRepository;
         this.orderEventNotifier = orderEventNotifier;
         this.cloudinaryService = cloudinaryService;
+        this.userRepository = userRepository;
+    }
+
+    private Page<Review> populateAuthorDetails(Page<Review> reviews) {
+        reviews.forEach(review -> {
+            userRepository.findById(review.getAuthorId()).ifPresent(user -> {
+                review.setAuthorName(user.getFullName() != null ? user.getFullName() : user.getUsername());
+                review.setAuthorAvatarUrl(user.getAvatarUrl());
+            });
+        });
+        return reviews;
     }
 
     @Override
     public Page<Review> getByProductId(UUID productId, Pageable pageable) {
-        return reviewRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
+        return populateAuthorDetails(reviewRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable));
     }
 
     @Override
     public Page<Review> getMyReviews(UUID authorId, Pageable pageable) {
-        return reviewRepository.findByAuthorIdOrderByCreatedAtDesc(authorId, pageable);
+        return populateAuthorDetails(reviewRepository.findByAuthorIdOrderByCreatedAtDesc(authorId, pageable));
     }
 
     @Override
     public Page<Review> getShopReviews(String sellerUsername, Pageable pageable) {
-        return reviewRepository.findByShopOwnerUsernameOrderByCreatedAtDesc(sellerUsername, pageable);
+        return populateAuthorDetails(reviewRepository.findByShopOwnerUsernameOrderByCreatedAtDesc(sellerUsername, pageable));
     }
 
     @Override

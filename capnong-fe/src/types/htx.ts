@@ -14,7 +14,7 @@ export interface HtxSummary {
 
 export interface Htx extends HtxSummary {
   official_code: string;
-  district: string;
+  ward: string;
   description?: string;
   document_url?: string;
   manager: UserSummary;
@@ -26,7 +26,7 @@ export interface HtxCreateRequest {
   name: string;
   official_code: string;    // 8-12 digits
   province: string;
-  district: string;
+  ward: string;
   description?: string;
   document_url?: string;
 }
@@ -57,7 +57,7 @@ export interface HtxShop {
   name: string;
   htx: HtxSummary;
   province: string;
-  district: string;
+  ward: string;
   description?: string;
   avatar_url?: string;
   active_bundles_count: number;

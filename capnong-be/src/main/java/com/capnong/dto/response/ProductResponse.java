@@ -48,6 +48,11 @@ public class ProductResponse {
     private UUID shopId;
     private String shopSlug;
     private String shopName;
+    private String shopProvince;
+    private String shopWard;
+    private String shopAvatarUrl;
+    private BigDecimal shopAverageRating;
+    private Integer shopTotalReviews;
 
     @Data
     @Builder

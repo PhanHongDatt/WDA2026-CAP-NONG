@@ -12,21 +12,34 @@ import { apiUserAddressService, UserAddress, UserAddressRequest, getProvinces, g
 import { useToast } from "@/components/ui/Toast";
 import { getTelegramLink, getTelegramStatus, unlinkTelegram } from "@/services/api/notification";
 
-function ProfileContent() {
+export function ProfileContent() {
   const { user, refreshProfile } = useAuth();
   const { showToast } = useToast();
 
-  const [form, setForm] = useState({
-    full_name: user?.full_name || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    avatar_url: user?.avatar_url || "",
+  /* Basic Info */
+  const [form, setForm] = useState({ 
+    full_name: "", 
+    username: "",
+    phone: "", 
+    email: "" 
   });
-
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(form.avatar_url || null);
+
+  // Sync back when user loads
+  useEffect(() => {
+    if (user) {
+      setForm({
+        full_name: user.full_name || "",
+        username: user.username || "",
+        phone: user.phone || "",
+        email: user.email || "",
+      });
+    }
+  }, [user]);
+
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatar_url || null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   /* UC-39: Telegram notification */
@@ -41,12 +54,12 @@ function ProfileContent() {
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressForm, setAddressForm] = useState<UserAddressRequest>({
-    fullName: "", phone: "", street: "", district: "", province: "", isDefault: false
+    fullName: "", phone: "", street: "", ward: "", province: "", isDefault: false
   });
   const [savingAddress, setSavingAddress] = useState(false);
 
   const [provinces, setProvinces] = useState<Province[]>([]);
-  const [districts, setDistricts] = useState<Ward[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
 
   useEffect(() => {
     if (showAddressForm && provinces.length === 0) {
@@ -58,9 +71,9 @@ function ProfileContent() {
 
   useEffect(() => {
     if (selectedProvinceCode) {
-      getWards(selectedProvinceCode).then(data => setDistricts(data)).catch(() => {});
+      getWards(selectedProvinceCode).then(data => setWards(data)).catch(() => {});
     } else {
-      setDistricts([]);
+      setWards([]);
     }
   }, [selectedProvinceCode]);
 
@@ -131,21 +144,21 @@ function ProfileContent() {
         fullName: addr.fullName,
         phone: addr.phone,
         street: addr.street,
-        district: addr.district,
+        ward: addr.ward,
         province: addr.province,
         isDefault: addr.isDefault
       });
     } else {
       setEditingAddressId(null);
       setAddressForm({
-        fullName: form.full_name, phone: form.phone, street: "", district: "", province: "", isDefault: false
+        fullName: form.full_name, phone: form.phone, street: "", ward: "", province: "", isDefault: false
       });
     }
     setShowAddressForm(true);
   };
 
   const handleSaveAddress = async () => {
-    if (!addressForm.fullName || !addressForm.phone || !addressForm.street || !addressForm.district || !addressForm.province) {
+    if (!addressForm.fullName || !addressForm.phone || !addressForm.street || !addressForm.ward || !addressForm.province) {
       showToast("error", "Vui lòng điền đầy đủ thông tin địa chỉ");
       return;
     }
@@ -196,6 +209,7 @@ function ProfileContent() {
     try {
       await apiUserService.updateProfile({
         fullName: form.full_name,
+        username: form.username,
         email: form.email || undefined,
         phone: form.phone || undefined,
         otp: otpSelected
@@ -306,6 +320,8 @@ function ProfileContent() {
               // Clean up Url early to prevent double execution
               window.history.replaceState(null, "", "/profile");
               await linkGoogleAccount(session.access_token);
+              // Sign out Supabase — only used as OAuth broker, our app uses BE JWT
+              await supabase.auth.signOut().catch(() => {});
               await refreshProfile?.();
               setGoogleLinked(true);
               showToast("success", "Liên kết tài khoản Google thành công!");
@@ -470,6 +486,23 @@ function ProfileContent() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
+            <label htmlFor="profile-username" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">
+              Tên đăng nhập
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                id="profile-username"
+                type="text"
+                value={form.username}
+                onChange={(e) => handleChange("username", e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                title="Được phép thay đổi mỗi 30 ngày"
+              />
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1">Lưu ý: Chỉ được đổi mỗi 30 ngày.</p>
+          </div>
+          <div>
             <label htmlFor="profile-name" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">
               Họ và tên
             </label>
@@ -496,7 +529,7 @@ function ProfileContent() {
               />
             </div>
           </div>
-          <div className="sm:col-span-2">
+          <div>
             <label htmlFor="profile-email" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">
               Email (tùy chọn)
             </label>
@@ -592,7 +625,7 @@ function ProfileContent() {
                       {addr.isDefault && <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full uppercase">Mặc định</span>}
                     </p>
                     <p className="text-xs text-foreground-muted mt-1">{addr.phone}</p>
-                    <p className="text-sm mt-1.5">{addr.street}, {addr.district}, {addr.province}</p>
+                    <p className="text-sm mt-1.5">{addr.street}, {addr.ward}, {addr.province}</p>
                   </div>
                   <div className="flex gap-2">
                     {!addr.isDefault && (
@@ -650,7 +683,7 @@ function ProfileContent() {
               <div>
                 <select
                   value={addressForm.province}
-                  onChange={(e) => setAddressForm({ ...addressForm, province: e.target.value, district: "" })}
+                  onChange={(e) => setAddressForm({ ...addressForm, province: e.target.value, ward: "" })}
                   className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
                   <option value="">Chọn Tỉnh / Thành phố</option>
@@ -661,13 +694,13 @@ function ProfileContent() {
               </div>
               <div>
                 <select
-                  value={addressForm.district}
-                  onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
+                  value={addressForm.ward}
+                  onChange={(e) => setAddressForm({ ...addressForm, ward: e.target.value })}
                   disabled={!selectedProvinceCode}
                   className="w-full px-3 py-2 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-surface"
                 >
                   <option value="">Chọn Phường / Xã</option>
-                  {districts.map(d => (
+                  {wards.map(d => (
                     <option key={d.code} value={d.name}>{d.name}</option>
                   ))}
                 </select>

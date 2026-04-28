@@ -10,7 +10,7 @@ public class ShopResponseDto {
     private String slug;
     private String name;
     private String province;
-    private String district;
+    private String ward;
     private String bio;
     private Integer yearsExperience;
     private Integer farmAreaM2;

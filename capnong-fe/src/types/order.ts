@@ -50,7 +50,7 @@ export interface SubOrder {
   shop: ShopSummary;
   items: OrderItem[];
   subtotal: number;
-  shipping_fee: number;             // Flat rate, default 30000
+  shipping_fee: number;             // Miễn phí (always 0)
   status: SubOrderStatus;
   cancel_reason?: string;
   cancelled_by?: CancelledBy;

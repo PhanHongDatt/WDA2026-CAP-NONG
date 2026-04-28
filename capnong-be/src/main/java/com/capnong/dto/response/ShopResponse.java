@@ -16,8 +16,9 @@ public class ShopResponse {
     private UUID id;
     private String slug;
     private String name;
+    private Boolean isHtxShop;
     private String province;
-    private String district;
+    private String ward;
     private String bio;
     private Short yearsExperience;
     private Integer farmAreaM2;

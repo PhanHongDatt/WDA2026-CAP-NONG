@@ -28,7 +28,7 @@ function toBePayload(data: ShopFormData) {
     name: data.name,
     slug: data.slug,
     province: data.province,
-    district: data.district,
+    ward: data.ward,
     bio: data.bio || undefined,
     yearsExperience: data.years_experience ?? undefined,
     farmAreaM2: data.farm_area_m2 ?? undefined,
@@ -98,8 +98,39 @@ export async function getMyShop(): Promise<Shop | null> {
 }
 
 /**
+ * Lấy tất cả gian hàng sở hữu (bao gồm Shop cá nhân & Shop HTX)
+ */
+export async function getAllMyShops(): Promise<Shop[]> {
+  try {
+    const res = await api.get("/api/shops/me/all");
+    const data = res.data.data || res.data;
+    if (Array.isArray(data)) {
+      return data.map(normalizeShop);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Xóa gian hàng (soft delete) — DELETE /api/shops/{slug} (owner only)
  */
 export async function deleteShop(slug: string): Promise<void> {
   await api.delete(`/api/shops/${slug}`);
+}
+
+/**
+ * Upload ảnh gian hàng (avatar hoặc cover)
+ * POST /api/shops/{slug}/images?type=avatar|cover
+ */
+export async function uploadShopImage(slug: string, type: "avatar" | "cover", file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("type", type);
+  const res = await api.post(`/api/shops/${slug}/images`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  const data = res.data.data || res.data;
+  return type === "avatar" ? data.avatarUrl || data.avatar_url : data.coverUrl || data.cover_url;
 }

@@ -92,3 +92,19 @@ export const apiOrderService: IOrderService = {
     return res.data.data || res.data;
   },
 };
+
+/**
+ * GET /api/orders/shops/{shopId} — Lấy đơn hàng theo Shop cụ thể
+ * Dùng cho HTX Manager xem đơn hàng thuộc Gian hàng HTX
+ */
+export async function getShopSubOrders(
+  shopId: string,
+  opts?: { status?: string; page?: number; size?: number }
+): Promise<unknown> {
+  const params: Record<string, string> = {};
+  if (opts?.status && opts.status !== "all") params.status = opts.status;
+  params.page = String(opts?.page || 0);
+  params.size = String(opts?.size || 20);
+  const res = await api.get(`/api/orders/shops/${shopId}`, { params });
+  return res.data.data || res.data || [];
+}

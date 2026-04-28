@@ -25,6 +25,12 @@ public class Review {
     @Column(name = "author_id", nullable = false)
     private UUID authorId;
 
+    @Transient
+    private String authorName;
+
+    @Transient
+    private String authorAvatarUrl;
+
     @Column(nullable = false)
     private Short rating;
 

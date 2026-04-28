@@ -29,6 +29,7 @@ public interface ProductService {
     ProductResponse uploadProductImages(UUID productId, List<MultipartFile> files, String username);
     void deleteProductImage(UUID productId, UUID imageId, String username);
     void deleteProductImages(UUID productId, List<UUID> imageIds, String username);
+    void updateImageSortOrder(UUID productId, List<UUID> imageIds, String username);
 
     // Quick PATCH operations
     ProductResponse updateStatus(UUID productId, String status, String username);

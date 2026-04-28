@@ -199,6 +199,10 @@ public class AiMarketingServiceImpl implements AiMarketingService {
                 body.put("template", request.getTemplate() != null
                         ? request.getTemplate().name() : "FRESH_GREEN");
 
+                // AI Refinement support
+                if (request.getInstruction() != null) body.put("instruction", request.getInstruction());
+                if (request.getCurrentState() != null) body.put("current_state", request.getCurrentState());
+
                 String contentResult = callAiService(aiServiceUrl + "/ai/poster-content", body);
                 result.put("posterContent", objectMapper.readValue(contentResult,
                         new TypeReference<Map<String, Object>>() {}));
@@ -371,7 +375,7 @@ public class AiMarketingServiceImpl implements AiMarketingService {
     }
 
     private Shop findShop(String username) {
-        return shopRepository.findByOwnerUsername(username)
+        return shopRepository.findFirstByOwnerUsername(username)
                 .orElseThrow(() -> new AppException("Bạn chưa có gian hàng.",
                         org.springframework.http.HttpStatus.BAD_REQUEST));
     }

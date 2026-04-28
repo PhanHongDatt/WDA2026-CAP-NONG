@@ -58,6 +58,10 @@ class PosterContentRequest(BaseModel):
     price_display: Optional[str] = None       # "25.000đ/kg"
     shop_name: Optional[str] = None
     template: PosterTemplate = PosterTemplate.FRESH_GREEN
+    
+    # AI Refinement
+    instruction: Optional[str] = None
+    current_state: Optional[dict] = None
 
     model_config = {
         "json_schema_extra": {

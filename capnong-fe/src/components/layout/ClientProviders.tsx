@@ -7,6 +7,8 @@ import { ToastProvider } from "@/components/ui/Toast";
 import ServiceWorkerRegistration from "@/components/layout/ServiceWorkerRegistration";
 import NetworkStatus from "@/components/ui/NetworkStatus";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import CreateShopPrompt from "@/components/shop/CreateShopPrompt";
+import ViewModeGuard from "@/components/layout/ViewModeGuard";
 import type { ReactNode } from "react";
 
 /**
@@ -24,6 +26,8 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
             <ErrorBoundary>
               {children}
             </ErrorBoundary>
+            <CreateShopPrompt />
+            <ViewModeGuard />
           </ToastProvider>
         </ThemeProvider>
       </AuthProvider>

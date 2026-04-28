@@ -3,20 +3,21 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
     gemini_image_model: str = "gemini-2.5-flash-image"
-    xai_api_key: str = ""  # Grok image generation (xAI)
+    xai_api_key: str = ""
+    
+    # Zalo AI keys
+    zalo_api_key: str = ""
+    
     app_env: str = "development"
     log_level: str = "INFO"
     allowed_origins: str = "http://localhost:3000"
 
-    # Clipdrop (deprecated — dùng rembg thay thế)
     clipdrop_api_key: str = ""
-
-    # AI service internal settings
     ai_service_base_url: str = "http://localhost:8000"
 
     @property

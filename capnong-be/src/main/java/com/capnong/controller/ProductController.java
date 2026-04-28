@@ -188,4 +188,15 @@ public class ProductController {
         productService.deleteProductImages(productId, imageIds, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã xóa " + imageIds.size() + " ảnh"));
     }
+
+    @PutMapping("/{productId}/images/sort")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Cập nhật thứ tự ảnh", description = "Truyền danh sách imageIds theo đúng thứ tự hiển thị.")
+    public ResponseEntity<ApiResponse<Void>> updateImageOrder(
+            @PathVariable UUID productId,
+            @RequestBody List<UUID> imageIds,
+            Authentication authentication) {
+        productService.updateImageSortOrder(productId, imageIds, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thứ tự ảnh thành công"));
+    }
 }

@@ -63,6 +63,7 @@ export interface AuthResponse {
   email?: string;
   role: string;
   shop_slug?: string;
+  merged_orders_count?: number;
 }
 
 // ─── Guest Checkout ───
@@ -89,7 +90,7 @@ export interface Address {
   full_name: string;
   phone: string;
   street: string;
-  district: string;
+  ward: string;
   province: string;
   is_default?: boolean;
 }

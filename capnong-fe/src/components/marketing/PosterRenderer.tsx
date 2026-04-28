@@ -149,7 +149,7 @@ function MinimalPoster({ data }: { data: PosterData }) {
 
       {/* Footer */}
       <p style={{ fontSize: 11, color: "#999", marginTop: 12 }}>
-        {data.shopName} • capnong.vn
+        {data.shopName} • capnong.shop
       </p>
     </div>
   );
@@ -328,7 +328,7 @@ function VibrantPoster({ data }: { data: PosterData }) {
 
       {/* Footer */}
       <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", textAlign: "center", marginTop: 12, position: "relative", zIndex: 1 }}>
-        {data.shopName} • capnong.vn
+        {data.shopName} • capnong.shop
       </p>
     </div>
   );
@@ -518,7 +518,7 @@ function ProPoster({ data }: { data: PosterData }) {
           {data.shopName}
         </p>
         <p style={{ fontSize: 11, color: "#556677" }}>
-          capnong.vn
+          capnong.shop
         </p>
       </div>
 

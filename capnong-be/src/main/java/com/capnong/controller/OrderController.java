@@ -94,17 +94,30 @@ public class OrderController {
     }
 
     /**
-     * POST /api/orders/{orderId}/cancel — Buyer hủy đơn (chỉ khi tất cả sub-orders PENDING).
+     * POST /api/orders/{orderId}/cancel — Buyer hủy đơn (chỉ khi tất cả sub-orders PENDING/PREPARING).
      */
     @PostMapping("/{orderId}/cancel")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Hủy đơn hàng", description = "Người dùng đưa ra yêu cầu hủy đơn. Hệ thống từ chối nếu kiện hàng đã bắt đầu được xử lý.")
+    @Operation(summary = "Hủy đơn hàng", description = "Người dùng đưa ra yêu cầu hủy đơn. Hệ thống từ chối nếu kiện hàng đã bắt đầu được xử lý / giao hàng.")
     public ResponseEntity<ApiResponse<Void>> cancelOrder(
             @PathVariable UUID orderId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         orderService.cancelOrder(orderId, userDetails.getId());
         return ResponseEntity.ok(ApiResponse.success("Đã hủy đơn hàng"));
+    }
+
+    /**
+     * POST /api/orders/guest/{orderCode}/cancel — Guest hủy đơn
+     */
+    @PostMapping("/guest/{orderCode}/cancel")
+    @Operation(summary = "Hủy đơn hàng (Khách)", description = "Khách hàng vãng lai hủy đơn hàng xác thực qua SĐT.")
+    public ResponseEntity<ApiResponse<Void>> cancelGuestOrder(
+            @PathVariable String orderCode,
+            @RequestParam String phone) {
+        
+        orderService.cancelGuestOrder(orderCode, phone);
+        return ResponseEntity.ok(ApiResponse.success("Đã hủy đơn hàng vòng lặp khách"));
     }
 
     /**
@@ -149,5 +162,22 @@ public class OrderController {
 
         return ResponseEntity.ok(ApiResponse.success("OK",
                 orderService.getSellerSubOrderDetail(subOrderId, userDetails.getId())));
+    }
+
+    /**
+     * GET /api/orders/shops/{shopId}?status=...&page=0&size=20 — Xem đơn hàng theo Shop cụ thể.
+     * Dùng cho HTX Manager xem đơn hàng của Gian hàng HTX (tách biệt với shop cá nhân).
+     */
+    @GetMapping("/shops/{shopId}")
+    @PreAuthorize("hasAnyRole('FARMER','HTX_MEMBER','HTX_MANAGER')")
+    @Operation(summary = "Đơn hàng theo Shop", description = "Xem danh sách đơn con (sub-orders) thuộc về một gian hàng cụ thể. Owner-only.")
+    public ResponseEntity<ApiResponse<Page<OrderResponseDto.SubOrderDto>>> getShopSubOrders(
+            @PathVariable UUID shopId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) String status,
+            Pageable pageable) {
+
+        return ResponseEntity.ok(ApiResponse.success("OK",
+                orderService.getSubOrdersByShopId(shopId, userDetails.getId(), status, pageable)));
     }
 }

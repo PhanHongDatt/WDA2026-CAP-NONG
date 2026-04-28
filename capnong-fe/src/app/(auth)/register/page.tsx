@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Leaf, User, Tractor, Package, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
+import { Leaf, User, Tractor, Package, CheckCircle2, Loader2, ArrowLeft, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
@@ -224,8 +224,8 @@ function RegisterContent() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [resendCountdown, setResendCountdown] = useState(0);
 
-  /* UC-22: Simulated merge guest orders */
-  const hasMergedOrders = phone.startsWith("09");
+  /* UC-22: Merge guest orders — real count from API */
+  const [mergedOrdersCount, setMergedOrdersCount] = useState(0);
 
   /* Countdown timer for OTP resend */
   useEffect(() => {
@@ -292,6 +292,9 @@ function RegisterContent() {
       if (result.user) {
         localStorage.setItem("capnong-user", JSON.stringify(result.user));
       }
+      if (result.merged_orders_count && result.merged_orders_count > 0) {
+        setMergedOrdersCount(result.merged_orders_count);
+      }
 
       setStep("done");
       showToast("success", "Đăng ký thành công!");
@@ -347,14 +350,14 @@ function RegisterContent() {
             Chào mừng bạn đến Cạp Nông 🌿
           </p>
 
-          {/* UC-22: Merge guest banner */}
-          {hasMergedOrders && (
+          {/* UC-22: Merge guest banner — real data from API */}
+          {mergedOrdersCount > 0 && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-left">
               <div className="flex items-center gap-3">
                 <Package className="w-6 h-6 text-blue-600 dark:text-blue-400 shrink-0" />
                 <div>
                   <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
-                    Đã liên kết 2 đơn hàng cũ!
+                    Đã liên kết {mergedOrdersCount} đơn hàng cũ!
                   </p>
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
                     Chúng tôi đã tìm thấy đơn hàng từ SĐT {phone} khi bạn mua với tư cách khách. Các đơn đã được liên kết vào tài khoản mới.
@@ -365,9 +368,6 @@ function RegisterContent() {
           )}
 
           <div className="flex gap-3 justify-center">
-            <Link href="/" className="bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary-light transition-colors">
-              Khám phá ngay
-            </Link>
             <Link href="/login" className="border border-gray-200 dark:border-border px-6 py-3 rounded-xl font-medium text-gray-600 dark:text-foreground-muted hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors">
               Đăng nhập
             </Link>
@@ -533,12 +533,14 @@ function RegisterContent() {
                 className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none" />
             </div>
 
-            {/* Farmer-specific field */}
+            {/* Farmer notice banner */}
             {role === "FARMER" && (
-              <div>
-                <label htmlFor="register-farm" className="block text-sm font-medium mb-2">Tên nông trại / HTX</label>
-                <input id="register-farm" type="text" placeholder="Ví dụ: Nông trại Xanh Đà Lạt"
-                  className="w-full px-4 py-3 text-sm border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none" />
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
+                <Store className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-bold text-primary">Tạo gian hàng</p>
+                  <p className="text-foreground-muted mt-0.5">Sau khi đăng ký thành công, bạn có thể tạo và thiết lập gian hàng tại trang Dashboard.</p>
+                </div>
               </div>
             )}
 

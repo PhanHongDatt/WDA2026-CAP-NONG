@@ -40,9 +40,14 @@ export function normalizeProduct(raw: any): Product {
   if (!raw) return raw;
 
   // Extract image URLs from BE's image objects
-  let images: string[] = Array.isArray(raw.images)
-    ? raw.images.map((img: any) => (typeof img === "string" ? img : img.url || "")).filter(Boolean)
-    : [];
+  const rawImages = Array.isArray(raw.images) ? raw.images : [];
+  let images: string[] = rawImages
+    .map((img: any) => (typeof img === "string" ? img : img.url || ""))
+    .filter(Boolean);
+    
+  let image_objects = rawImages
+    .filter((img: any) => typeof img === "object" && img.id && img.url)
+    .map((img: any) => ({ id: img.id, url: img.url }));
 
   // 🎀 FALLBACK MOCK DATA HÌNH ẢNH (Theo yêu cầu: chỉ minh họa bằng mockdata khi API không có hình)
   if (images.length === 0) {
@@ -75,7 +80,7 @@ export function normalizeProduct(raw: any): Product {
       code: raw.unitCode || raw.unit_code || raw.unit?.code || "KG",
       display_name: raw.unitName || raw.unit_name || raw.unit?.display_name || raw.unitCode || raw.unit_code || "Kg",
       symbol: (raw.unitCode || raw.unit_code || raw.unit?.symbol || "kg").toLowerCase(),
-    },
+    } as any,
     price_per_unit: Number(raw.pricePerUnit ?? raw.price_per_unit ?? 0),
     available_quantity: Number(raw.availableQuantity ?? raw.available_quantity ?? 0),
     harvest_date: raw.harvestDate || raw.harvest_date || undefined,
@@ -85,6 +90,7 @@ export function normalizeProduct(raw: any): Product {
     location_detail: raw.locationDetail || raw.location_detail || "",
     status: raw.status || "IN_SEASON",
     images,
+    image_objects,
     average_rating: Number(raw.averageRating ?? raw.average_rating ?? 0),
     total_reviews: Number(raw.totalReviews ?? raw.total_reviews ?? 0),
     sold_count: Number(raw.soldCount ?? raw.sold_count ?? raw.totalSold ?? raw.total_sold ?? 0),
@@ -92,17 +98,17 @@ export function normalizeProduct(raw: any): Product {
       id: String(raw.shopId || raw.shop_id || raw.shop?.id || ""),
       slug: raw.shopSlug || raw.shop_slug || raw.shop?.slug || "",
       name: raw.shopName || raw.shop_name || raw.shop?.name || "",
-      province: raw.shop?.province || "",
-      district: raw.shop?.district || "",
-      avatar_url: raw.shop?.avatar_url || raw.ownerAvatarUrl || undefined,
+      province: raw.shopProvince || raw.shop_province || raw.shop?.province || "",
+      ward: raw.shopWard || raw.shop_ward || raw.shop?.ward || "",
+      avatar_url: raw.shopAvatarUrl || raw.shop_avatar_url || raw.shop?.avatar_url || raw.ownerAvatarUrl || undefined,
       owner: raw.shop?.owner || {
         id: "",
         full_name: raw.shopName || raw.shop_name || "",
         phone: "",
         role: "FARMER" as const,
       },
-      average_rating: Number(raw.averageRating ?? raw.average_rating ?? 0),
-      total_reviews: Number(raw.totalReviews ?? raw.total_reviews ?? 0),
+      average_rating: Number(raw.shopAverageRating ?? raw.shop_average_rating ?? raw.shop?.average_rating ?? 0),
+      total_reviews: Number(raw.shopTotalReviews ?? raw.shop_total_reviews ?? raw.shop?.total_reviews ?? 0),
     },
     created_at: raw.createdAt || raw.created_at || new Date().toISOString(),
     updated_at: raw.updatedAt || raw.updated_at || new Date().toISOString(),

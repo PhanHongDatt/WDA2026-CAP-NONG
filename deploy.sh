@@ -9,7 +9,7 @@ set -euo pipefail
 # Config
 REPO_URL="git@github.com:PhanHongDatt/WDA2026-CAP-NONG.git"
 APP_DIR="/opt/capnong"
-DOMAIN="capnong.vn" # TODO: UPDATE THIS!
+DOMAIN="capnong.shop" # TODO: UPDATE THIS!
 
 # Colors
 GREEN='\033[0;32m'

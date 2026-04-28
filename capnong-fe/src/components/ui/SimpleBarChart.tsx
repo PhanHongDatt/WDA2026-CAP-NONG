@@ -26,7 +26,7 @@ export default function SimpleBarChart({ data, height = 200 }: RevenueChartProps
         {data.map((d, i) => {
           const pct = (d.value / maxValue) * 100;
           return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1 group h-full">
               {/* Value label */}
               <span className="text-[9px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                 {formatValue(d.value)}

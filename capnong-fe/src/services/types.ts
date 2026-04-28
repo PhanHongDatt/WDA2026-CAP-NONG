@@ -15,6 +15,7 @@ export interface AuthResult {
   access_token: string;
   refresh_token?: string;
   user: User;
+  merged_orders_count?: number;
 }
 
 export interface IAuthService {
@@ -89,6 +90,9 @@ export interface IProductService {
     pricePerUnit: number;
     availableQuantity: number;
     locationDetail: string;
+    harvestDate?: string;
+    farmingMethod?: string;
+    pesticideFree?: boolean;
   }): Promise<unknown>;
 }
 
@@ -150,7 +154,7 @@ export interface ShopFormData {
   name: string;
   slug: string;
   province: string;
-  district: string;
+  ward: string;
   bio?: string;
   years_experience?: number;
   farm_area_m2?: number;

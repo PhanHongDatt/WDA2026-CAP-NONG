@@ -79,6 +79,9 @@ export default function LoginPage() {
                 email: result.auth_response.email || result.email,
                 phone: result.auth_response.phone,
               }));
+              // Sign out of Supabase — we only use it as OAuth broker,
+              // app auth lives in our BE JWT tokens
+              await supabase.auth.signOut().catch(() => {});
               window.dispatchEvent(new Event("auth-changed"));
               showToast("success", "Đăng nhập Google thành công!");
               router.push("/home");
@@ -167,6 +170,9 @@ export default function LoginPage() {
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/login`,
+          queryParams: {
+            prompt: "consent",  // Force re-consent to ensure fresh identity
+          },
         },
       });
       if (error) throw error;
@@ -420,6 +426,9 @@ export default function LoginPage() {
                           role: auth.role,
                           email: googleEmail,
                         }));
+                        // Sign out Supabase — only used as OAuth broker
+                        const { supabase: sb } = await import("@/lib/supabase");
+                        await sb.auth.signOut().catch(() => {});
                         window.dispatchEvent(new Event("auth-changed"));
                         setRegisterDone(true);
                         showToast("success", "Đăng ký thành công!");

@@ -109,7 +109,7 @@ export default function CartPage() {
     return { subtotal: sub, selectedCount: count };
   }, [cartItems, selectedIds]);
 
-  const shippingFee = subtotal > 300000 ? 0 : subtotal > 0 ? 30000 : 0;
+  const shippingFee = 0;
   const total = subtotal + shippingFee;
 
   if (loading) {
@@ -264,11 +264,6 @@ export default function CartPage() {
                   {subtotal === 0 ? "—" : shippingFee === 0 ? "Miễn phí" : formatCurrency(shippingFee)}
                 </span>
               </div>
-              {shippingFee > 0 && (
-                <p className="text-xs text-foreground-muted bg-primary/5 dark:bg-primary/10 px-3 py-2 rounded-lg">
-                  💡 Mua thêm <span className="font-bold text-primary">{formatCurrency(300000 - subtotal)}</span> để được miễn phí giao hàng
-                </p>
-              )}
               <div className="border-t border-border pt-3 flex justify-between">
                 <span className="font-bold text-base">Tổng cộng</span>
                 <span className="font-bold text-xl text-primary">{formatCurrency(total)}</span>

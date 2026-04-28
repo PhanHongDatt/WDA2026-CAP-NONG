@@ -29,7 +29,7 @@ public class UserAddress {
     private String street;
 
     @Column(nullable = false, length = 100)
-    private String district;
+    private String ward;
 
     @Column(nullable = false, length = 100)
     private String province;

@@ -16,7 +16,9 @@ public interface OrderService {
     Page<OrderResponseDto> getMyOrders(UUID userId, String status, Pageable pageable);
     Page<OrderResponseDto.SubOrderDto> getSellerSubOrders(UUID sellerId, String status, Pageable pageable);
     void cancelOrder(UUID orderId, UUID userId);
+    void cancelGuestOrder(String orderCode, String phone);
     void updateSubOrderStatus(UUID subOrderId, UUID sellerId, UpdateSubOrderStatusRequest request);
     OrderResponseDto.SubOrderDto getSellerSubOrderDetail(UUID subOrderId, UUID sellerId);
-    void mergeGuestOrdersToUser(String phone, String email, UUID userId);
+    Page<OrderResponseDto.SubOrderDto> getSubOrdersByShopId(UUID shopId, UUID ownerId, String status, Pageable pageable);
+    int mergeGuestOrdersToUser(String phone, String email, UUID userId);
 }

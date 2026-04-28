@@ -9,6 +9,7 @@ import com.capnong.model.Shop;
 import com.capnong.model.User;
 import com.capnong.repository.ShopRepository;
 import com.capnong.repository.UserRepository;
+import com.capnong.service.CloudinaryService;
 import com.capnong.service.ShopService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +30,7 @@ public class ShopServiceImpl implements ShopService {
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
     private final ShopMapper shopMapper;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     @Transactional
@@ -33,7 +38,7 @@ public class ShopServiceImpl implements ShopService {
         User owner = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-        if (shopRepository.existsByOwner_Id(owner.getId())) {
+        if (shopRepository.existsByOwner_IdAndIsHtxShop(owner.getId(), false)) {
             throw new AppException("Người dùng này đã có gian hàng", HttpStatus.CONFLICT);
         }
         if (shopRepository.existsBySlug(request.getSlug())) {
@@ -45,7 +50,7 @@ public class ShopServiceImpl implements ShopService {
                 .name(request.getName())
                 .slug(request.getSlug())
                 .province(request.getProvince())
-                .district(request.getDistrict())
+                .ward(request.getWard())
                 .bio(request.getBio())
                 .yearsExperience(request.getYearsExperience())
                 .farmAreaM2(request.getFarmAreaM2())
@@ -70,7 +75,7 @@ public class ShopServiceImpl implements ShopService {
                     .name(shop.getName())
                     .slug(shop.getSlug())
                     .province(shop.getProvince())
-                    .district(shop.getDistrict())
+                    .ward(shop.getWard())
                     .bio(shop.getBio())
                     .yearsExperience(shop.getYearsExperience())
                     .farmAreaM2(shop.getFarmAreaM2())
@@ -101,7 +106,7 @@ public class ShopServiceImpl implements ShopService {
         shop.setName(request.getName());
         shop.setSlug(request.getSlug());
         shop.setProvince(request.getProvince());
-        shop.setDistrict(request.getDistrict());
+        shop.setWard(request.getWard());
         shop.setBio(request.getBio());
         shop.setYearsExperience(request.getYearsExperience());
         shop.setFarmAreaM2(request.getFarmAreaM2());
@@ -114,9 +119,23 @@ public class ShopServiceImpl implements ShopService {
     @Override
     @Transactional(readOnly = true)
     public ShopResponse getMyShop(String username) {
-        Shop shop = shopRepository.findByOwnerUsername(username)
-                .orElseThrow(() -> new AppException("Bạn chưa có gian hàng", HttpStatus.NOT_FOUND));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+                
+        Shop shop = shopRepository.findFirstByOwner_IdAndIsHtxShop(user.getId(), false)
+                .orElseThrow(() -> new AppException("Bạn chưa có gian hàng cá nhân", HttpStatus.NOT_FOUND));
         return shopMapper.toShopResponse(shop);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShopResponse> getAllMyShops(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+                
+        return shopRepository.findAllByOwner_Id(user.getId()).stream()
+                .map(shopMapper::toShopResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -136,7 +155,7 @@ public class ShopServiceImpl implements ShopService {
     @Override
     @Transactional(readOnly = true)
     public String getShopSlugByUsername(String username) {
-        return shopRepository.findByOwnerUsername(username)
+        return shopRepository.findFirstByOwnerUsername(username)
                 .map(Shop::getSlug)
                 .orElse(null);
     }
@@ -156,5 +175,29 @@ public class ShopServiceImpl implements ShopService {
             shops = shopRepository.findAll(pageable);
         }
         return shops.map(shopMapper::toShopResponse);
+    }
+
+    @Override
+    @Transactional
+    public ShopResponse uploadShopImage(String slug, String type, MultipartFile file, String username) {
+        Shop shop = shopRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Shop", "slug", slug));
+
+        if (!shop.getOwner().getUsername().equals(username)) {
+            throw new AppException("Bạn không có quyền chỉnh sửa gian hàng này", HttpStatus.FORBIDDEN);
+        }
+
+        String folder = "capnong/shops/" + slug;
+        String url = cloudinaryService.uploadImage(file, folder);
+
+        if ("avatar".equalsIgnoreCase(type)) {
+            shop.setAvatarUrl(url);
+        } else if ("cover".equalsIgnoreCase(type)) {
+            shop.setCoverUrl(url);
+        } else {
+            throw new AppException("Loại ảnh không hợp lệ. Chỉ chấp nhận: avatar, cover", HttpStatus.BAD_REQUEST);
+        }
+
+        return shopMapper.toShopResponse(shopRepository.save(shop));
     }
 }

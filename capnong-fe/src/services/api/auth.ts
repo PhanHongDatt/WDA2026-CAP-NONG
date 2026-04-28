@@ -82,6 +82,7 @@ export const apiAuthService: IAuthService = {
       access_token: authData.access_token,
       refresh_token: authData.refresh_token,
       user,
+      merged_orders_count: authData.merged_orders_count,
     };
   },
 
@@ -109,6 +110,20 @@ export const apiAuthService: IAuthService = {
 };
 
 /* ─── Extended Auth Methods (không nằm trong IAuthService interface) ─── */
+
+/**
+ * Force refresh token
+ */
+export async function forceRefresh(): Promise<void> {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) return;
+  const res = await api.post<{ data: BEAuthResponse }>("/api/auth/refresh", { refresh_token: refreshToken });
+  const authData = res.data.data;
+  localStorage.setItem("access_token", authData.access_token);
+  if (authData.refresh_token) {
+    localStorage.setItem("refresh_token", authData.refresh_token);
+  }
+}
 
 /**
  * Gửi OTP trước khi đăng ký

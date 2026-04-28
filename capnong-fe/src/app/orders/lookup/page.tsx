@@ -7,11 +7,12 @@ import {
   Search,
   Package,
   ArrowLeft,
-  CheckCircle2,
-
   Clock,
   Phone,
   MapPin,
+  XCircle,
+  Star,
+  CheckCircle2,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -48,6 +49,8 @@ function OrderLookupContent() {
   const [result, setResult] = useState<typeof MOCK_RESULT | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const searchRan = useRef(false);
 
   useEffect(() => {
@@ -88,7 +91,7 @@ function OrderLookupContent() {
         if (typeof addrObj === 'string') {
           addressStr = addrObj;
         } else if (addrObj) {
-          addressStr = `${addrObj.street || ""}, ${addrObj.district || ""}, ${addrObj.province || ""}`.replace(/^,\s*/, "").replace(/,\s*,/g, ",");
+          addressStr = `${addrObj.street || ""}, ${addrObj.ward || ""}, ${addrObj.province || ""}`.replace(/^,\s*/, "").replace(/,\s*,/g, ",");
         }
 
         const overallStatus = match.status || (subOrders.length > 0 ? subOrders[0].status : "PENDING");
@@ -119,6 +122,25 @@ function OrderLookupContent() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelGuestOrder = async () => {
+    if (!result || !phone) return;
+    setIsCanceling(true);
+    try {
+      const { default: api } = await import("@/services/api");
+      const cleanOrderId = result.id.replace(/[#\s]/g, "").toUpperCase();
+      await api.post(`/api/orders/guest/${cleanOrderId}/cancel?phone=${encodeURIComponent(phone)}`);
+      
+      // Update local state to cancelled
+      setResult(prev => prev ? { ...prev, status: "CANCELLED" as OrderStatus } : prev);
+      setShowCancelDialog(false);
+      alert("Hủy đơn hàng thành công!");
+    } catch (e: any) {
+      alert(e?.message || "Không thể hủy đơn hàng. Có thể nhà vườn đã bắt đầu xử lý đơn.");
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -248,6 +270,65 @@ function OrderLookupContent() {
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-foreground-muted">
             <MapPin className="w-4 h-4 text-primary" />
             {result.shipping_address}
+          </div>
+
+          {/* Cancel Button */}
+          {(result.status === "PENDING" || result.status === "PREPARING") && (
+            <div className="border-t border-gray-100 dark:border-border pt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCancelDialog(true)}
+                disabled={isCanceling}
+                className="flex items-center gap-1.5 text-sm px-4 py-2 border border-red-200 text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 font-bold transition-colors disabled:opacity-50"
+              >
+                <XCircle className="w-4 h-4" />
+                Hủy đơn hàng
+              </button>
+            </div>
+          )}
+
+          {/* Review Banner for Guests */}
+          {result.status === "DELIVERED" && (
+            <div className="border-t border-gray-100 dark:border-border pt-4">
+              <div className="flex items-center gap-3 p-3 bg-blue-50/50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-300 rounded-lg text-sm border border-blue-100 dark:border-blue-800">
+                <Star className="w-5 h-5 shrink-0" />
+                <p>
+                  Đơn hàng đã hoàn thành. Hãy <Link href="/login" className="font-bold underline hover:text-blue-800 dark:hover:text-blue-100">đăng nhập</Link> để có thể đánh giá trải nghiệm của bạn nhé.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cancel Dialog */}
+      {showCancelDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-surface rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-foreground mb-2 flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-red-500" />
+              Xác nhận hủy đơn
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-foreground-muted mb-6">
+              Bạn có chắc muốn hủy đơn hàng này không? Quá trình này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCancelDialog(false)}
+                className="flex-1 px-4 py-2 bg-gray-100 dark:bg-surface-hover text-gray-700 dark:text-foreground rounded-xl font-medium hover:bg-gray-200 transition-colors"
+              >
+                Giữ lại đơn
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelGuestOrder}
+                disabled={isCanceling}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {isCanceling ? "Đang hủy..." : "Có, hủy đơn"}
+              </button>
+            </div>
           </div>
         </div>
       )}

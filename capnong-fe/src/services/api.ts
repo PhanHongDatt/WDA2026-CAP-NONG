@@ -125,6 +125,13 @@ api.interceptors.response.use(
       }
     }
 
+    // Extract the backend's default message payload to avoid generic 500 error display
+    if (error.response?.data && (error.response.data as any).message) {
+      error.message = (error.response.data as any).message;
+    } else if (error.response?.data && typeof error.response.data === 'string') {
+       error.message = error.response.data;
+    }
+
     return Promise.reject(error);
   }
 );

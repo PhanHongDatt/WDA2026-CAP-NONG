@@ -153,7 +153,7 @@ function BuyerOrderContent() {
                   image_url: item.product?.images?.[0] || undefined,
                })),
                shipping_address: order.shipping_address ? 
-                 `${order.shipping_address.street}, ${order.shipping_address.district}, ${order.shipping_address.province}` 
+                 `${order.shipping_address.street}, ${order.shipping_address.ward}, ${order.shipping_address.province}` 
                  : "—",
                cancel_reason: sub.cancel_reason,
             });
@@ -475,7 +475,7 @@ function BuyerOrderContent() {
                   </div>
 
                   {/* UC-Cancel: Buyer Cancel Button */}
-                  {order.status === "PENDING" && (
+                  {(order.status === "PENDING" || order.status === "PREPARING") && (
                     <div className="border-t border-gray-100 dark:border-border pt-4 flex justify-end">
                       <button
                         type="button"

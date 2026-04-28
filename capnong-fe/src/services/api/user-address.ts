@@ -45,7 +45,7 @@ function normalizeAddress(item: any): UserAddress {
     recipientName: item.full_name || item.fullName || item.recipientName || "",
     phone: item.phone || "",
     provinceCode: item.province || item.provinceCode || "",
-    wardCode: item.district || item.wardCode || "",
+    wardCode: item.ward || item.wardCode || "",
     streetAddress: item.street || item.streetAddress || "",
     isDefault: item.is_default || item.isDefault || false,
     createdAt: item.created_at || item.createdAt,
@@ -57,7 +57,7 @@ function normalizeRequest(data: UserAddressRequest) {
     full_name: data.recipientName,
     phone: data.phone,
     province: data.provinceCode,
-    district: data.wardCode,
+    ward: data.wardCode,
     street: data.streetAddress,
     is_default: data.isDefault,
   };

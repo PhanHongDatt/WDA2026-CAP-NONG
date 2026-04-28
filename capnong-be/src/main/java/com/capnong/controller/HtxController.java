@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +48,16 @@ public class HtxController {
 
     // ─── FARMER: Tạo HTX ────────────────────────────────────
 
+    @PostMapping(value = "/upload-document", consumes = "multipart/form-data")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MANAGER')")
+    @Operation(summary = "Upload tài liệu HTX", description = "Dành cho Farmer (chuẩn bị tạo HTX) hoặc HTX_MANAGER để lấy URL tài liệu.")
+    public ResponseEntity<ApiResponse<String>> uploadDocument(
+            @RequestParam("file") MultipartFile file,
+            Authentication auth) {
+        String url = htxService.uploadDocument(file, auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Upload tài liệu thành công", url));
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('FARMER')")
     @Operation(summary = "Tạo đơn thành lập HTX",
@@ -75,6 +86,16 @@ public class HtxController {
                 .body(ApiResponse.success("Gửi yêu cầu gia nhập thành công, đang chờ duyệt", joinRequest));
     }
 
+    @GetMapping("/my-join-requests")
+    @PreAuthorize("hasRole('FARMER')")
+    @Operation(summary = "Lấy danh sách yêu cầu gia nhập của bản thân",
+            description = "FARMER xem lại các yêu cầu gia nhập mình đã gửi (đang chờ duyệt, bị từ chối, v.v.).")
+    public ResponseEntity<ApiResponse<List<HtxJoinRequestResponse>>> getMyJoinRequests(Authentication auth) {
+        var list = htxService.getMyJoinRequests(auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách yêu cầu gia nhập thành công", list));
+    }
+
+
     // ─── HTX_MEMBER: Rời HTX ────────────────────────────────
 
     @PostMapping("/leave")
@@ -99,7 +120,7 @@ public class HtxController {
     // ─── HTX_MANAGER: Quản lý thành viên ────────────────────
 
     @GetMapping("/members")
-    @PreAuthorize("hasRole('HTX_MANAGER')")
+    @PreAuthorize("hasAnyRole('HTX_MEMBER', 'HTX_MANAGER')")
     @Operation(summary = "Danh sách thành viên HTX")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getMyHtxMembers(Authentication auth) {
         var members = htxService.getMyHtxMembers(auth.getName());
@@ -135,5 +156,31 @@ public class HtxController {
             Authentication auth) {
         htxService.removeMember(memberId, auth.getName());
         return ResponseEntity.ok(ApiResponse.success("Đã xóa thành viên khỏi HTX"));
+    }
+
+    // ─── HTX_MANAGER: Chuyển quyền & Giải tán ───────────────
+
+    @PatchMapping("/transfer")
+    @PreAuthorize("hasRole('HTX_MANAGER')")
+    @Operation(summary = "Chuyển quyền Chủ HTX",
+            description = "Chuyển quyền quản lý HTX cho một HTX_MEMBER. Chủ cũ trở thành HTX_MEMBER.")
+    public ResponseEntity<ApiResponse<Void>> transferOwnership(
+            @RequestBody java.util.Map<String, String> body,
+            Authentication auth) {
+        String newManagerId = body.get("new_manager_id");
+        if (newManagerId == null || newManagerId.isBlank()) {
+            throw new com.capnong.exception.AppException("Thiếu new_manager_id", org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
+        htxService.transferOwnership(UUID.fromString(newManagerId), auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Đã chuyển quyền Chủ HTX thành công"));
+    }
+
+    @DeleteMapping("/dissolve")
+    @PreAuthorize("hasRole('HTX_MANAGER')")
+    @Operation(summary = "Giải tán HTX",
+            description = "Giải tán HTX. Tất cả thành viên quay về FARMER. HTX chuyển trạng thái DISSOLVED.")
+    public ResponseEntity<ApiResponse<Void>> dissolveHtx(Authentication auth) {
+        htxService.dissolveHtx(auth.getName());
+        return ResponseEntity.ok(ApiResponse.success("Đã giải tán HTX thành công"));
     }
 }

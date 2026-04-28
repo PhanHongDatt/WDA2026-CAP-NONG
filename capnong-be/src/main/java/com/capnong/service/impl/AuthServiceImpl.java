@@ -118,14 +118,19 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
+        int mergedCount = 0;
         if (phone != null) {
-            orderService.mergeGuestOrdersToUser(phone, null, user.getId());
+            mergedCount += orderService.mergeGuestOrdersToUser(phone, null, user.getId());
         }
         if (email != null) {
-            orderService.mergeGuestOrdersToUser(null, email, user.getId());
+            mergedCount += orderService.mergeGuestOrdersToUser(null, email, user.getId());
         }
 
-        return login(new LoginRequest(request.getUsername(), request.getPassword()));
+        AuthResponse response = login(new LoginRequest(request.getUsername(), request.getPassword()));
+        if (mergedCount > 0) {
+            response.setMergedOrdersCount(mergedCount);
+        }
+        return response;
     }
 
     @Override
