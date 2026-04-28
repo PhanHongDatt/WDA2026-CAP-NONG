@@ -17,7 +17,7 @@ export interface HtxRequestResponse {
   name: string;
   officialCode: string;
   province: string;
-  district: string;
+  ward: string;
   description?: string;
   documentUrl?: string;
   status: "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED";

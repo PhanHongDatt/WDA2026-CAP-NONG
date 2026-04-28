@@ -12,7 +12,7 @@ public class HtxResponseDto {
     private String status;
     private Integer totalMembers;
     private String officialCode;
-    private String district;
+    private String ward;
     private String description;
     private String documentUrl;
     private UserSummaryDto manager;

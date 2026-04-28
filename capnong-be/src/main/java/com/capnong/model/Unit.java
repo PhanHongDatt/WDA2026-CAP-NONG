@@ -36,7 +36,7 @@ public class Unit extends BaseEntity {
     @Column(nullable = false, length = 20)
     private UnitCategory category;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "unit_aliases", joinColumns = @JoinColumn(name = "unit_id"))
     @Column(name = "alias")
     private List<String> aliases;

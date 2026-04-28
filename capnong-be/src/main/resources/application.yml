@@ -44,7 +44,7 @@ spring:
   # ─── Enable data.sql init (use manual migration) ──
   sql:
     init:
-      mode: always
+      mode: never
 
   # ─── Redis ─────────────────────────────────
   data:

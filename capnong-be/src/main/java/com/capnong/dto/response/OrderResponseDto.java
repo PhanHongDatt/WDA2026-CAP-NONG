@@ -21,6 +21,10 @@ public class OrderResponseDto {
     @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
     public static class SubOrderDto {
         private UUID id;
+        private String orderCode;
+        private String buyerName;
+        private String buyerPhone;
+        private LocalDateTime createdAt;
         private ShopResponseDto shop;
         private List<CartResponseDto.CartItemDto> items;
         private Double subtotal;
@@ -34,7 +38,7 @@ public class OrderResponseDto {
         private String fullName;
         private String phone;
         private String street;
-        private String district;
+        private String ward;
         private String province;
     }
 }

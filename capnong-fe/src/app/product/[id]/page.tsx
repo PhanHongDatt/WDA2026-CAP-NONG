@@ -17,6 +17,7 @@ import {
   Share2,
   CheckCircle2,
   Loader2,
+  Package,
 } from "lucide-react";
 import { productService, cartService } from "@/services";
 import { formatCurrency } from "@/lib/utils";
@@ -55,6 +56,7 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [reviewCount, setReviewCount] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -69,6 +71,8 @@ export default function ProductDetailPage() {
       try {
         const revs = await getProductReviews(id, 0, 5);
         setReviews(revs.content || []);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setReviewCount(revs.totalElements || (revs as any).total_elements || 0);
       } catch { /* ignore */ }
       setLoading(false);
     }
@@ -163,6 +167,16 @@ export default function ProductDetailPage() {
               <span className="text-foreground-muted">|</span>
               <span className="text-foreground-muted">Đã bán {product.sold_count}</span>
             </div>
+
+            {product.bundle_id && (
+              <Link href={`/cooperative/bundles/${product.bundle_id}`} className="mt-3 bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-3 hover:bg-amber-100 transition-colors block">
+                <Package className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-amber-900">Sản phẩm Gom đơn HTX (Mua sỉ)</p>
+                  <p className="text-xs text-amber-700 mt-0.5">Sản phẩm này được cộng gộp từ các nông dân trong HTX. Bấm để xem chi tiết tiến độ gom đơn.</p>
+                </div>
+              </Link>
+            )}
           </div>
 
           {/* Price */}
@@ -184,7 +198,7 @@ export default function ProductDetailPage() {
               <p className="font-bold text-sm text-foreground truncate">{product.shop?.name}</p>
               <p className="text-xs text-foreground-muted flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
-                {product.shop?.district}, {product.shop?.province}
+                {[product.shop?.ward, product.shop?.province].filter(Boolean).join(", ") || "Chưa cập nhật địa chỉ"}
               </p>
             </div>
             <ArrowLeft className="w-4 h-4 text-foreground-muted rotate-180" />
@@ -298,7 +312,7 @@ export default function ProductDetailPage() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-foreground">Đánh giá từ khách hàng</h2>
           <div className="text-sm text-primary font-bold">
-            {product.total_reviews > 0 ? `${product.total_reviews} đánh giá` : "Chưa có đánh giá"}
+            {reviews.length > 0 ? `${reviewCount} đánh giá` : "Chưa có đánh giá"}
           </div>
         </div>
         
@@ -307,22 +321,22 @@ export default function ProductDetailPage() {
             {reviews.map((review) => (
               <div key={review.id} className="flex gap-4 border-b border-border pb-6 last:border-0 last:pb-0">
                 <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0 overflow-hidden">
-                  {review.author?.avatar_url ? (
+                  {review.author_avatar_url ? (
                     <Image
-                      src={review.author.avatar_url}
-                      alt={review.author.full_name || "User"}
+                      src={review.author_avatar_url}
+                      alt={review.author_name || "User"}
                       width={40}
                       height={40}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                      {review.author?.full_name?.charAt(0) || "U"}
+                      {review.author_name?.charAt(0) || "U"}
                     </div>
                   )}
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold text-sm text-foreground">{review.author?.full_name || "Người dùng ẩn danh"}</p>
+                  <p className="font-bold text-sm text-foreground">{review.author_name || "Người dùng ẩn danh"}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="flex text-yellow-500 gap-0.5">
                       {[...Array(5)].map((_, i) => (

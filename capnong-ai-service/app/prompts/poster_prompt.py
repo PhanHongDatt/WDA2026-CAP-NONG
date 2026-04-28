@@ -55,7 +55,9 @@ CRITICAL REQUIREMENTS:
 
 def build_poster_prompt(product_name: str, description: str | None = None,
                         province: str | None = None, price_display: str | None = None,
-                        shop_name: str | None = None, template: str = "FRESH_GREEN") -> str:
+                        shop_name: str | None = None, template: str = "FRESH_GREEN",
+                        current_state: dict | None = None,
+                        instruction: str | None = None) -> str:
     parts = [
         f"Tên sản phẩm: {product_name}",
         f"Template: {template}",
@@ -69,7 +71,16 @@ def build_poster_prompt(product_name: str, description: str | None = None,
     if shop_name:
         parts.append(f"Tên shop: {shop_name}")
 
-    parts.append("\nTạo nội dung text cho poster. Trả về JSON. Chỉ JSON.")
+    if current_state and instruction:
+        import json
+        parts.append("\n--- CHẾ ĐỘ TINH CHỈNH (FINE-TUNING) ---")
+        parts.append("Đây là trạng thái POSTER HIỆN TẠI của người dùng:")
+        parts.append(json.dumps(current_state, ensure_ascii=False, indent=2))
+        parts.append(f"YÊU CẦU TINH CHỈNH TỪ NGƯỜI DÙNG: \"{instruction}\"")
+        parts.append("Hãy cập nhật lại dữ liệu poster dựa trên yêu cầu trên, giữ nguyên các trường khác nếu không được yêu cầu đổi. Trả về toàn bộ JSON hợp lệ với cấu trúc như cũ.")
+    else:
+        parts.append("\nTạo nội dung text cho poster. Trả về JSON. Chỉ JSON.")
+        
     return "\n".join(parts)
 
 

@@ -52,7 +52,7 @@ public class UserAddressServiceImpl implements UserAddressService {
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
                 .street(request.getStreet())
-                .district(request.getDistrict())
+                .ward(request.getWard())
                 .province(request.getProvince())
                 .isDefault(setDefault)
                 .build();
@@ -68,7 +68,7 @@ public class UserAddressServiceImpl implements UserAddressService {
         address.setFullName(request.getFullName());
         address.setPhone(request.getPhone());
         address.setStreet(request.getStreet());
-        address.setDistrict(request.getDistrict());
+        address.setWard(request.getWard());
         address.setProvince(request.getProvince());
 
         if (Boolean.TRUE.equals(request.getIsDefault()) && !address.getIsDefault()) {
@@ -129,7 +129,7 @@ public class UserAddressServiceImpl implements UserAddressService {
                 .fullName(address.getFullName())
                 .phone(address.getPhone())
                 .street(address.getStreet())
-                .district(address.getDistrict())
+                .ward(address.getWard())
                 .province(address.getProvince())
                 .isDefault(address.getIsDefault())
                 .createdAt(address.getCreatedAt())

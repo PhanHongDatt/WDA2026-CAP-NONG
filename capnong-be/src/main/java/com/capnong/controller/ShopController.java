@@ -32,7 +32,7 @@ public class ShopController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('FARMER')")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
     @Operation(summary = "Tạo gian hàng mới",
             description = "FARMER tạo gian hàng (1 account = 1 shop). Sau khi tạo, shop_slug sẽ xuất hiện trong JWT ở lần đăng nhập/refresh tiếp theo.")
     public ResponseEntity<ApiResponse<ShopResponse>> createShop(
@@ -44,12 +44,21 @@ public class ShopController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasRole('FARMER')")
-    @Operation(summary = "Xem gian hàng của tôi",
-            description = "Lấy thông tin gian hàng của user đang đăng nhập.")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Xem gian hàng cá nhân của tôi",
+            description = "Lấy thông tin gian hàng CÁ NHÂN của user đang đăng nhập.")
     public ResponseEntity<ApiResponse<ShopResponse>> getMyShop(Authentication authentication) {
         ShopResponse shop = shopService.getMyShop(authentication.getName());
-        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin gian hàng thành công", shop));
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin gian hàng cá nhân thành công", shop));
+    }
+
+    @GetMapping("/me/all")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Xem tất cả gian hàng",
+            description = "Lấy danh sách TẤT CẢ gian hàng của user (có thể bao gồm cả shop HTX).")
+    public ResponseEntity<ApiResponse<java.util.List<ShopResponse>>> getAllMyShops(Authentication authentication) {
+        java.util.List<ShopResponse> shops = shopService.getAllMyShops(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách các gian hàng thành công", shops));
     }
 
     @GetMapping
@@ -71,7 +80,7 @@ public class ShopController {
     }
 
     @PutMapping("/{slug}")
-    @PreAuthorize("hasRole('FARMER')")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
     @Operation(summary = "Cập nhật gian hàng",
             description = "Cập nhật thông tin gian hàng. Yêu cầu user phải là chủ sở hữu.")
     public ResponseEntity<ApiResponse<ShopResponse>> updateShop(
@@ -83,7 +92,7 @@ public class ShopController {
     }
 
     @DeleteMapping("/{slug}")
-    @PreAuthorize("hasRole('FARMER')")
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
     @Operation(summary = "Xóa gian hàng (soft delete)",
             description = "Xóa mềm gian hàng. Yêu cầu user là chủ sở hữu.")
     public ResponseEntity<ApiResponse<Void>> deleteShop(
@@ -104,4 +113,17 @@ public class ShopController {
         var page = productService.searchProducts(filter, pageable);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", PagedResponse.from(page)));
     }
-}
+
+    @PostMapping(value = "/{slug}/images", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
+    @Operation(summary = "Upload ảnh gian hàng",
+            description = "Upload ảnh đại diện (avatar) hoặc ảnh bìa (cover) cho gian hàng. type = 'avatar' hoặc 'cover'.")
+    public ResponseEntity<ApiResponse<ShopResponse>> uploadShopImage(
+            @PathVariable String slug,
+            @RequestParam("type") String type,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            Authentication authentication) {
+        ShopResponse shop = shopService.uploadShopImage(slug, type, file, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Upload ảnh gian hàng thành công", shop));
+    }
+}

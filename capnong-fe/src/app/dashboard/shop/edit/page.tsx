@@ -25,6 +25,8 @@ import { isValidSlug } from "@/lib/slug";
 import type { ShopFormData } from "@/services/types";
 import type { Shop } from "@/types/shop";
 import Link from "next/link";
+import ShopImageUpload from "@/components/shop/ShopImageUpload";
+import { uploadShopImage } from "@/services/api/shop";
 
 function EditShopContent() {
   const router = useRouter();
@@ -33,7 +35,7 @@ function EditShopContent() {
 
   const [originalShop, setOriginalShop] = useState<Shop | null>(null);
   const [form, setForm] = useState<ShopFormData>({
-    name: "", slug: "", province: "", district: "",
+    name: "", slug: "", province: "", ward: "",
     bio: "", years_experience: undefined, farm_area_m2: undefined,
     avatar_url: "", cover_url: "",
   });
@@ -41,9 +43,9 @@ function EditShopContent() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Province / District dropdown
+  // Province / Ward dropdown
   const [provinces, setProvinces] = useState<Province[]>([]);
-  const [districts, setDistricts] = useState<Ward[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
 
   // Load existing shop data
   useEffect(() => {
@@ -60,7 +62,7 @@ function EditShopContent() {
           name: shop.name,
           slug: shop.slug,
           province: shop.province,
-          district: shop.district,
+          ward: shop.ward,
           bio: shop.bio || "",
           years_experience: shop.years_experience ?? undefined,
           farm_area_m2: shop.farm_area_m2 ?? undefined,
@@ -82,13 +84,13 @@ function EditShopContent() {
     getProvinces().then(setProvinces).catch(() => {});
   }, []);
 
-  // Load districts when province changes
+  // Load wards when province changes
   const selectedProvinceCode = provinces.find((p) => p.name === form.province)?.code || "";
   useEffect(() => {
     if (selectedProvinceCode) {
-      getWards(selectedProvinceCode).then(setDistricts).catch(() => {});
+      getWards(selectedProvinceCode).then(setWards).catch(() => {});
     } else {
-      setDistricts([]);
+      setWards([]);
     }
   }, [selectedProvinceCode]);
 
@@ -112,7 +114,7 @@ function EditShopContent() {
     if (!form.slug.trim()) errs.slug = "Slug không được để trống";
     else if (!isValidSlug(form.slug)) errs.slug = "Slug chỉ chứa chữ cái thường, số và dấu gạch ngang";
     if (!form.province) errs.province = "Vui lòng chọn tỉnh/thành phố";
-    if (!form.district) errs.district = "Vui lòng chọn quận/huyện";
+    if (!form.ward) errs.ward = "Vui lòng chọn xã/phường";
     if (form.years_experience !== undefined && form.years_experience < 0) errs.years_experience = "Số năm kinh nghiệm phải ≥ 0";
     if (form.farm_area_m2 !== undefined && form.farm_area_m2 < 0) errs.farm_area_m2 = "Diện tích vườn phải ≥ 0";
     setErrors(errs);
@@ -199,7 +201,7 @@ function EditShopContent() {
             </label>
             <div className="flex items-center gap-0">
               <span className="px-3 py-2.5 bg-gray-100 dark:bg-surface-hover border border-r-0 border-gray-200 dark:border-border rounded-l-lg text-xs text-foreground-muted shrink-0">
-                capnong.vn/shop/
+                capnong.shop/shop/
               </span>
               <input
                 id="edit-shop-slug"
@@ -235,7 +237,7 @@ function EditShopContent() {
                 value={form.province}
                 onChange={(e) => {
                   handleChange("province", e.target.value);
-                  handleChange("district", "");
+                  handleChange("ward", "");
                 }}
                 className={`w-full px-3 py-2.5 bg-white dark:bg-background border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.province ? "border-accent" : "border-gray-200 dark:border-border"}`}
               >
@@ -251,24 +253,24 @@ function EditShopContent() {
               )}
             </div>
             <div>
-              <label htmlFor="edit-shop-district" className="block text-xs font-medium text-foreground-muted mb-1.5">
-                Quận / Huyện
+              <label htmlFor="edit-shop-ward" className="block text-xs font-medium text-foreground-muted mb-1.5">
+                Xã / Phường
               </label>
               <select
-                id="edit-shop-district"
-                value={form.district}
-                onChange={(e) => handleChange("district", e.target.value)}
+                id="edit-shop-ward"
+                value={form.ward}
+                onChange={(e) => handleChange("ward", e.target.value)}
                 disabled={!selectedProvinceCode}
-                className={`w-full px-3 py-2.5 bg-white dark:bg-background border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-surface ${errors.district ? "border-accent" : "border-gray-200 dark:border-border"}`}
+                className={`w-full px-3 py-2.5 bg-white dark:bg-background border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-surface ${errors.ward ? "border-accent" : "border-gray-200 dark:border-border"}`}
               >
-                <option value="">Chọn quận / huyện</option>
-                {districts.map((d) => (
-                  <option key={d.code} value={d.name}>{d.name}</option>
+                <option value="">Chọn xã / phường</option>
+                {wards.map((w) => (
+                  <option key={w.code} value={w.name}>{w.name}</option>
                 ))}
               </select>
-              {errors.district && (
+              {errors.ward && (
                 <p className="text-xs text-accent mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.district}
+                  <AlertCircle className="w-3 h-3" /> {errors.ward}
                 </p>
               )}
             </div>
@@ -337,6 +339,32 @@ function EditShopContent() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* ── Ảnh gian hàng ── */}
+        <div className="bg-white dark:bg-surface rounded-xl border border-border p-6 space-y-5">
+          <h2 className="font-bold text-foreground flex items-center gap-2 text-sm">
+            <Store className="w-4 h-4 text-primary" />
+            Ảnh gian hàng <span className="text-foreground-muted text-xs font-normal">(tùy chọn)</span>
+          </h2>
+
+          <ShopImageUpload
+            label="Ảnh đại diện (avatar)"
+            type="avatar"
+            currentUrl={form.avatar_url}
+            onUrlChange={(url) => handleChange("avatar_url", url)}
+            slug={originalShop?.slug}
+            uploadFn={uploadShopImage}
+          />
+
+          <ShopImageUpload
+            label="Ảnh bìa (cover)"
+            type="cover"
+            currentUrl={form.cover_url}
+            onUrlChange={(url) => handleChange("cover_url", url)}
+            slug={originalShop?.slug}
+            uploadFn={uploadShopImage}
+          />
         </div>
 
         {/* Actions */}

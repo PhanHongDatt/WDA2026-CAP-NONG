@@ -46,7 +46,7 @@ INSERT INTO htx (id, name, official_code, province, district, description, statu
 
 # USERS
 users = [
-    (u("user000"), "Admin Tổng", "0900000000", "admin@capnong.vn", "ADMIN", "NULL", "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"),
+    (u("user000"), "Admin Tổng", "0900000000", "admin@capnong.shop", "ADMIN", "NULL", "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"),
     (u("htxm01"), "Trần Văn Quản (HTX 1)", "0900000001", "quanly1@htx.com", "HTX_MANAGER", htx1, "https://api.dicebear.com/7.x/avataaars/svg?seed=Manager1"),
     (u("htxm02"), "Lê Thị Quản (HTX 2)", "0900000002", "quanly2@htx.com", "HTX_MANAGER", htx2, "https://api.dicebear.com/7.x/avataaars/svg?seed=Manager2"),
 ]

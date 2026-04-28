@@ -75,8 +75,11 @@ public class BundleMapper {
     public PledgeResponseDto toPledgeDto(BundlePledge pledge) {
         if (pledge == null) return null;
 
+        CooperativeBundle bundle = pledge.getBundle();
         return PledgeResponseDto.builder()
                 .id(pledge.getId())
+                .bundleId(bundle != null ? bundle.getId() : null)
+                .bundleName(bundle != null ? bundle.getProductName() : null)
                 .farmer(toUserSummary(pledge.getFarmer()))
                 .quantity(pledge.getQuantity())
                 .contributionPercent(pledge.getContributionPercent())

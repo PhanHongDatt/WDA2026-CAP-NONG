@@ -15,4 +15,5 @@ public interface HtxJoinRequestRepository extends JpaRepository<HtxJoinRequest, 
     List<HtxJoinRequest> findByHtx_Id(UUID htxId);
     Optional<HtxJoinRequest> findByFarmer_IdAndHtx_IdAndStatus(UUID farmerId, UUID htxId, JoinRequestStatus status);
     boolean existsByFarmer_IdAndStatus(UUID farmerId, JoinRequestStatus status);
+    List<HtxJoinRequest> findByFarmer_Id(UUID farmerId);
 }

@@ -4,5 +4,6 @@ public enum HtxStatus {
     PENDING,
     ACTIVE,
     SUSPENDED,
-    REJECTED
+    REJECTED,
+    DISSOLVED
 }

@@ -12,7 +12,7 @@ const publicSans = Public_Sans({
   variable: "--font-display",
   preload: true,
 });
-const SITE_URL = "https://capnong.vn";
+const SITE_URL = "https://capnong.shop";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

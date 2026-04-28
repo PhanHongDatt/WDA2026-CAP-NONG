@@ -24,7 +24,7 @@ public class ShopCreateRequest {
 
     @NotBlank(message = "Quận/Huyện không được để trống")
     @Size(max = 100)
-    private String district;
+    private String ward;
 
     // --- Tùy chọn ---
 

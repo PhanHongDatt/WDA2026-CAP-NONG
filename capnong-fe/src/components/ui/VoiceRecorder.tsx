@@ -114,9 +114,9 @@ function parseTranscript(transcript: string): VoiceProductResult {
 
   // Extract farming method
   let farmingMethod = "";
-  if (t.includes("hữu cơ") || t.includes("organic")) farmingMethod = "Hữu cơ";
-  if (t.includes("vietgap")) farmingMethod = "VietGAP";
-  if (t.includes("không thuốc") || t.includes("ko thuốc") || t.includes("không dùng thuốc")) farmingMethod = "Hữu cơ";
+  if (t.includes("hữu cơ") || t.includes("organic")) farmingMethod = "ORGANIC";
+  if (t.includes("vietgap")) farmingMethod = "VIETGAP";
+  if (t.includes("không thuốc") || t.includes("ko thuốc") || t.includes("không dùng thuốc")) farmingMethod = "ORGANIC";
 
   // Build description from transcript
   const description = transcript;

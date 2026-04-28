@@ -24,6 +24,8 @@ async def gen_poster_content(request: PosterContentRequest) -> PosterContentResp
             price_display=request.price_display,
             shop_name=request.shop_name,
             template=request.template.value,
+            instruction=request.instruction,
+            current_state=request.current_state,
         )
 
         # Parse color scheme

@@ -55,17 +55,22 @@ function ProcessingSimulator({ onDone }: { onDone: () => void }) {
 /* ─── Template-specific poster renderers (pure inline styles for html2canvas compat) ─── */
 
 function MinimalWhitePoster({ content, posterRef }: { content: PosterContent; posterRef: React.RefObject<HTMLDivElement | null> }) {
+  const primary = content.colorScheme?.primary || "#2d6a4f";
+  const accent = content.colorScheme?.accent || "#95d5b2";
+  const bg = (content.colorScheme as any)?.background || "#FAFAFA";
+  const textOnPrimary = content.colorScheme?.textOnPrimary || (content.colorScheme as any)?.text_on_primary || "#ffffff";
+
   return (
-    <div ref={posterRef} style={{ width: "100%", maxWidth: 384, aspectRatio: "3/4", background: "#FAFAFA", position: "relative", overflow: "hidden", fontFamily: "'Inter', 'Segoe UI', sans-serif", boxShadow: "0 25px 60px rgba(0,0,0,0.12)" }}>
+    <div ref={posterRef} style={{ width: "100%", maxWidth: 384, aspectRatio: "3/4", background: bg, position: "relative", overflow: "hidden", fontFamily: "'Inter', 'Segoe UI', sans-serif", boxShadow: "0 25px 60px rgba(0,0,0,0.12)" }}>
       {/* Top accent line */}
-      <div style={{ height: 5, background: "linear-gradient(90deg, #2d6a4f, #95d5b2)" }} />
+      <div style={{ height: 6, background: `linear-gradient(90deg, ${primary}, ${accent})` }} />
       {/* Content */}
-      <div style={{ padding: "40px 32px", height: "calc(100% - 5px)", display: "flex", flexDirection: "column", textAlign: "center" }}>
+      <div style={{ padding: "40px 32px", height: "calc(100% - 6px)", display: "flex", flexDirection: "column", textAlign: "center" }}>
         {/* Badges */}
         {content.badgeTexts && content.badgeTexts.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 24 }}>
             {content.badgeTexts.map((b, i) => (
-              <span key={i} style={{ padding: "4px 14px", borderRadius: 999, fontSize: 10, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", background: "#E8F5E9", color: "#2d6a4f", border: "1px solid #C8E6C9" }}>{b}</span>
+              <span key={i} style={{ padding: "4px 14px", borderRadius: 999, fontSize: 10, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", background: accent + "33", color: primary, border: `1px solid ${accent}66` }}>{b}</span>
             ))}
           </div>
         )}
@@ -77,7 +82,7 @@ function MinimalWhitePoster({ content, posterRef }: { content: PosterContent; po
           )}
           {content.priceDisplay && (
             <div style={{ marginTop: 20 }}>
-              <span style={{ display: "inline-block", padding: "12px 28px", borderRadius: 12, fontSize: 28, fontWeight: 900, background: "#2d6a4f", color: "#fff", letterSpacing: "-0.01em" }}>{content.priceDisplay}</span>
+              <span style={{ display: "inline-block", padding: "12px 28px", borderRadius: 12, fontSize: 28, fontWeight: 900, background: primary, color: textOnPrimary, letterSpacing: "-0.01em" }}>{content.priceDisplay}</span>
             </div>
           )}
         </div>
@@ -96,44 +101,49 @@ function MinimalWhitePoster({ content, posterRef }: { content: PosterContent; po
 }
 
 function WarmHarvestPoster({ content, posterRef }: { content: PosterContent; posterRef: React.RefObject<HTMLDivElement | null> }) {
+  const primary = content.colorScheme?.primary || "#3E2723";
+  const accent = content.colorScheme?.accent || "#E65100";
+  const bg = (content.colorScheme as any)?.background || "#FFECB3";
+  const textOnPrimary = content.colorScheme?.textOnPrimary || (content.colorScheme as any)?.text_on_primary || "#FFCC80";
+
   return (
-    <div ref={posterRef} style={{ width: "100%", maxWidth: 384, aspectRatio: "3/4", background: "linear-gradient(160deg, #FFF8E1 0%, #FFECB3 30%, #FFE0B2 70%, #FFCC80 100%)", position: "relative", overflow: "hidden", fontFamily: "'Inter', 'Segoe UI', sans-serif", boxShadow: "0 25px 60px rgba(0,0,0,0.15)" }}>
+    <div ref={posterRef} style={{ width: "100%", maxWidth: 384, aspectRatio: "3/4", background: `linear-gradient(160deg, ${bg}dd 0%, ${bg} 30%, ${bg}ee 70%, ${bg}cc 100%)`, position: "relative", overflow: "hidden", fontFamily: "'Inter', 'Segoe UI', sans-serif", boxShadow: "0 25px 60px rgba(0,0,0,0.15)" }}>
       {/* Decorative circles */}
-      <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "rgba(230,81,0,0.08)" }} />
-      <div style={{ position: "absolute", bottom: -30, left: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(230,81,0,0.06)" }} />
-      <div style={{ position: "absolute", top: "40%", left: -20, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,152,0,0.1)" }} />
+      <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: accent, opacity: 0.08 }} />
+      <div style={{ position: "absolute", bottom: -30, left: -30, width: 120, height: 120, borderRadius: "50%", background: accent, opacity: 0.06 }} />
+      <div style={{ position: "absolute", top: "40%", left: -20, width: 80, height: 80, borderRadius: "50%", background: accent, opacity: 0.1 }} />
       {/* Accent bar */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, background: "linear-gradient(90deg, #E65100, #FF9800, #FFB74D)" }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, background: `linear-gradient(90deg, ${accent}, ${primary})` }} />
       {/* Content */}
       <div style={{ padding: "44px 28px 32px", height: "100%", display: "flex", flexDirection: "column", textAlign: "center", position: "relative", zIndex: 2 }}>
         {/* Badges */}
         {content.badgeTexts && content.badgeTexts.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 20 }}>
             {content.badgeTexts.map((b, i) => (
-              <span key={i} style={{ padding: "5px 14px", borderRadius: 999, fontSize: 10, fontWeight: 800, letterSpacing: 0.8, textTransform: "uppercase", background: "#E65100", color: "#FFF8E1" }}>{b}</span>
+              <span key={i} style={{ padding: "5px 14px", borderRadius: 999, fontSize: 10, fontWeight: 800, letterSpacing: 0.8, textTransform: "uppercase", background: accent, color: bg }}>{b}</span>
             ))}
           </div>
         )}
         {/* Headline */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
-          <h2 style={{ fontSize: 34, fontWeight: 900, lineHeight: 1.15, color: "#3E2723", margin: 0, letterSpacing: "-0.01em" }}>{content.headline}</h2>
+          <h2 style={{ fontSize: 34, fontWeight: 900, lineHeight: 1.15, color: primary, margin: 0, letterSpacing: "-0.01em" }}>{content.headline}</h2>
           {content.tagline && (
-            <p style={{ fontSize: 13, color: "#5D4037", lineHeight: 1.6, maxWidth: 280, margin: "0 auto", fontStyle: "italic" }}>{content.tagline}</p>
+            <p style={{ fontSize: 13, color: primary, opacity: 0.8, lineHeight: 1.6, maxWidth: 280, margin: "0 auto", fontStyle: "italic" }}>{content.tagline}</p>
           )}
           {content.priceDisplay && (
             <div style={{ marginTop: 24, position: "relative", display: "inline-block", margin: "24px auto 0" }}>
-              <div style={{ position: "absolute", inset: -4, borderRadius: 16, background: "#E65100", opacity: 0.15, filter: "blur(12px)" }} />
-              <span style={{ position: "relative", display: "inline-block", padding: "14px 30px", borderRadius: 14, fontSize: 26, fontWeight: 900, background: "linear-gradient(135deg, #E65100, #BF360C)", color: "#fff", transform: "rotate(-1.5deg)", boxShadow: "0 8px 24px rgba(230,81,0,0.3)" }}>{content.priceDisplay}</span>
+              <div style={{ position: "absolute", inset: -4, borderRadius: 16, background: accent, opacity: 0.15, filter: "blur(12px)" }} />
+              <span style={{ position: "relative", display: "inline-block", padding: "14px 30px", borderRadius: 14, fontSize: 26, fontWeight: 900, background: `linear-gradient(135deg, ${accent}, ${primary})`, color: textOnPrimary, transform: "rotate(-1.5deg)", boxShadow: `0 8px 24px ${accent}4D` }}>{content.priceDisplay}</span>
             </div>
           )}
         </div>
         {/* Footer */}
         <div style={{ marginTop: "auto", paddingTop: 20 }}>
           {content.ctaText && (
-            <div style={{ display: "inline-block", padding: "14px 36px", borderRadius: 12, fontSize: 13, fontWeight: 800, background: "#3E2723", color: "#FFCC80", textTransform: "uppercase", letterSpacing: 1.5, boxShadow: "0 4px 16px rgba(62,39,35,0.25)" }}>{content.ctaText}</div>
+            <div style={{ display: "inline-block", padding: "14px 36px", borderRadius: 12, fontSize: 13, fontWeight: 800, background: primary, color: textOnPrimary, textTransform: "uppercase", letterSpacing: 1.5, boxShadow: `0 4px 16px ${primary}40` }}>{content.ctaText}</div>
           )}
           {content.shopDisplay && (
-            <p style={{ fontSize: 11, color: "#5D4037", marginTop: 14, fontWeight: 700 }}>🛍️ {content.shopDisplay}</p>
+            <p style={{ fontSize: 11, color: primary, opacity: 0.9, marginTop: 14, fontWeight: 700 }}>🛍️ {content.shopDisplay}</p>
           )}
         </div>
       </div>
@@ -142,12 +152,17 @@ function WarmHarvestPoster({ content, posterRef }: { content: PosterContent; pos
 }
 
 function FreshGreenPoster({ content, posterRef }: { content: PosterContent; posterRef: React.RefObject<HTMLDivElement | null> }) {
+  const primary = content.colorScheme?.primary || "#1B5E20";
+  const accent = content.colorScheme?.accent || "#388E3C";
+  const bg = (content.colorScheme as any)?.background || "#E8F5E9";
+  const textOnPrimary = content.colorScheme?.textOnPrimary || (content.colorScheme as any)?.text_on_primary || "#FFFFFF";
+
   return (
-    <div ref={posterRef} style={{ width: "100%", maxWidth: 384, aspectRatio: "3/4", background: "linear-gradient(170deg, #1B5E20 0%, #2E7D32 40%, #388E3C 70%, #43A047 100%)", position: "relative", overflow: "hidden", fontFamily: "'Inter', 'Segoe UI', sans-serif", boxShadow: "0 25px 60px rgba(0,0,0,0.2)" }}>
+    <div ref={posterRef} style={{ width: "100%", maxWidth: 384, aspectRatio: "3/4", background: `linear-gradient(170deg, ${primary} 0%, ${accent} 50%, ${primary}cc 100%)`, position: "relative", overflow: "hidden", fontFamily: "'Inter', 'Segoe UI', sans-serif", boxShadow: "0 25px 60px rgba(0,0,0,0.2)" }}>
       {/* Decorative elements */}
-      <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
-      <div style={{ position: "absolute", bottom: -40, left: -40, width: 160, height: 160, borderRadius: "50%", background: "rgba(255,255,255,0.04)" }} />
-      <div style={{ position: "absolute", top: "50%", right: -15, width: 60, height: 60, borderRadius: "50%", background: "rgba(165,214,167,0.15)" }} />
+      <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: textOnPrimary, opacity: 0.06 }} />
+      <div style={{ position: "absolute", bottom: -40, left: -40, width: 160, height: 160, borderRadius: "50%", background: textOnPrimary, opacity: 0.04 }} />
+      <div style={{ position: "absolute", top: "50%", right: -15, width: 60, height: 60, borderRadius: "50%", background: bg, opacity: 0.15 }} />
       {/* Leaf pattern top */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80, background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, transparent 100%)" }} />
       {/* Content */}
@@ -156,29 +171,29 @@ function FreshGreenPoster({ content, posterRef }: { content: PosterContent; post
         {content.badgeTexts && content.badgeTexts.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 20 }}>
             {content.badgeTexts.map((b, i) => (
-              <span key={i} style={{ padding: "5px 14px", borderRadius: 999, fontSize: 10, fontWeight: 800, letterSpacing: 0.8, textTransform: "uppercase", background: "rgba(255,255,255,0.2)", color: "#fff", backdropFilter: "blur(4px)", border: "1px solid rgba(255,255,255,0.3)" }}>{b}</span>
+              <span key={i} style={{ padding: "5px 14px", borderRadius: 999, fontSize: 10, fontWeight: 800, letterSpacing: 0.8, textTransform: "uppercase", background: textOnPrimary + "33", color: textOnPrimary, backdropFilter: "blur(4px)", border: `1px solid ${textOnPrimary}4D` }}>{b}</span>
             ))}
           </div>
         )}
         {/* Headline */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
-          <h2 style={{ fontSize: 36, fontWeight: 900, lineHeight: 1.15, color: "#FFFFFF", margin: 0, textShadow: "0 2px 12px rgba(0,0,0,0.2)", letterSpacing: "-0.01em" }}>{content.headline}</h2>
+          <h2 style={{ fontSize: 36, fontWeight: 900, lineHeight: 1.15, color: textOnPrimary, margin: 0, textShadow: "0 2px 12px rgba(0,0,0,0.2)", letterSpacing: "-0.01em" }}>{content.headline}</h2>
           {content.tagline && (
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.6, maxWidth: 280, margin: "0 auto" }}>{content.tagline}</p>
+            <p style={{ fontSize: 13, color: textOnPrimary, opacity: 0.85, lineHeight: 1.6, maxWidth: 280, margin: "0 auto" }}>{content.tagline}</p>
           )}
           {content.priceDisplay && (
             <div style={{ marginTop: 24, display: "inline-block", margin: "24px auto 0" }}>
-              <span style={{ display: "inline-block", padding: "14px 30px", borderRadius: 14, fontSize: 28, fontWeight: 900, background: "#FFF", color: "#1B5E20", boxShadow: "0 8px 32px rgba(0,0,0,0.2)", transform: "rotate(-2deg)" }}>{content.priceDisplay}</span>
+              <span style={{ display: "inline-block", padding: "14px 30px", borderRadius: 14, fontSize: 28, fontWeight: 900, background: bg, color: primary, boxShadow: "0 8px 32px rgba(0,0,0,0.2)", transform: "rotate(-2deg)" }}>{content.priceDisplay}</span>
             </div>
           )}
         </div>
         {/* Footer */}
         <div style={{ marginTop: "auto", paddingTop: 20 }}>
           {content.ctaText && (
-            <div style={{ display: "inline-block", padding: "14px 36px", borderRadius: 12, fontSize: 13, fontWeight: 800, background: "#FFFFFF", color: "#1B5E20", textTransform: "uppercase", letterSpacing: 1.5, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>{content.ctaText}</div>
+            <div style={{ display: "inline-block", padding: "14px 36px", borderRadius: 12, fontSize: 13, fontWeight: 800, background: textOnPrimary, color: primary, textTransform: "uppercase", letterSpacing: 1.5, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>{content.ctaText}</div>
           )}
           {content.shopDisplay && (
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 14, fontWeight: 700 }}>🛍️ {content.shopDisplay}</p>
+            <p style={{ fontSize: 11, color: textOnPrimary, opacity: 0.7, marginTop: 14, fontWeight: 700 }}>🛍️ {content.shopDisplay}</p>
           )}
         </div>
       </div>
@@ -187,8 +202,19 @@ function FreshGreenPoster({ content, posterRef }: { content: PosterContent; post
 }
 
 /* ─── Poster Result Display ─── */
-function PosterResultView({ content }: { content: PosterContent }) {
+function PosterResultView({ 
+  content, 
+  setContent, 
+  onRefine, 
+  isRefining 
+}: { 
+  content: PosterContent;
+  setContent: (content: PosterContent) => void;
+  onRefine: (instruction: string) => void;
+  isRefining: boolean;
+}) {
   const posterRef = useRef<HTMLDivElement>(null);
+  const [instruction, setInstruction] = useState("");
   const { showToast } = useToast();
 
   const templateId = content.templateId || "MINIMAL_WHITE";
@@ -243,15 +269,117 @@ function PosterResultView({ content }: { content: PosterContent }) {
     : MinimalWhitePoster;
 
   return (
-    <div className="space-y-4 w-full">
-      <h4 className="font-bold text-lg text-success flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2"><Check className="w-5 h-5" /> Poster đã tạo thành công!</span>
-        <button type="button" onClick={handleDownloadHtml} className="border border-border px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-background-light flex gap-2 items-center text-foreground transition-colors shadow-sm">
-          <Download className="w-4 h-4" /> Lưu Layout
-        </button>
-      </h4>
-      <div style={{ display: "flex", justifyContent: "center", padding: 32, background: "#f3f4f6", borderRadius: 16, border: "1px solid #e5e7eb" }}>
-        <PosterComponent content={content} posterRef={posterRef} />
+    <div className="space-y-6 w-full mt-6 border-t border-border pt-6">
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Left: Poster Preview */}
+        <div className="flex-1 space-y-4">
+          <h4 className="font-bold text-lg text-success flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2"><Check className="w-5 h-5" /> Poster đã tạo thành công!</span>
+            <button type="button" onClick={handleDownloadHtml} className="border border-border bg-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 flex gap-2 items-center text-foreground transition-colors shadow-sm">
+              <Download className="w-4 h-4" /> Tải ảnh
+            </button>
+          </h4>
+          <div style={{ display: "flex", justifyContent: "center", padding: 32, background: "#f3f4f6", borderRadius: 16, border: "1px solid #e5e7eb" }}>
+            <PosterComponent content={content} posterRef={posterRef} />
+          </div>
+          
+          {/* AI Refinement Chat Input */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 shadow-sm">
+            <label className="block text-sm font-bold mb-2 text-blue-800 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" /> 
+              Tinh chỉnh nội dung bằng AI
+            </label>
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={instruction}
+                onChange={e => setInstruction(e.target.value)}
+                placeholder="VD: Làm headline ngắn gọn hơn, đổi tông màu ấm hơn..."
+                className="flex-1 px-4 py-2.5 text-sm border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-400 outline-none"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && instruction.trim() && !isRefining) {
+                    onRefine(instruction);
+                  }
+                }}
+              />
+              <button 
+                type="button" 
+                disabled={!instruction.trim() || isRefining}
+                onClick={() => onRefine(instruction)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition-colors"
+              >
+                {isRefining ? <Loader2 className="w-4 h-4 animate-spin" /> : "Gửi"}
+              </button>
+            </div>
+            <p className="text-xs text-blue-600/70 mt-2">AI sẽ tự động cập nhật nội dung poster theo ý bạn.</p>
+          </div>
+        </div>
+
+        {/* Right: Manual Editor */}
+        <div className="w-full md:w-80 flex-shrink-0 bg-white border border-border rounded-xl p-5 shadow-sm space-y-4">
+          <h4 className="font-bold text-base flex items-center gap-2">
+            <Palette className="w-4 h-4" /> Chỉnh sửa thủ công
+          </h4>
+          
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-foreground-muted mb-1">Headline</label>
+              <input 
+                type="text" 
+                value={content.headline}
+                onChange={e => setContent({ ...content, headline: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground-muted mb-1">Tagline</label>
+              <textarea 
+                value={content.tagline}
+                onChange={e => setContent({ ...content, tagline: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none h-16"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground-muted mb-1">Giá hiển thị</label>
+              <input 
+                type="text" 
+                value={content.priceDisplay}
+                onChange={e => setContent({ ...content, priceDisplay: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground-muted mb-1">Tên shop</label>
+              <input 
+                type="text" 
+                value={content.shopDisplay}
+                onChange={e => setContent({ ...content, shopDisplay: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground-muted mb-1">Nút hành động (CTA)</label>
+              <input 
+                type="text" 
+                value={content.ctaText}
+                onChange={e => setContent({ ...content, ctaText: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground-muted mb-1">Badges (phân cách bằng dấu phẩy)</label>
+              <input 
+                type="text" 
+                value={content.badgeTexts ? content.badgeTexts.join(", ") : ""}
+                onChange={e => {
+                  const arr = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+                  setContent({ ...content, badgeTexts: arr });
+                }}
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+              />
+            </div>
+          </div>
+        </div>
       </div>
       <details className="text-xs text-foreground-muted">
         <summary className="cursor-pointer hover:text-primary">Xem dữ liệu thô từ AI</summary>
@@ -397,6 +525,34 @@ export default function MarketingLabPage() {
     } catch (err) {
       console.error("Poster generation error:", err);
       setPosterError(err instanceof Error ? err.message : "Có lỗi xảy ra khi tạo poster");
+    } finally {
+      setPosterGenerating(false);
+    }
+  };
+
+  const handleRefinePoster = async (instruction: string) => {
+    if (!posterResult || !instruction.trim()) return;
+    
+    setPosterGenerating(true);
+    try {
+      const isAiImage = posterTemplate === "ai_image";
+      const result = await generatePosterContent({
+        productName: posterProductName,
+        description: posterDescription || posterProductName,
+        pricePerUnit: parseInt(posterPrice.replace(/\D/g, ""), 10) || 35000,
+        unitCode: posterPrice.split("/")[1] || "KG",
+        shopName: posterShopName,
+        province: posterProvince,
+        mode: isAiImage ? "AI_IMAGE" : "HTML",
+        templateId: isAiImage ? undefined : posterResult.templateId,
+        instruction: instruction,
+        currentState: posterResult,
+      });
+      setPosterResult(result);
+      showToast("success", "Đã tinh chỉnh nội dung poster!");
+    } catch (err) {
+      console.error("Poster refinement error:", err);
+      showToast("error", "Lỗi tinh chỉnh bằng AI");
     } finally {
       setPosterGenerating(false);
     }
@@ -723,7 +879,14 @@ export default function MarketingLabPage() {
           )}
 
           {/* Result */}
-          {posterResult && <PosterResultView content={posterResult} />}
+          {posterResult && (
+            <PosterResultView 
+              content={posterResult} 
+              setContent={setPosterResult}
+              onRefine={handleRefinePoster}
+              isRefining={posterGenerating}
+            />
+          )}
         </div>
       )}
     </div>

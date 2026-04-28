@@ -15,7 +15,7 @@ public class UserAddressResponse {
     private String fullName;
     private String phone;
     private String street;
-    private String district;
+    private String ward;
     private String province;
     private Boolean isDefault;
     private OffsetDateTime createdAt;

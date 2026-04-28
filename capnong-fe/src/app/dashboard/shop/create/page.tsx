@@ -20,15 +20,18 @@ import { useToast } from "@/components/ui/Toast";
 import { shopService } from "@/services";
 import { getMyShop } from "@/services/api/shop";
 import { getProvinces, getWards, type Province, type Ward } from "@/services/api/address";
+import { forceRefresh } from "@/services/api/auth";
 import { generateSlug, isValidSlug } from "@/lib/slug";
 import type { ShopFormData } from "@/services/types";
 import Link from "next/link";
+import ShopImageUpload from "@/components/shop/ShopImageUpload";
+import { uploadShopImage } from "@/services/api/shop";
 
 const INITIAL_FORM: ShopFormData = {
   name: "",
   slug: "",
   province: "",
-  district: "",
+  ward: "",
   bio: "",
   years_experience: undefined,
   farm_area_m2: undefined,
@@ -46,10 +49,12 @@ function CreateShopContent() {
   const [saving, setSaving] = useState(false);
   const [checkingExisting, setCheckingExisting] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
 
-  // Province / District dropdown
+  // Province / Ward dropdown
   const [provinces, setProvinces] = useState<Province[]>([]);
-  const [districts, setDistricts] = useState<Ward[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
 
   // Check if user already has a shop → redirect
   useEffect(() => {
@@ -71,13 +76,13 @@ function CreateShopContent() {
     getProvinces().then(setProvinces).catch(() => {});
   }, []);
 
-  // Load districts when province changes
+  // Load wards when province changes
   const selectedProvinceCode = provinces.find((p) => p.name === form.province)?.code || "";
   useEffect(() => {
     if (selectedProvinceCode) {
-      getWards(selectedProvinceCode).then(setDistricts).catch(() => {});
+      getWards(selectedProvinceCode).then(setWards).catch(() => {});
     } else {
-      setDistricts([]);
+      setWards([]);
     }
   }, [selectedProvinceCode]);
 
@@ -110,7 +115,7 @@ function CreateShopContent() {
     if (!form.slug.trim()) errs.slug = "Slug không được để trống";
     else if (!isValidSlug(form.slug)) errs.slug = "Slug chỉ chứa chữ cái thường, số và dấu gạch ngang";
     if (!form.province) errs.province = "Vui lòng chọn tỉnh/thành phố";
-    if (!form.district) errs.district = "Vui lòng chọn quận/huyện";
+    if (!form.ward) errs.ward = "Vui lòng chọn xã/phường";
     if (form.years_experience !== undefined && form.years_experience < 0) errs.years_experience = "Số năm kinh nghiệm phải ≥ 0";
     if (form.farm_area_m2 !== undefined && form.farm_area_m2 < 0) errs.farm_area_m2 = "Diện tích vườn phải ≥ 0";
     setErrors(errs);
@@ -121,8 +126,28 @@ function CreateShopContent() {
     if (!validate()) return;
     setSaving(true);
     try {
-      await shopService.createShop!(form);
+      const result = await shopService.createShop!(form);
+      // Lấy slug từ response để upload ảnh
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const createdSlug = (result as any)?.slug || form.slug;
+
+      // Upload ảnh nếu có
+      if (pendingAvatarFile && createdSlug) {
+        try {
+          await uploadShopImage(createdSlug, "avatar", pendingAvatarFile);
+        } catch { /* avatar upload failure is non-critical */ }
+      }
+      if (pendingCoverFile && createdSlug) {
+        try {
+          await uploadShopImage(createdSlug, "cover", pendingCoverFile);
+        } catch { /* cover upload failure is non-critical */ }
+      }
+
+      // Cập nhật lại Auth Context (lấy profile mới)
       await refreshProfile?.();
+      // Bắt buộc gọi API refresh token để lấy JWT mới chứa shop_slug
+      await forceRefresh().catch(() => {});
+      
       showToast("success", "Tạo gian hàng thành công! 🎉");
       router.push("/dashboard/shop");
     } catch (err: unknown) {
@@ -197,7 +222,7 @@ function CreateShopContent() {
             </label>
             <div className="flex items-center gap-0">
               <span className="px-3 py-2.5 bg-gray-100 dark:bg-surface-hover border border-r-0 border-gray-200 dark:border-border rounded-l-lg text-xs text-foreground-muted shrink-0">
-                capnong.vn/shop/
+                capnong.shop/shop/
               </span>
               <input
                 id="shop-slug"
@@ -233,7 +258,7 @@ function CreateShopContent() {
                 value={form.province}
                 onChange={(e) => {
                   handleChange("province", e.target.value);
-                  handleChange("district", "");
+                  handleChange("ward", "");
                 }}
                 className={`w-full px-3 py-2.5 bg-white dark:bg-background border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.province ? "border-accent" : "border-gray-200 dark:border-border"}`}
               >
@@ -249,24 +274,24 @@ function CreateShopContent() {
               )}
             </div>
             <div>
-              <label htmlFor="shop-district" className="block text-xs font-medium text-foreground-muted mb-1.5">
-                Quận / Huyện
+              <label htmlFor="shop-ward" className="block text-xs font-medium text-foreground-muted mb-1.5">
+                Xã / Phường
               </label>
               <select
-                id="shop-district"
-                value={form.district}
-                onChange={(e) => handleChange("district", e.target.value)}
+                id="shop-ward"
+                value={form.ward}
+                onChange={(e) => handleChange("ward", e.target.value)}
                 disabled={!selectedProvinceCode}
-                className={`w-full px-3 py-2.5 bg-white dark:bg-background border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-surface ${errors.district ? "border-accent" : "border-gray-200 dark:border-border"}`}
+                className={`w-full px-3 py-2.5 bg-white dark:bg-background border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-surface ${errors.ward ? "border-accent" : "border-gray-200 dark:border-border"}`}
               >
-                <option value="">Chọn quận / huyện</option>
-                {districts.map((d) => (
-                  <option key={d.code} value={d.name}>{d.name}</option>
+                <option value="">Chọn xã / phường</option>
+                {wards.map((w) => (
+                  <option key={w.code} value={w.name}>{w.name}</option>
                 ))}
               </select>
-              {errors.district && (
+              {errors.ward && (
                 <p className="text-xs text-accent mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.district}
+                  <AlertCircle className="w-3 h-3" /> {errors.ward}
                 </p>
               )}
             </div>
@@ -335,6 +360,34 @@ function CreateShopContent() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* ── Ảnh gian hàng ── */}
+        <div className="bg-white dark:bg-surface rounded-xl border border-border p-6 space-y-5">
+          <h2 className="font-bold text-foreground flex items-center gap-2 text-sm">
+            <Store className="w-4 h-4 text-primary" />
+            Ảnh gian hàng <span className="text-foreground-muted text-xs font-normal">(tùy chọn — có thể thêm sau)</span>
+          </h2>
+
+          <ShopImageUpload
+            label="Ảnh đại diện (avatar)"
+            type="avatar"
+            currentUrl={form.avatar_url}
+            onUrlChange={(url) => handleChange("avatar_url", url)}
+            onFileChange={(file) => setPendingAvatarFile(file)}
+          />
+
+          <ShopImageUpload
+            label="Ảnh bìa (cover)"
+            type="cover"
+            currentUrl={form.cover_url}
+            onUrlChange={(url) => handleChange("cover_url", url)}
+            onFileChange={(file) => setPendingCoverFile(file)}
+          />
+
+          <p className="text-[10px] text-foreground-muted">
+            Ảnh sẽ được tải lên sau khi tạo gian hàng thành công.
+          </p>
         </div>
 
         {/* Actions */}

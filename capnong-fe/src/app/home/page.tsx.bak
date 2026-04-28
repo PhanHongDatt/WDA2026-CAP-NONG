@@ -31,20 +31,20 @@ const jsonLd = {
     {
       "@type": "WebSite",
       name: "Cạp Nông",
-      url: "https://capnong.vn",
+      url: "https://capnong.shop",
       description: "Hệ sinh thái thương mại nông sản thông minh",
       inLanguage: "vi",
       potentialAction: {
         "@type": "SearchAction",
-        target: "https://capnong.vn/catalog?q={search_term_string}",
+        target: "https://capnong.shop/catalog?q={search_term_string}",
         "query-input": "required name=search_term_string",
       },
     },
     {
       "@type": "Organization",
       name: "Cạp Nông",
-      url: "https://capnong.vn",
-      logo: "https://capnong.vn/images/logo.png",
+      url: "https://capnong.shop",
+      logo: "https://capnong.shop/images/logo.png",
       sameAs: [],
       contactPoint: {
         "@type": "ContactPoint",

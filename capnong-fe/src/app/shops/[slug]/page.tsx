@@ -247,7 +247,7 @@ export default function ShopProfilePage() {
                 <li className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-foreground-muted shrink-0 mt-0.5" />
                   <p className="text-sm text-foreground-muted">
-                    {shop.district}, {shop.province}
+                    {shop.ward}, {shop.province}
                   </p>
                 </li>
                 <li className="flex items-start gap-3">

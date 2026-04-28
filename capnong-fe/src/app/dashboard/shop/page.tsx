@@ -174,7 +174,7 @@ function ShopOverviewContent() {
           </div>
           <div>
             <p className="text-[11px] text-foreground-muted uppercase tracking-wider font-medium">Vị trí</p>
-            <p className="text-sm font-bold text-foreground">{shop.district}, {shop.province}</p>
+            <p className="text-sm font-bold text-foreground">{shop.ward}, {shop.province}</p>
           </div>
         </div>
 

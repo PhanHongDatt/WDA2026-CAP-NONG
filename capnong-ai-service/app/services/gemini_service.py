@@ -77,11 +77,18 @@ def _extract_json(text: str) -> dict:
         open_braces = trimmed.count("{")
         close_braces = trimmed.count("}")
         if open_braces > close_braces:
-            # Cắt bỏ value cuối cùng bị lỗi, thêm null và đóng brackets
-            # Tìm dấu phẩy hoặc key cuối cùng hoàn chỉnh
-            last_complete = trimmed.rfind("}")
-            if last_complete > 0:
-                candidate = trimmed[:last_complete + 1]
+            # Tìm dấu phẩy cuối cùng hoặc object đóng cuối
+            last_comma = trimmed.rfind(",")
+            last_brace = trimmed.rfind("}")
+            last_valid = max(last_comma, last_brace)
+            
+            if last_valid > 0:
+                # Cắt bỏ phần tử đang lở dở
+                candidate = trimmed[:last_valid]
+                # Nếu kết thúc rfind là phẩy thì ta dọn dẹp nó
+                if candidate.endswith(","):
+                    candidate = candidate[:-1]
+                    
                 missing = candidate.count("{") - candidate.count("}")
                 candidate += "}" * missing
                 try:
@@ -173,6 +180,8 @@ async def generate_poster_content(
     price_display: str | None = None,
     shop_name: str | None = None,
     template: str = "FRESH_GREEN",
+    current_state: dict | None = None,
+    instruction: str | None = None
 ) -> dict[str, Any]:
     """Gọi Gemini để tạo nội dung text cho poster (FE sẽ render HTML)."""
     model = genai.GenerativeModel(
@@ -185,9 +194,22 @@ async def generate_poster_content(
         system_instruction=POSTER_SYSTEM_PROMPT,
     )
     prompt = build_poster_prompt(product_name, description, province,
-                                price_display, shop_name, template)
-    response = model.generate_content(prompt)
-    return _extract_json(response.text)
+                                 price_display, shop_name, template,
+                                 current_state, instruction)
+    
+    for attempt in range(3):
+        try:
+            response = model.generate_content(prompt)
+            raw_text = response.text
+            return _extract_json(raw_text)
+        except ValueError as e:
+            logger.warning(f"JSON parse failed attempt {attempt+1}: {e}")
+            if attempt == 2:
+                raise
+        except Exception as e:
+            logger.error(f"Gemini API error attempt {attempt+1}: {e}")
+            if attempt == 2:
+                raise
 
 
 # ═══════════════════════════════════════════════════

@@ -94,7 +94,7 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
  * Map BE snake_case HtxResponse → FE HtxDetail.
  *
  * BE HtxResponse fields (after SNAKE_CASE serialization):
- *   id, name, official_code, province, district, description,
+ *   id, name, official_code, province, ward, description,
  *   document_url, status, admin_note, created_at,
  *   manager_id, manager_username, manager_full_name,
  *   created_by_user_id, created_by_username

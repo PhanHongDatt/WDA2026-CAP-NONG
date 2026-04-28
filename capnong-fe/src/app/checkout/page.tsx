@@ -159,7 +159,7 @@ export default function CheckoutPage() {
 
   const subOrders = useMemo(() => groupByShop(cartItems), [cartItems]);
   const subtotal = useMemo(() => cartItems.reduce((s, i) => s + (i.product?.price_per_unit || 0) * i.quantity, 0), [cartItems]);
-  const shippingFee = cartItems.length > 0 ? 30000 * subOrders.length : 0; // phí ship mỗi shop
+  const shippingFee = 0; // Miễn phí giao hàng
   const total = subtotal + shippingFee;
 
   if (submitted) {
@@ -694,9 +694,9 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">
-                    Phí giao hàng ({subOrders.length} đơn × 30.000đ)
+                    Phí giao hàng
                   </span>
-                  <span className="font-medium">{formatCurrency(shippingFee)}</span>
+                  <span className="font-medium text-green-600">Miễn phí</span>
                 </div>
               </div>
               <div className="flex justify-between mb-6">

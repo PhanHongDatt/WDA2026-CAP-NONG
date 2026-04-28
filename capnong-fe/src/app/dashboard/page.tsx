@@ -25,9 +25,9 @@ const STATS = [
 ];
 
 const RECENT_ORDERS = [
-  { id: "#CN-0042", buyer: "Nguyễn Thu Hà", product: "Xoài Cát Hòa Lộc x2", total: 190000, status: "Đang giao", statusColor: "text-primary bg-primary-50" },
-  { id: "#CN-0041", buyer: "Trần Minh Tuấn", product: "Cam Sành Hà Giang x5", total: 225000, status: "Đã xác nhận", statusColor: "text-info bg-blue-50" },
-  { id: "#CN-0040", buyer: "Lê Văn Bình", product: "Bưởi Da Xanh x3", total: 204000, status: "Đã nhận", statusColor: "text-success bg-green-50" },
+  { originalId: "mock1", id: "#CN-0042", buyer: "Nguyễn Thu Hà", product: "Xoài Cát Hòa Lộc x2", total: 190000, status: "Đang giao", statusColor: "text-primary bg-primary-50" },
+  { originalId: "mock2", id: "#CN-0041", buyer: "Trần Minh Tuấn", product: "Cam Sành Hà Giang x5", total: 225000, status: "Đã xác nhận", statusColor: "text-info bg-blue-50" },
+  { originalId: "mock3", id: "#CN-0040", buyer: "Lê Văn Bình", product: "Bưởi Da Xanh x3", total: 204000, status: "Đã nhận", statusColor: "text-success bg-green-50" },
 ];
 
 const REVENUE_DATA = [
@@ -57,13 +57,12 @@ const EMPTY_STATS = [
 function DashboardContent() {
   const { user, isHtxManager } = useAuth();
   const displayName = user?.full_name || "Nhà vườn";
-  const roleSubtitle = isHtxManager
-    ? `Tổng quan hợp tác xã${user?.htx_name ? " — " + user.htx_name : ""}`
-    : "Tổng quan hoạt động gian hàng của bạn";
+  const roleSubtitle = "Tổng quan hoạt động gian hàng của bạn";
 
   const [stats, setStats] = useState<any[]>(USE_MOCK ? STATS : EMPTY_STATS);
   const [recentOrders, setRecentOrders] = useState(USE_MOCK ? RECENT_ORDERS : []);
   const [revenueData, setRevenueData] = useState(USE_MOCK ? REVENUE_DATA : [] as { label: string; value: number }[]);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -98,6 +97,8 @@ function DashboardContent() {
         { label: "Đánh giá", value: ratingDisplay, icon: Star, color: "text-warning bg-yellow-50 dark:bg-yellow-900/30" },
       ]);
 
+      setPendingOrdersCount(summary.pendingOrders || 0);
+
       if (orders.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setRecentOrders(orders.slice(0, 3).map((o: any) => {
@@ -109,7 +110,8 @@ function DashboardContent() {
           }).join(", ") || "—";
 
           return {
-            id: o.subOrderCode || String(o.id || "").substring(0, 8) || "#???",
+            originalId: o.id, // Full UUID for React key
+            id: o.subOrderCode || String(o.id || "").substring(0, 8).toUpperCase() || "#???",
             buyer: o.buyerName || o.order?.buyerName || o.order?.guestName || o.order?.buyer_name || o.order?.guest_name || "Khách",
             product: itemsText,
             total: o.subtotal || o.totalAmount || 0,
@@ -238,9 +240,9 @@ function DashboardContent() {
               </Link>
             </div>
             <div className="divide-y divide-border">
-              {recentOrders.map((order) => (
+              {recentOrders.map((order, i) => (
                 <div
-                  key={order.id}
+                  key={order.originalId || order.id || i}
                   className="px-5 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors"
                 >
                 <div className="flex-1 min-w-0">
@@ -317,19 +319,21 @@ function DashboardContent() {
           </div>
 
           {/* Notification */}
-          <div className="mt-4 p-4 bg-primary/5 rounded-xl border border-primary/10">
-            <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-foreground">
-                  3 đơn hàng cần xác nhận
-                </p>
-                <p className="text-xs text-foreground-muted mt-0.5">
-                  Vui lòng xác nhận trong vòng 24 giờ
-                </p>
+          {pendingOrdersCount > 0 && (
+            <div className="mt-4 p-4 bg-primary/5 rounded-xl border border-primary/10">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    {pendingOrdersCount} đơn hàng cần xác nhận
+                  </p>
+                  <p className="text-xs text-foreground-muted mt-0.5">
+                    Vui lòng xác nhận trong vòng 24 giờ
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

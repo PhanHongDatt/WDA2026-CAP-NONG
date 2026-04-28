@@ -182,6 +182,8 @@ export async function generatePosterContent(data: {
   bgRemovedImageUrl?: string;
   mode?: "HTML" | "AI_IMAGE";
   imageModel?: string;
+  instruction?: string;
+  currentState?: PosterContent;
 }): Promise<PosterContent> {
 
   // BE nhận snake_case
@@ -194,6 +196,8 @@ export async function generatePosterContent(data: {
     template: data.templateId || "FRESH_GREEN",
     image_url: data.bgRemovedImageUrl || undefined,
     mode: data.mode || "HTML",
+    instruction: data.instruction,
+    current_state: data.currentState,
   };
   if (data.imageModel) body.image_model = data.imageModel;
   // Image generation models via Gemini can take 20-30s. Allow 60s timeout.
@@ -227,14 +231,14 @@ export async function generatePosterContent(data: {
 
     // HTML mode fields
     return {
-      templateId: (poster.template as string) || "",
+      templateId: (poster.template as string) || (poster.templateId as string) || "",
       headline: (poster.headline as string) || "",
       tagline: (poster.tagline as string) || "",
-      priceDisplay: (poster.price_display as string) || "",
-      badgeTexts: (poster.badge_texts as string[]) || [],
-      shopDisplay: (poster.shop_display as string) || "",
-      ctaText: (poster.cta_text as string) || "",
-      colorScheme: poster.color_scheme as PosterContent["colorScheme"] || {
+      priceDisplay: (poster.price_display as string) || (poster.priceDisplay as string) || "",
+      badgeTexts: (poster.badge_texts as string[]) || (poster.badgeTexts as string[]) || [],
+      shopDisplay: (poster.shop_display as string) || (poster.shopDisplay as string) || "",
+      ctaText: (poster.cta_text as string) || (poster.ctaText as string) || "",
+      colorScheme: (poster.color_scheme as PosterContent["colorScheme"]) || (poster.colorScheme as PosterContent["colorScheme"]) || {
         primary: "#2d6a4f",
         accent: "#95d5b2",
         textOnPrimary: "#ffffff",

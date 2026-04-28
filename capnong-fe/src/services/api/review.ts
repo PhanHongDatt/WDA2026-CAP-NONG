@@ -19,11 +19,9 @@ export interface ReviewData {
 
 export interface ReviewResponse {
   id: string;
-  author: {
-    id: string;
-    full_name: string;
-    avatar_url?: string;
-  };
+  author_id?: string;
+  author_name?: string;
+  author_avatar_url?: string;
   product_id: string;
   order_item_id?: string;
   rating: number;
@@ -47,8 +45,8 @@ export async function getProductReviews(
   const data = res.data.data || res.data;
   return {
     content: data.content || [],
-    totalElements: data.totalElements || 0,
-    totalPages: data.totalPages || 0,
+    totalElements: data.totalElements || data.total_elements || 0,
+    totalPages: data.totalPages || data.total_pages || 0,
   };
 }
 

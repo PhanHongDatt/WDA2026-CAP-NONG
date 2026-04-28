@@ -20,12 +20,17 @@ import com.capnong.repository.UserRepository;
 import com.capnong.repository.BundlePledgeRepository;
 import com.capnong.model.enums.PledgeStatus;
 import com.capnong.service.HtxService;
+import com.capnong.service.CloudinaryService;
+
+import com.capnong.service.TelegramNotificationService;
+import com.capnong.model.enums.NotificationType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +46,25 @@ public class HtxServiceImpl implements HtxService {
     private final BundlePledgeRepository pledgeRepository;
     private final HtxMapper htxMapper;
     private final UserMapper userMapper;
+    private final CloudinaryService cloudinaryService;
+
+    private final TelegramNotificationService telegramNotificationService;
+
+    // ═══════════════════════════════════════════════════════════════
+    // 0. UPLOAD GIẤY TỜ
+    // ═══════════════════════════════════════════════════════════════
+
+    @Override
+    public String uploadDocument(MultipartFile file, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        if (user.getRole() != Role.FARMER && user.getRole() != Role.HTX_MANAGER) {
+            throw new AppException("Không có quyền tải lên giấy tờ HTX", HttpStatus.FORBIDDEN);
+        }
+
+        return cloudinaryService.uploadFile(file, "capnong/htx-docs");
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // 1. TẠO HTX (FARMER)
@@ -69,7 +93,7 @@ public class HtxServiceImpl implements HtxService {
                 .name(request.getName())
                 .officialCode(request.getOfficialCode())
                 .province(request.getProvince())
-                .district(request.getDistrict())
+                .ward(request.getWard())
                 .description(request.getDescription())
                 .documentUrl(request.getDocumentUrl())
                 .status(HtxStatus.PENDING)
@@ -170,8 +194,29 @@ public class HtxServiceImpl implements HtxService {
                 .message(request.getMessage())
                 .status(JoinRequestStatus.PENDING)
                 .build();
+        
+        joinRequest = joinRequestRepository.save(joinRequest);
 
-        return htxMapper.toJoinRequestResponse(joinRequestRepository.save(joinRequest));
+        // Notify HTX Manager
+        if (htx.getManager() != null) {
+            String title = "📩 Đơn gia nhập mới";
+            String body = "Nông dân " + farmer.getFullName() + " vừa gửi đơn xin gia nhập HTX. Lời nhắn: " + (request.getMessage() != null ? request.getMessage() : "Không có");
+            // Notify HTX Manager — telegramNotificationService.notify() creates in-app + sends Telegram
+            telegramNotificationService.notify(htx.getManager().getId(), NotificationType.HTX_JOIN_REQUEST, title, body);
+        }
+
+        return htxMapper.toJoinRequestResponse(joinRequest);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<HtxJoinRequestResponse> getMyJoinRequests(String username) {
+        User farmer = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        return joinRequestRepository.findByFarmer_Id(farmer.getId()).stream()
+                .map(htxMapper::toJoinRequestResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -216,9 +261,23 @@ public class HtxServiceImpl implements HtxService {
             farmer.setHtx(joinRequest.getHtx());
             userRepository.save(farmer);
 
+            // Notify farmer
+            String title = "✅ Đơn gia nhập HTX được duyệt";
+            String body = "Đơn gia nhập HTX " + joinRequest.getHtx().getName() + " của bạn đã được duyệt. Bạn hiện là thành viên HTX.";
+            // Notify farmer — telegramNotificationService.notify() already creates in-app notification
+            telegramNotificationService.notify(farmer.getId(), NotificationType.HTX_APPROVED, title, body);
+
         } else if ("REJECT".equals(action)) {
             joinRequest.setStatus(JoinRequestStatus.REJECTED);
             joinRequest.setNote(review.getNote());
+
+            // Notify farmer
+            String title = "❌ Đơn gia nhập HTX bị từ chối";
+            String note = review.getNote() != null ? " Lý do: " + review.getNote() : "";
+            String body = "Đơn gia nhập HTX " + joinRequest.getHtx().getName() + " của bạn đã bị từ chối." + note;
+            
+            // Notify farmer — telegramNotificationService.notify() already creates in-app notification
+            telegramNotificationService.notify(joinRequest.getFarmer().getId(), NotificationType.HTX_REJECTED, title, body);
 
         } else {
             throw new AppException("Action phải là APPROVE hoặc REJECT", HttpStatus.BAD_REQUEST);
@@ -285,14 +344,106 @@ public class HtxServiceImpl implements HtxService {
         userRepository.save(member);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // 5. CHUYỂN QUYỀN CHỦ HTX
+    // ═══════════════════════════════════════════════════════════════
+
     @Override
-    @Transactional(readOnly = true)
-    public List<UserResponse> getMyHtxMembers(String managerUsername) {
+    @Transactional
+    @CacheEvict(value = {"htx_all", "htx_active", "htx_detail"}, allEntries = true)
+    public void transferOwnership(UUID newManagerId, String currentManagerUsername) {
+        User currentManager = userRepository.findByUsername(currentManagerUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", currentManagerUsername));
+
+        if (currentManager.getRole() != Role.HTX_MANAGER) {
+            throw new AppException("Bạn không phải chủ HTX", HttpStatus.FORBIDDEN);
+        }
+
+        Htx htx = htxRepository.findByManager_Id(currentManager.getId())
+                .orElseThrow(() -> new AppException("Bạn chưa quản lý HTX nào", HttpStatus.NOT_FOUND));
+
+        User newManager = userRepository.findById(newManagerId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", newManagerId.toString()));
+
+        // Phải là HTX_MEMBER trong cùng HTX
+        if (newManager.getRole() != Role.HTX_MEMBER || newManager.getHtx() == null
+                || !newManager.getHtx().getId().equals(htx.getId())) {
+            throw new AppException("Người được chọn phải là thành viên (HTX_MEMBER) trong HTX của bạn",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        // Chủ cũ → HTX_MEMBER
+        currentManager.setRole(Role.HTX_MEMBER);
+        userRepository.save(currentManager);
+
+        // Chủ mới → HTX_MANAGER
+        newManager.setRole(Role.HTX_MANAGER);
+        userRepository.save(newManager);
+
+        // Cập nhật HTX
+        htx.setManager(newManager);
+        htxRepository.save(htx);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 6. GIẢI TÁN HTX
+    // ═══════════════════════════════════════════════════════════════
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {"htx_all", "htx_active", "htx_detail"}, allEntries = true)
+    public void dissolveHtx(String managerUsername) {
         User manager = userRepository.findByUsername(managerUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", managerUsername));
 
+        if (manager.getRole() != Role.HTX_MANAGER) {
+            throw new AppException("Bạn không phải chủ HTX", HttpStatus.FORBIDDEN);
+        }
+
         Htx htx = htxRepository.findByManager_Id(manager.getId())
                 .orElseThrow(() -> new AppException("Bạn chưa quản lý HTX nào", HttpStatus.NOT_FOUND));
+
+        // Chuyển tất cả members (bao gồm manager) về FARMER
+        List<User> allMembers = userRepository.findByHtx_Id(htx.getId());
+        for (User member : allMembers) {
+            member.setHtx(null);
+            member.setRole(Role.FARMER);
+        }
+        userRepository.saveAll(allMembers);
+
+        // Từ chối tất cả join requests đang PENDING
+        List<HtxJoinRequest> pendingRequests = joinRequestRepository.findByHtx_IdAndStatus(
+                htx.getId(), JoinRequestStatus.PENDING);
+        for (HtxJoinRequest req : pendingRequests) {
+            req.setStatus(JoinRequestStatus.REJECTED);
+            req.setNote("HTX đã giải tán");
+        }
+        joinRequestRepository.saveAll(pendingRequests);
+
+        // Giải tán HTX
+        htx.setManager(null);
+        htx.setStatus(HtxStatus.DISSOLVED);
+        htxRepository.save(htx);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserResponse> getMyHtxMembers(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+
+        // HTX_MANAGER: lookup via manager relationship
+        // HTX_MEMBER: lookup via user.htx
+        Htx htx;
+        if (user.getRole() == Role.HTX_MANAGER) {
+            htx = htxRepository.findByManager_Id(user.getId())
+                    .orElseThrow(() -> new AppException("Bạn chưa quản lý HTX nào", HttpStatus.NOT_FOUND));
+        } else {
+            htx = user.getHtx();
+            if (htx == null) {
+                throw new AppException("Bạn chưa thuộc HTX nào", HttpStatus.NOT_FOUND);
+            }
+        }
 
         return userRepository.findByHtx_Id(htx.getId()).stream()
                 .map(userMapper::toUserResponse)

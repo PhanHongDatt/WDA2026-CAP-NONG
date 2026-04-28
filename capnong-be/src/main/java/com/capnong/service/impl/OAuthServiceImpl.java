@@ -10,6 +10,7 @@ import com.capnong.security.JwtUtils;
 import com.capnong.security.UserDetailsImpl;
 import com.capnong.service.OAuthService;
 import com.capnong.service.RefreshTokenService;
+import com.capnong.service.ShopService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +33,7 @@ public class OAuthServiceImpl implements OAuthService {
     private final UserRepository userRepository;
     private final JwtUtils jwtUtils;
     private final RefreshTokenService refreshTokenService;
+    private final ShopService shopService;
 
     @Value("${app.supabase.url}")
     private String supabaseUrl;
@@ -48,9 +50,16 @@ public class OAuthServiceImpl implements OAuthService {
         String fullName = googleInfo.get("fullName");
         String avatarUrl = googleInfo.get("avatarUrl");
 
+        // 1. Tìm theo google_id chính xác
         Optional<User> byGoogleId = userRepository.findByGoogleId(googleId);
         if (byGoogleId.isPresent()) {
-            AuthResponse authResponse = generateAuthResponse(byGoogleId.get());
+            User user = byGoogleId.get();
+            // Cập nhật google_email nếu chưa có
+            if (user.getGoogleEmail() == null && !email.isEmpty()) {
+                user.setGoogleEmail(email);
+                userRepository.save(user);
+            }
+            AuthResponse authResponse = generateAuthResponse(user);
             return OAuthCheckResponse.builder()
                     .status("LOGIN_SUCCESS")
                     .authResponse(authResponse)
@@ -60,8 +69,28 @@ public class OAuthServiceImpl implements OAuthService {
                     .build();
         }
 
+        // 2. Auto-recovery: tìm user theo email có google_id cũ (bị lưu sai UUID Supabase)
+        //    → tự động cập nhật sang google sub đúng
         Optional<User> byEmail = userRepository.findByEmail(email);
         if (byEmail.isPresent()) {
+            User existingUser = byEmail.get();
+            if (existingUser.getGoogleId() != null) {
+                // User đã từng link Google nhưng google_id bị sai → auto-fix
+                logger.info("Auto-recovery: Cập nhật google_id cho user {} từ {} sang {}",
+                        existingUser.getUsername(), existingUser.getGoogleId(), googleId);
+                existingUser.setGoogleId(googleId);
+                existingUser.setGoogleEmail(email);
+                userRepository.save(existingUser);
+                AuthResponse authResponse = generateAuthResponse(existingUser);
+                return OAuthCheckResponse.builder()
+                        .status("LOGIN_SUCCESS")
+                        .authResponse(authResponse)
+                        .email(email)
+                        .fullName(fullName)
+                        .avatarUrl(avatarUrl)
+                        .build();
+            }
+            // Email tồn tại nhưng chưa link Google → yêu cầu đăng nhập bằng mật khẩu rồi link
             return OAuthCheckResponse.builder()
                     .status("EMAIL_CONFLICT")
                     .email(email)
@@ -70,6 +99,7 @@ public class OAuthServiceImpl implements OAuthService {
                     .build();
         }
 
+        // 3. Hoàn toàn mới → yêu cầu đăng ký
         return OAuthCheckResponse.builder()
                 .status("NEEDS_REGISTRATION")
                 .email(email)
@@ -190,7 +220,29 @@ public class OAuthServiceImpl implements OAuthService {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             com.fasterxml.jackson.databind.JsonNode user = mapper.readTree(response.body());
 
-            String sub = user.has("id") ? user.get("id").asText() : "";
+            // ── Extract Google sub từ identities[] (KHÔNG dùng top-level id — đó là Supabase UUID) ──
+            String sub = "";
+            if (user.has("identities") && user.get("identities").isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode identity : user.get("identities")) {
+                    String provider = identity.has("provider") ? identity.get("provider").asText() : "";
+                    if ("google".equals(provider)) {
+                        // Ưu tiên identity_data.sub, fallback sang identity.id
+                        if (identity.has("identity_data") && identity.get("identity_data").has("sub")) {
+                            sub = identity.get("identity_data").get("sub").asText("");
+                        }
+                        if (sub.isEmpty() && identity.has("id")) {
+                            sub = identity.get("id").asText("");
+                        }
+                        break;
+                    }
+                }
+            }
+            // Fallback cuối cùng: dùng top-level id (trường hợp edge case không có identities)
+            if (sub.isEmpty()) {
+                sub = user.has("id") ? user.get("id").asText() : "";
+                logger.warn("Không tìm thấy Google identity trong identities[], fallback dùng Supabase id: {}", sub);
+            }
+
             String email = "";
             String fullName = "";
             String avatarUrl = "";
@@ -211,6 +263,8 @@ public class OAuthServiceImpl implements OAuthService {
             if (email.isEmpty()) {
                 throw new AppException("Token không chứa thông tin email", HttpStatus.BAD_REQUEST);
             }
+
+            logger.debug("Parsed Supabase token: googleSub={}, email={}", sub, email);
 
             return Map.of(
                     "sub", sub,
@@ -233,7 +287,8 @@ public class OAuthServiceImpl implements OAuthService {
                 user.getPassword(),
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
 
-        String accessToken = jwtUtils.generateToken(userDetails);
+        String shopSlug = shopService.getShopSlugByUsername(user.getUsername());
+        String accessToken = jwtUtils.generateToken(userDetails, shopSlug);
         var refreshToken = refreshTokenService.createRefreshToken(user);
 
         return AuthResponse.builder()
@@ -244,6 +299,7 @@ public class OAuthServiceImpl implements OAuthService {
                 .phone(user.getPhone())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .shopSlug(shopSlug)
                 .build();
     }
 }

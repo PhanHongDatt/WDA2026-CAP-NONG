@@ -46,7 +46,9 @@ export default function NewProductPage() {
     if (result.unit) setUnit(result.unit);
     if (result.quantity > 0) setQuantity(String(result.quantity));
     if (result.location) setLocation(result.location);
-    if (result.harvestDate) setHarvestDate(result.harvestDate);
+    if (result.harvestDate) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(result.harvestDate)) setHarvestDate(result.harvestDate);
+    }
     if (result.farmingMethod) setFarmingMethod(result.farmingMethod);
     setVoiceConfidence(result.confidence);
     setVoiceTranscript(result.transcript);
@@ -145,6 +147,8 @@ export default function NewProductPage() {
             pricePerUnit: Number(price),
             availableQuantity: Number(quantity),
             locationDetail: location,
+            harvestDate: (harvestDate && /^\d{4}-\d{2}-\d{2}$/.test(harvestDate)) ? harvestDate : undefined,
+            farmingMethod: farmingMethod || undefined,
           });
 
           // Upload hình ảnh nếu có và nếu tạo SP thành công
@@ -153,7 +157,8 @@ export default function NewProductPage() {
           }
 
           setSubmitSuccess(true);
-          setTimeout(() => router.push("/dashboard"), 1500);
+          showToast("success", "Đăng sản phẩm thành công!");
+          setTimeout(() => router.push("/dashboard/products"), 1500);
         } catch (err: unknown) {
           setSubmitError(err instanceof Error ? err.message : "Đăng sản phẩm thất bại.");
         } finally {

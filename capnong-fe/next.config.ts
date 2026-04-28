@@ -22,6 +22,8 @@ const nextConfig: NextConfig = {
 
   // Disable x-powered-by header (security + smaller response)
   poweredByHeader: false,
+  
+  devIndicators: false,
 
   // React Compiler — stable in Next.js 16 (ref: nextjs.org/blog/next-16)
   // Provides automatic memoization (useMemo/useCallback/React.memo) at build time
