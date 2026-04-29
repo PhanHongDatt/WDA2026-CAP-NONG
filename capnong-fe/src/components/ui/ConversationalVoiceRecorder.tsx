@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Mic, MicOff, SquareSquare, ArrowRight, Loader2, PlayCircle, SkipForward, RotateCcw, CheckCircle2 } from "lucide-react";
+import { Mic, MicOff, SquareSquare, ArrowRight, Loader2, PlayCircle, SkipForward, RotateCcw, CheckCircle2, Volume2, AlertTriangle } from "lucide-react";
 import { synthesizeSpeech, sendVoiceChatMessage, VoiceChatResponse } from "@/services/api/voice";
+
+// Fix Issue #13: Configurable TTS speaker voice instead of hardcoded value.
+// Zalo AI TTS speaker IDs: 1 = Nam nữ (South women), 2 = Bắc nữ (Northern women),
+//                           3 = Nam nam (South men),   4 = Bắc nam (Northern men)
+const DEFAULT_TTS_SPEAKER_ID = 1;
 
 export interface ConversationalVoiceResult {
   name: string;
@@ -14,6 +19,8 @@ export interface ConversationalVoiceResult {
   harvestDate?: string;
   farmingMethod?: string;
   confidence: Record<string, number>;
+  // Fix Issue #10: Add transcript so page.tsx can display what was said
+  transcript: string;
 }
 
 interface ConversationalVoiceRecorderProps {
@@ -57,10 +64,23 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
   
   const [interimText, setInterimText] = useState("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  // Fix Issue #14: Track TTS loading and error states for user feedback
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [ttsFallback, setTtsFallback] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // ── Ref mirrors to avoid stale closures in async callbacks (Issue #1, #2) ──
+  const stateRef = useRef<ConvoState>(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
+
+  const chatHistoryRef = useRef<ChatMessage[]>(chatHistory);
+  useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
+
+  // Track consecutive silence count to avoid infinite re-prompt loops (Issue #3)
+  const silenceCountRef = useRef(0);
 
   // Auto scroll to latest chat
   useEffect(() => {
@@ -73,7 +93,14 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
   const speak = async (text: string) => {
     try {
       setState("speaking");
-      const url = await synthesizeSpeech(text, 1); // 1 = South women
+      // Fix Issue #14: Show loading state while TTS audio is being fetched
+      setTtsLoading(true);
+      setTtsFallback(false);
+      // Fix Issue #9: Revoke previous blob URL to prevent memory leak
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      // Fix Issue #13: Use configurable speaker ID
+      const url = await synthesizeSpeech(text, DEFAULT_TTS_SPEAKER_ID);
+      setTtsLoading(false);
       if (audioRef.current) {
         audioRef.current.src = url;
         audioRef.current.play();
@@ -81,18 +108,24 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       setAudioUrl(url);
     } catch (error) {
       console.error("TTS Failed", error);
+      // Fix Issue #14: Show fallback indicator so user understands different voice quality
+      setTtsLoading(false);
+      setTtsFallback(true);
       // Fallback to Web Speech API
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "vi-VN";
+      utterance.rate = 0.9; // Slightly slower for clarity
       utterance.onend = () => {
-        if (state !== "done") startListening();
+        // Fix Issue #2: Use ref instead of stale `state` captured at speak() call time
+        if (stateRef.current !== "done") startListening();
       };
       speechSynthesis.speak(utterance);
     }
   };
 
   const handleAudioEnd = () => {
-    if (state === "speaking") {
+    // Fix Issue #2: Use ref to read the latest state value
+    if (stateRef.current === "speaking") {
       startListening();
     }
   };
@@ -134,14 +167,28 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
         }
       }
       setInterimText(finalTranscript + interim);
+      // User is actively speaking → reset silence counter
+      silenceCountRef.current = 0;
     };
 
     recognition.onend = () => {
       if (finalTranscript.trim()) {
+        // Fix Issue #3: Reset silence counter on successful speech
+        silenceCountRef.current = 0;
         processTranscript(finalTranscript);
       } else {
-        // If nothing was said, prompt again or wait
-        setState("listening");
+        // Fix Issue #3: User said nothing → re-prompt via TTS instead of dead "listening" state.
+        // recognition has already stopped here, so just setting state to "listening" would
+        // show the UI indicator without actually recording. Instead, gently re-prompt.
+        silenceCountRef.current += 1;
+        if (silenceCountRef.current >= 3) {
+          // After 3 consecutive silences, stop pestering — let user tap mic manually
+          setState("listening");
+          setChatHistory(h => [...h, { role: "ai", text: "Bác cứ từ từ nhé, khi nào sẵn sàng bác nhấn nút micro." }]);
+        } else {
+          speak("Bác ơi, bác nói giúp con nghen.");
+          setChatHistory(h => [...h, { role: "ai", text: "Bác ơi, bác nói giúp con nghen." }]);
+        }
       }
     };
 
@@ -161,23 +208,45 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
   const processTranscript = async (transcript: string) => {
     if (!transcript.trim()) return;
     
-    // Update chat history with user reply
-    const newHistory = [...chatHistory, { role: "user", text: transcript } as ChatMessage];
+    // Fix Issue #1: Use ref to get the latest chatHistory, not the stale closure value.
+    // When called from recognition.onend, `chatHistory` is captured at startListening() time.
+    const newHistory = [...chatHistoryRef.current, { role: "user", text: transcript } as ChatMessage];
     setChatHistory(newHistory);
     setInterimText("");
     setState("processing");
 
     const currentField = FLOW_STEPS[stepIndex];
+    // Fix Issue #6: Delegate confirm step to AI instead of brittle string matching.
+    // AI can understand nuanced responses like "sai giá" → ask which field to fix,
+    // instead of resetting everything when user says "không".
     if (currentField === "confirm") {
-      if (transcript.toLowerCase().includes("có") || transcript.toLowerCase().includes("ok") || transcript.toLowerCase().includes("đúng")) {
-        finishFlow();
-      } else if (transcript.toLowerCase().includes("không")) {
-        // Go back
-        setStepIndex(0);
-        speak("Dạ vậy con sẽ bắt đầu lại từ đầu nhé. Bác đang bán nông sản gì ạ?");
-        setChatHistory(h => [...h, { role: "ai", text: "Dạ vậy con sẽ bắt đầu lại từ đầu nhé. Bác đang bán nông sản gì ạ?" }]);
-      } else {
+      try {
+        const response: VoiceChatResponse = await sendVoiceChatMessage({
+          current_field: "confirm",
+          transcript,
+          collected_fields: collectedFields,
+          conversation_history: newHistory,
+        });
+
+        if (response.intent === "answer" && response.extracted_value === "yes") {
+          finishFlow();
+        } else if (response.intent === "correct" && response.correction_target) {
+          // User wants to fix a specific field → jump to that field's step
+          const targetIdx = FLOW_STEPS.indexOf(response.correction_target);
+          if (targetIdx >= 0) {
+            setStepIndex(targetIdx);
+          }
+          setChatHistory(h => [...h, { role: "ai", text: response.next_question }]);
+          speak(response.next_question);
+        } else {
+          // Unclear or "no" → AI generates a helpful follow-up question
+          setChatHistory(h => [...h, { role: "ai", text: response.next_question }]);
+          speak(response.next_question);
+        }
+      } catch (e) {
+        console.error(e);
         speak("Dạ bác xác nhận đăng sản phẩm này không ạ? Bác nói Có hoặc Không nhé.");
+        setChatHistory(h => [...h, { role: "ai", text: "Dạ bác xác nhận đăng sản phẩm này không ạ? Bác nói Có hoặc Không nhé." }]);
       }
       return;
     }
@@ -245,7 +314,15 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
 
   const finishFlow = () => {
     setState("done");
+    // Fix Issue #9: Clean up audio blob URL on finish
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
     if (onResult) {
+      // Fix Issue #10: Build transcript from full conversation history
+      const fullTranscript = chatHistoryRef.current
+        .filter(m => m.role === "user")
+        .map(m => m.text)
+        .join(" | ");
+
       onResult({
         name: collectedFields.name || "",
         description: collectedFields.description || "",
@@ -254,8 +331,10 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
         quantity: collectedFields.quantity || 0,
         location: collectedFields.location || "",
         harvestDate: collectedFields.harvestDate || "",
-        farmingMethod: collectedFields.farmingMethod || "ORGANIC",
+        // Fix Issue #5: Default "" instead of "ORGANIC" — let form page handle its own default
+        farmingMethod: collectedFields.farmingMethod || "",
         confidence: confidences,
+        transcript: fullTranscript,
       });
     }
   };
@@ -332,6 +411,26 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
                    </div>
                 </div>
             )}
+
+            {/* Fix Issue #14: TTS loading indicator — shown while Zalo AI is fetching audio */}
+            {state === "speaking" && ttsLoading && (
+                <div className="flex justify-start">
+                   <div className="rounded-2xl px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 shadow-sm rounded-tl-none text-sm mr-8 flex items-center gap-2">
+                      <Volume2 className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
+                      <span className="text-blue-600 dark:text-blue-400 text-xs">Đang chuẩn bị giọng nói...</span>
+                   </div>
+                </div>
+            )}
+
+            {/* Fix Issue #14: TTS fallback warning — shown when Zalo TTS failed */}
+            {ttsFallback && (
+                <div className="flex justify-start">
+                   <div className="rounded-2xl px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-tl-none text-xs mr-8 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3 h-3 text-yellow-500" />
+                      <span className="text-yellow-600 dark:text-yellow-400">Đang dùng giọng dự phòng</span>
+                   </div>
+                </div>
+            )}
           </div>
         )}
       </div>
@@ -341,15 +440,17 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
         <div className="bg-white dark:bg-surface border-t border-border p-4 flex flex-col items-center">
             <div className="flex justify-between w-full max-w-sm mb-2 px-4 text-xs font-medium text-foreground-muted">
                 <span>{STEP_LABELS[FLOW_STEPS[stepIndex]] || "Đang lấy thông tin..."}</span>
-                {state === "speaking" && <span className="text-blue-500 animate-pulse flex items-center gap-1"><PlayCircle className="w-3 h-3"/> Đang nói</span>}
+                {state === "speaking" && <span className="text-blue-500 animate-pulse flex items-center gap-1"><PlayCircle className="w-3 h-3"/> {ttsLoading ? "Đang tải..." : "Đang nói"}</span>}
                 {state === "listening" && <span className="text-green-500 animate-pulse flex items-center gap-1"><Mic className="w-3 h-3"/> Đang nghe</span>}
+                {state === "processing" && <span className="text-orange-500 animate-pulse flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin"/> Đang xử lý</span>}
             </div>
 
             <div className="flex items-center gap-6">
+                {/* Fix Issue #8: Removed hidden sm:flex — buttons must be visible on mobile */}
                 <button 
                   disabled={state !== "listening" || stepIndex === 0}
                   onClick={() => processTranscript("quay lại")}
-                  className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-foreground-muted disabled:opacity-50 disabled:cursor-not-allowed hidden sm:flex"
+                  className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-foreground-muted disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Quay lại bước trước"
                 >
                   <RotateCcw className="w-4 h-4"/>
@@ -370,10 +471,11 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
                    {state === "listening" ? <SquareSquare className="w-5 h-5"/> : <Mic className="w-6 h-6"/>}
                 </button>
 
+                {/* Fix Issue #8: Removed hidden sm:flex — buttons must be visible on mobile */}
                 <button 
                   disabled={state !== "listening"}
                   onClick={() => processTranscript("bỏ qua")}
-                  className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-foreground-muted disabled:opacity-50 disabled:cursor-not-allowed hidden sm:flex"
+                  className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-foreground-muted disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Bỏ qua (tự tìm sau)"
                 >
                   <SkipForward className="w-4 h-4"/>

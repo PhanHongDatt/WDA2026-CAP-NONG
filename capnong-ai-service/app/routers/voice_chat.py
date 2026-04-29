@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.schemas.voice_chat_schema import VoiceChatRequest, VoiceChatResponse
 import google.generativeai as genai
 from app.config import get_settings
-from app.prompts.voice_chat_prompt import build_voice_chat_prompt
+from app.prompts.voice_chat_prompt import build_voice_chat_prompt, VOICE_CHAT_SYSTEM_PROMPT
 
 router = APIRouter(prefix="/ai", tags=["AI Features"])
 logger = logging.getLogger(__name__)
@@ -54,9 +54,12 @@ async def voice_chat(request: VoiceChatRequest) -> VoiceChatResponse:
         conversation_history=request.conversation_history,
     )
 
+    # Fix Issue #11: Pass VOICE_CHAT_SYSTEM_PROMPT as system_instruction
+    # so the model has all parsing rules, intent recognition, and output format.
     model = genai.GenerativeModel(
         model_name=settings.gemini_model,
         generation_config=GENERATION_CONFIG,
+        system_instruction=VOICE_CHAT_SYSTEM_PROMPT,
     )
 
     for attempt in range(3):
