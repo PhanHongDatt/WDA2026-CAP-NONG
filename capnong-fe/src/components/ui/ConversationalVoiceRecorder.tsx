@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Mic, MicOff, SquareSquare, ArrowRight, Loader2, PlayCircle, SkipForward, RotateCcw, CheckCircle2, Volume2, AlertTriangle } from "lucide-react";
-import { synthesizeSpeech, sendVoiceChatMessage, VoiceChatResponse } from "@/services/api/voice";
+import { Mic, MicOff, SquareSquare, ArrowRight, Loader2, PlayCircle, SkipForward, RotateCcw, CheckCircle2, Volume2, AlertTriangle, Lightbulb, TrendingUp } from "lucide-react";
+import { synthesizeSpeech, sendVoiceChatMessage, VoiceChatResponse, transcribeSpeech } from "@/services/api/voice";
 
 // Fix Issue #13: Configurable TTS speaker voice instead of hardcoded value.
 // Zalo AI TTS speaker IDs: 1 = Nam nữ (South women), 2 = Bắc nữ (Northern women),
@@ -38,8 +38,9 @@ type ConvoState =
   | "error";
 
 interface ChatMessage {
-  role: "ai" | "user";
+  role: "ai" | "user" | "advice";
   text: string;
+  priceRange?: string;
 }
 
 // Flow các bước bắt buộc
@@ -69,8 +70,35 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
   const [ttsFallback, setTtsFallback] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Clean up audio resources
+  const cleanupAudio = () => {
+    if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(console.error);
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+    mediaRecorderRef.current = null;
+    mediaStreamRef.current = null;
+    audioContextRef.current = null;
+    analyserRef.current = null;
+    silenceTimerRef.current = null;
+  };
+
+  useEffect(() => {
+    return () => {
+      cleanupAudio();
+    };
+  }, []);
 
   // ── Ref mirrors to avoid stale closures in async callbacks (Issue #1, #2) ──
   const stateRef = useRef<ConvoState>(state);
@@ -78,6 +106,15 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
 
   const chatHistoryRef = useRef<ChatMessage[]>(chatHistory);
   useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
+
+  const collectedFieldsRef = useRef<Record<string, any>>(collectedFields);
+  useEffect(() => { collectedFieldsRef.current = collectedFields; }, [collectedFields]);
+
+  const confidencesRef = useRef<Record<string, number>>(confidences);
+  useEffect(() => { confidencesRef.current = confidences; }, [confidences]);
+
+  const stepIndexRef = useRef(stepIndex);
+  useEffect(() => { stepIndexRef.current = stepIndex; }, [stepIndex]);
 
   // Track consecutive silence count to avoid infinite re-prompt loops (Issue #3)
   const silenceCountRef = useRef(0);
@@ -91,35 +128,59 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
 
   // Handle Speech Synthesis (Zalo AI)
   const speak = async (text: string) => {
+    const fallbackToWebSpeech = () => {
+      setTtsLoading(false);
+      setTtsFallback(true);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "vi-VN";
+      utterance.rate = 0.9;
+      utterance.onend = () => {
+        if (stateRef.current !== "done") startListening();
+      };
+      speechSynthesis.speak(utterance);
+    };
+
     try {
       setState("speaking");
-      // Fix Issue #14: Show loading state while TTS audio is being fetched
       setTtsLoading(true);
       setTtsFallback(false);
-      // Fix Issue #9: Revoke previous blob URL to prevent memory leak
       if (audioUrl) URL.revokeObjectURL(audioUrl);
-      // Fix Issue #13: Use configurable speaker ID
+
       const url = await synthesizeSpeech(text, DEFAULT_TTS_SPEAKER_ID);
       setTtsLoading(false);
+
+      // Validate blob before playing — fetch it and check size
+      try {
+        const blobResp = await fetch(url);
+        const blob = await blobResp.blob();
+        if (blob.size < 100) {
+          console.warn("TTS blob too small, falling back");
+          URL.revokeObjectURL(url);
+          fallbackToWebSpeech();
+          return;
+        }
+      } catch {
+        console.warn("TTS blob validation failed, falling back");
+        URL.revokeObjectURL(url);
+        fallbackToWebSpeech();
+        return;
+      }
+
       if (audioRef.current) {
         audioRef.current.src = url;
-        audioRef.current.play();
+        try {
+          await audioRef.current.play();
+        } catch (playErr) {
+          console.warn("Audio play failed, falling back", playErr);
+          URL.revokeObjectURL(url);
+          fallbackToWebSpeech();
+          return;
+        }
       }
       setAudioUrl(url);
     } catch (error) {
       console.error("TTS Failed", error);
-      // Fix Issue #14: Show fallback indicator so user understands different voice quality
-      setTtsLoading(false);
-      setTtsFallback(true);
-      // Fallback to Web Speech API
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "vi-VN";
-      utterance.rate = 0.9; // Slightly slower for clarity
-      utterance.onend = () => {
-        // Fix Issue #2: Use ref instead of stale `state` captured at speak() call time
-        if (stateRef.current !== "done") startListening();
-      };
-      speechSynthesis.speak(utterance);
+      fallbackToWebSpeech();
     }
   };
 
@@ -136,72 +197,102 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
     speak("Chào bác. Con sẽ giúp bác đăng sản phẩm. Bác có thể nói bỏ qua nếu không muốn trả lời một câu nhé. Bác đang bán loại nông sản gì ạ?");
   };
 
-  const startListening = () => {
+  const handleSilence = () => {
+    silenceCountRef.current += 1;
+    if (silenceCountRef.current >= 3) {
+      setState("listening");
+      setChatHistory(h => [...h, { role: "ai", text: "Bác cứ từ từ nhé, khi nào sẵn sàng bác nhấn nút micro." }]);
+    } else {
+      speak("Bác ơi, bác nói giúp con nghen.");
+      setChatHistory(h => [...h, { role: "ai", text: "Bác ơi, bác nói giúp con nghen." }]);
+    }
+  };
+
+  const startListening = async () => {
     setState("listening");
     setInterimText("");
-    
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    const SpeechRecognition = w.webkitSpeechRecognition || w.SpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Trình duyệt không hỗ trợ Web Speech API.");
-      setState("error");
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = "vi-VN";
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognitionRef.current = recognition;
-
-    let finalTranscript = "";
-
-    recognition.onresult = (event: any) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript + " ";
-        } else {
-          interim += event.results[i][0].transcript;
-        }
-      }
-      setInterimText(finalTranscript + interim);
-      // User is actively speaking → reset silence counter
-      silenceCountRef.current = 0;
-    };
-
-    recognition.onend = () => {
-      if (finalTranscript.trim()) {
-        // Fix Issue #3: Reset silence counter on successful speech
-        silenceCountRef.current = 0;
-        processTranscript(finalTranscript);
-      } else {
-        // Fix Issue #3: User said nothing → re-prompt via TTS instead of dead "listening" state.
-        // recognition has already stopped here, so just setting state to "listening" would
-        // show the UI indicator without actually recording. Instead, gently re-prompt.
-        silenceCountRef.current += 1;
-        if (silenceCountRef.current >= 3) {
-          // After 3 consecutive silences, stop pestering — let user tap mic manually
-          setState("listening");
-          setChatHistory(h => [...h, { role: "ai", text: "Bác cứ từ từ nhé, khi nào sẵn sàng bác nhấn nút micro." }]);
-        } else {
-          speak("Bác ơi, bác nói giúp con nghen.");
-          setChatHistory(h => [...h, { role: "ai", text: "Bác ơi, bác nói giúp con nghen." }]);
-        }
-      }
-    };
+    audioChunksRef.current = [];
 
     try {
-      recognition.start();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        cleanupAudio();
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // If recording is too short, assume nothing was said
+        if (audioBlob.size < 1000) {
+          handleSilence();
+          return;
+        }
+
+        setState("processing");
+        try {
+          const text = await transcribeSpeech(audioBlob);
+          if (text && text.trim()) {
+            silenceCountRef.current = 0;
+            processTranscript(text);
+          } else {
+            handleSilence();
+          }
+        } catch (error) {
+          console.error("STT Error", error);
+          handleSilence();
+        }
+      };
+
+      // VAD setup
+      const audioCtx = new window.AudioContext();
+      audioContextRef.current = audioCtx;
+      const analyser = audioCtx.createAnalyser();
+      analyserRef.current = analyser;
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      analyser.fftSize = 512;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      let silenceStart = Date.now();
+
+      silenceTimerRef.current = setInterval(() => {
+        if (stateRef.current !== "listening") return;
+        analyser.getByteFrequencyData(dataArray);
+        const sum = dataArray.reduce((a, b) => a + b, 0);
+        const average = sum / bufferLength;
+
+        if (average > 15) { // User is speaking
+          silenceStart = Date.now();
+        } else { // Silence
+          if (Date.now() - silenceStart > 2000) { // 2 seconds of silence
+            if (mediaRecorder.state === "recording") {
+              mediaRecorder.stop();
+            }
+          }
+        }
+      }, 100);
+
+      mediaRecorder.start(100); // collect 100ms chunks
     } catch (e) {
       console.error("Microphone error", e);
+      alert("Lỗi truy cập microphone. Vui lòng cấp quyền sử dụng mic.");
+      setState("error");
     }
   };
 
   const stopListeningManual = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
     }
   };
 
@@ -215,7 +306,7 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
     setInterimText("");
     setState("processing");
 
-    const currentField = FLOW_STEPS[stepIndex];
+    const currentField = FLOW_STEPS[stepIndexRef.current];
     // Fix Issue #6: Delegate confirm step to AI instead of brittle string matching.
     // AI can understand nuanced responses like "sai giá" → ask which field to fix,
     // instead of resetting everything when user says "không".
@@ -224,8 +315,8 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
         const response: VoiceChatResponse = await sendVoiceChatMessage({
           current_field: "confirm",
           transcript,
-          collected_fields: collectedFields,
-          conversation_history: newHistory,
+          collected_fields: collectedFieldsRef.current,
+          conversation_history: newHistory.filter(m => m.role !== "advice").map(m => ({ role: m.role as "ai" | "user", text: m.text })),
         });
 
         if (response.intent === "answer" && response.extracted_value === "yes") {
@@ -236,11 +327,15 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
           if (targetIdx >= 0) {
             setStepIndex(targetIdx);
           }
-          setChatHistory(h => [...h, { role: "ai", text: response.next_question }]);
+          const msgs: ChatMessage[] = [{ role: "ai", text: response.next_question }];
+          if (response.advice) msgs.push({ role: "advice", text: response.advice, priceRange: response.market_price_range || undefined });
+          setChatHistory(h => [...h, ...msgs]);
           speak(response.next_question);
         } else {
           // Unclear or "no" → AI generates a helpful follow-up question
-          setChatHistory(h => [...h, { role: "ai", text: response.next_question }]);
+          const msgs2: ChatMessage[] = [{ role: "ai", text: response.next_question }];
+          if (response.advice) msgs2.push({ role: "advice", text: response.advice, priceRange: response.market_price_range || undefined });
+          setChatHistory(h => [...h, ...msgs2]);
           speak(response.next_question);
         }
       } catch (e) {
@@ -255,13 +350,13 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       const response: VoiceChatResponse = await sendVoiceChatMessage({
         current_field: currentField,
         transcript,
-        collected_fields: collectedFields,
-        conversation_history: newHistory,
+        collected_fields: collectedFieldsRef.current,
+        conversation_history: newHistory.filter(m => m.role !== "advice").map(m => ({ role: m.role as "ai" | "user", text: m.text })),
       });
 
-      let nextIndex = stepIndex;
-      const updatedFields = { ...collectedFields };
-      const updatedConfidences = { ...confidences };
+      let nextIndex = stepIndexRef.current;
+      const updatedFields = { ...collectedFieldsRef.current };
+      const updatedConfidences = { ...confidencesRef.current };
 
       if (response.intent === "skip") {
         nextIndex++;
@@ -301,7 +396,9 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       setConfidences(updatedConfidences);
       setStepIndex(nextIndex);
 
-      setChatHistory(h => [...h, { role: "ai", text: response.next_question }]);
+      const newMsgs: ChatMessage[] = [{ role: "ai", text: response.next_question }];
+      if (response.advice) newMsgs.push({ role: "advice", text: response.advice, priceRange: response.market_price_range || undefined });
+      setChatHistory(h => [...h, ...newMsgs]);
       speak(response.next_question);
 
     } catch (e) {
@@ -317,23 +414,52 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
     // Fix Issue #9: Clean up audio blob URL on finish
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     if (onResult) {
+      // Use refs to avoid stale closures — finishFlow is called from within processTranscript
+      // before React re-renders, so state variables would be stale.
+      const fields = collectedFieldsRef.current;
+
       // Fix Issue #10: Build transcript from full conversation history
       const fullTranscript = chatHistoryRef.current
         .filter(m => m.role === "user")
         .map(m => m.text)
         .join(" | ");
 
+      // Normalize harvestDate to YYYY-MM-DD
+      let normalizedHarvestDate = fields.harvestDate || "";
+      if (normalizedHarvestDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalizedHarvestDate)) {
+        const parsed = Date.parse(normalizedHarvestDate);
+        if (!isNaN(parsed)) {
+          const d = new Date(parsed);
+          normalizedHarvestDate = d.toISOString().split("T")[0];
+        } else {
+          const isoMatch = normalizedHarvestDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+          const vnMatch = normalizedHarvestDate.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          if (isoMatch) {
+            normalizedHarvestDate = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+          } else if (vnMatch) {
+            normalizedHarvestDate = `${vnMatch[3]}-${vnMatch[2].padStart(2, "0")}-${vnMatch[1].padStart(2, "0")}`;
+          }
+        }
+      }
+
+      // Normalize farmingMethod to expected ENUM
+      let normalizedFarmingMethod = fields.farmingMethod || "";
+      const fmUpper = normalizedFarmingMethod.toUpperCase();
+      if (fmUpper.includes("ORGANIC") || fmUpper.includes("HỮU CƠ")) normalizedFarmingMethod = "ORGANIC";
+      else if (fmUpper.includes("VIETGAP")) normalizedFarmingMethod = "VIETGAP";
+      else if (fmUpper.includes("GLOBALGAP")) normalizedFarmingMethod = "GLOBALGAP";
+      else if (fmUpper.includes("TRADITIONAL") || fmUpper.includes("TRUYỀN THỐNG") || fmUpper.includes("THƯỜNG")) normalizedFarmingMethod = "TRADITIONAL";
+
       onResult({
-        name: collectedFields.name || "",
-        description: collectedFields.description || "",
-        price: collectedFields.price || 0,
-        unit: collectedFields.quantity_unit || "KG",
-        quantity: collectedFields.quantity || 0,
-        location: collectedFields.location || "",
-        harvestDate: collectedFields.harvestDate || "",
-        // Fix Issue #5: Default "" instead of "ORGANIC" — let form page handle its own default
-        farmingMethod: collectedFields.farmingMethod || "",
-        confidence: confidences,
+        name: fields.name || "",
+        description: fields.description || "",
+        price: fields.price || 0,
+        unit: fields.quantity_unit || "KG",
+        quantity: fields.quantity || 0,
+        location: fields.location || "",
+        harvestDate: normalizedHarvestDate,
+        farmingMethod: normalizedFarmingMethod,
+        confidence: confidencesRef.current,
         transcript: fullTranscript,
       });
     }
@@ -349,7 +475,7 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       <div className="flex justify-between items-center bg-white/50 dark:bg-surface/50 border-b border-blue-100 p-4">
          <div className="flex items-center gap-2">
             <Mic className="w-5 h-5 text-primary" />
-            <span className="font-bold text-primary">Sổ Tay Khai Báo Bằng Giọng Nói</span>
+            <span className="font-bold text-primary">Trợ Lý AI Cạp Nông</span>
          </div>
          <div className="text-xs text-foreground-muted bg-white dark:bg-surface px-3 py-1 rounded-full shadow-sm">
             Bước {Math.min(stepIndex + 1, FLOW_STEPS.length)} / {FLOW_STEPS.length}
@@ -384,9 +510,28 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
           <div className="flex flex-col space-y-4">
             {chatHistory.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-2 shadow-sm text-sm ${msg.role === 'user' ? 'bg-primary text-white ml-8 rounded-tr-none' : 'bg-white dark:bg-surface border border-border text-foreground mr-8 rounded-tl-none'}`}>
-                  {msg.text}
-                </div>
+                {msg.role === 'advice' ? (
+                  <div className="max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm text-sm mr-8 rounded-tl-none bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/15 border border-amber-200 dark:border-amber-800/50">
+                    <div className="flex items-start gap-2">
+                      <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-amber-800 dark:text-amber-300">{msg.text}</span>
+                        {msg.priceRange && (
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
+                            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                              Giá thị trường: {msg.priceRange}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 shadow-sm text-sm ${msg.role === 'user' ? 'bg-primary text-white ml-8 rounded-tr-none' : 'bg-white dark:bg-surface border border-border text-foreground mr-8 rounded-tl-none'}`}>
+                    {msg.text}
+                  </div>
+                )}
               </div>
             ))}
             

@@ -13,12 +13,18 @@ class Settings(BaseSettings):
     # Zalo AI keys
     zalo_api_key: str = ""
     
+    # FPT AI keys
+    fpt_ai_api_key: str = ""
+    
     app_env: str = "development"
     log_level: str = "INFO"
     allowed_origins: str = "http://localhost:3000"
 
     clipdrop_api_key: str = ""
     ai_service_base_url: str = "http://localhost:8000"
+
+    # OpenWeatherMap — Proactive AI weather alerts
+    openweathermap_api_key: str = ""
 
     @property
     def origins_list(self) -> list[str]:

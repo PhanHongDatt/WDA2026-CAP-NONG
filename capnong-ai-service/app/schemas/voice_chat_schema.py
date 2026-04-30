@@ -43,6 +43,8 @@ class VoiceChatResponse(BaseModel):
     )
     correction_target: Optional[str] = None
     correction_value: Optional[str | float | int] = None
-    next_question: str = ""
-    confirmation_text: str = ""
+    next_question: Optional[str] = None
+    confirmation_text: Optional[str] = None
+    advice: Optional[str] = Field(default=None, description="Lời tư vấn nghiệp vụ chủ động (1-2 câu)")
+    market_price_range: Optional[str] = Field(default=None, description="Giá thị trường tham khảo, VD: '40,000 - 55,000 đ/kg'")
     extra_fields: list[ExtraField] = Field(default_factory=list)

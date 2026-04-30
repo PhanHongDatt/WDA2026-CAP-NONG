@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -16,6 +16,8 @@ import { formatCurrency } from "@/lib/utils";
 import SimpleBarChart from "@/components/ui/SimpleBarChart";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
+
+const AIDigestCard = lazy(() => import("@/components/ui/AIDigestCard"));
 
 const STATS = [
   { label: "Đơn hàng", value: "28", icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
@@ -63,16 +65,19 @@ function DashboardContent() {
   const [recentOrders, setRecentOrders] = useState(USE_MOCK ? RECENT_ORDERS : []);
   const [revenueData, setRevenueData] = useState(USE_MOCK ? REVENUE_DATA : [] as { label: string; value: number }[]);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [productNames, setProductNames] = useState<string[] | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
       const { orderService } = await import("@/services");
       const { apiDashboardService } = await import("@/services/api/dashboard");
+      const { getSellerProducts } = await import("@/services/api/product");
       
-      const [summaryRes, ordersRes, revenueRes] = await Promise.allSettled([
+      const [summaryRes, ordersRes, revenueRes, productsRes] = await Promise.allSettled([
         apiDashboardService.getFarmerSummary(),
         orderService.getSellerSubOrders({ size: 3 }),
         apiDashboardService.getMonthlyRevenue(),
+        getSellerProducts(0, 10),
       ]);
 
       const summary = summaryRes.status === "fulfilled" 
@@ -126,6 +131,12 @@ function DashboardContent() {
       // Monthly revenue chart
       if (revenueRes.status === "fulfilled" && revenueRes.value.length > 0) {
         setRevenueData(revenueRes.value.map(r => ({ label: r.label, value: r.revenue })));
+      }
+
+      if (productsRes.status === "fulfilled") {
+        setProductNames(productsRes.value.content.map(p => p.name));
+      } else {
+        setProductNames([]);
       }
     } catch {
       if (USE_MOCK) { setStats(STATS); setRecentOrders(RECENT_ORDERS); setRevenueData(REVENUE_DATA); }
@@ -192,6 +203,26 @@ function DashboardContent() {
         </div>
       )}
 
+      {/* AI Proactive Digest — Trợ lý AI nhắc nhở */}
+      {["FARMER", "HTX_MANAGER", "HTX_MEMBER"].includes(user?.role || "") && (
+        <Suspense fallback={
+          <div className="h-32 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/10 dark:to-blue-900/10 border border-emerald-200/60 dark:border-emerald-800/30 rounded-2xl animate-pulse flex items-center justify-center text-sm text-foreground-muted">
+            🤖 Đang tải Trợ lý AI...
+          </div>
+        }>
+          {productNames !== null ? (
+            <AIDigestCard
+              province={(user as any)?.province || "Tiền Giang"}
+              farmerName={user?.full_name || undefined}
+              products={productNames}
+            />
+          ) : (
+            <div className="h-32 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/10 dark:to-blue-900/10 border border-emerald-200/60 dark:border-emerald-800/30 rounded-2xl animate-pulse flex items-center justify-center text-sm text-foreground-muted">
+              🤖 Đang chuẩn bị dữ liệu sản phẩm...
+            </div>
+          )}
+        </Suspense>
+      )}
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
