@@ -120,6 +120,14 @@ public class ProductServiceImpl implements ProductService {
         return productMapper.toProductResponse(product);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getRandomProducts(int limit) {
+        return productRepository.findRandomProducts(limit).stream()
+                .map(productMapper::toProductResponse)
+                .toList();
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  UPDATE (full)
     // ═══════════════════════════════════════════════════════════════

@@ -18,6 +18,7 @@ public interface SubOrderRepository extends JpaRepository<SubOrder, UUID> {
     List<SubOrder> findByOrderId(UUID orderId);
     List<SubOrder> findByShop_IdAndStatusOrderByCreatedAtDesc(UUID shopId, OrderStatus status);
     List<SubOrder> findByShop_IdOrderByCreatedAtDesc(UUID shopId);
+    long countByShop_Id(UUID shopId);
     Optional<SubOrder> findByIdAndShop_Owner_Id(UUID subOrderId, UUID ownerId);
 
     // Paginated versions for seller dashboard

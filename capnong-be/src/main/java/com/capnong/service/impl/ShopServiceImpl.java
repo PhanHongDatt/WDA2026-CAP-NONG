@@ -7,7 +7,9 @@ import com.capnong.exception.ResourceNotFoundException;
 import com.capnong.mapper.ShopMapper;
 import com.capnong.model.Shop;
 import com.capnong.model.User;
+import com.capnong.repository.ProductRepository;
 import com.capnong.repository.ShopRepository;
+import com.capnong.repository.SubOrderRepository;
 import com.capnong.repository.UserRepository;
 import com.capnong.service.CloudinaryService;
 import com.capnong.service.ShopService;
@@ -21,6 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,6 +34,15 @@ public class ShopServiceImpl implements ShopService {
     private final UserRepository userRepository;
     private final ShopMapper shopMapper;
     private final CloudinaryService cloudinaryService;
+    private final ProductRepository productRepository;
+    private final SubOrderRepository subOrderRepository;
+
+    /** Enrich a ShopResponse with real aggregated stats */
+    private ShopResponse enrichShopResponse(ShopResponse response, UUID shopId) {
+        response.setProductCount(productRepository.countActiveByShopId(shopId));
+        response.setOrderCount(subOrderRepository.countByShop_Id(shopId));
+        return response;
+    }
 
     @Override
     @Transactional
@@ -58,7 +70,7 @@ public class ShopServiceImpl implements ShopService {
                 .coverUrl(request.getCoverUrl())
                 .build();
 
-        return shopMapper.toShopResponse(shopRepository.save(shop));
+        return enrichShopResponse(shopMapper.toShopResponse(shopRepository.save(shop)), shop.getId());
     }
 
     @Override
@@ -67,7 +79,7 @@ public class ShopServiceImpl implements ShopService {
         Shop shop = shopRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Shop", "slug", slug));
         try {
-            return shopMapper.toShopResponse(shop);
+            return enrichShopResponse(shopMapper.toShopResponse(shop), shop.getId());
         } catch (jakarta.persistence.EntityNotFoundException e) {
             // Owner bị xóa hoặc không tồn tại → trả về response an toàn
             return ShopResponse.builder()
@@ -124,7 +136,7 @@ public class ShopServiceImpl implements ShopService {
                 
         Shop shop = shopRepository.findFirstByOwner_IdAndIsHtxShop(user.getId(), false)
                 .orElseThrow(() -> new AppException("Bạn chưa có gian hàng cá nhân", HttpStatus.NOT_FOUND));
-        return shopMapper.toShopResponse(shop);
+        return enrichShopResponse(shopMapper.toShopResponse(shop), shop.getId());
     }
 
     @Override
@@ -134,7 +146,7 @@ public class ShopServiceImpl implements ShopService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
                 
         return shopRepository.findAllByOwner_Id(user.getId()).stream()
-                .map(shopMapper::toShopResponse)
+                .map(shop -> enrichShopResponse(shopMapper.toShopResponse(shop), shop.getId()))
                 .collect(Collectors.toList());
     }
 
@@ -174,7 +186,7 @@ public class ShopServiceImpl implements ShopService {
         } else {
             shops = shopRepository.findAll(pageable);
         }
-        return shops.map(shopMapper::toShopResponse);
+        return shops.map(shop -> enrichShopResponse(shopMapper.toShopResponse(shop), shop.getId()));
     }
 
     @Override
@@ -198,6 +210,6 @@ public class ShopServiceImpl implements ShopService {
             throw new AppException("Loại ảnh không hợp lệ. Chỉ chấp nhận: avatar, cover", HttpStatus.BAD_REQUEST);
         }
 
-        return shopMapper.toShopResponse(shopRepository.save(shop));
+        return enrichShopResponse(shopMapper.toShopResponse(shopRepository.save(shop)), shop.getId());
     }
 }

@@ -125,20 +125,43 @@ export default function ProductCard({
         </div>
 
         {/* CTA */}
-        <div className="flex items-center gap-2 mt-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 mt-auto">
           <div className="flex items-center bg-gray-100 dark:bg-surface-hover rounded-full">
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQuantity(Math.max(1, quantity - 1)); }}
-              className="w-8 h-8 flex items-center justify-center text-foreground-muted hover:text-foreground transition-colors"
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-foreground-muted hover:text-foreground transition-colors shrink-0"
             >
               <Minus className="w-3 h-3" />
             </button>
-            <span className="w-6 text-center text-xs font-bold">{quantity}</span>
+            <input
+              type="number"
+              value={quantity || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') {
+                  setQuantity(0);
+                } else {
+                  const num = parseInt(val, 10);
+                  if (!isNaN(num)) {
+                    if (num > product.available_quantity) {
+                      setQuantity(product.available_quantity);
+                    } else {
+                      setQuantity(num);
+                    }
+                  }
+                }
+              }}
+              onBlur={() => {
+                if (!quantity || quantity <= 0) setQuantity(1);
+              }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              className="w-5 sm:w-6 text-center text-xs font-bold bg-transparent border-none focus:ring-0 p-0 appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-gray-900 dark:text-foreground"
+            />
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQuantity(quantity + 1); }}
-              className="w-8 h-8 flex items-center justify-center text-foreground-muted hover:text-foreground transition-colors"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQuantity(Math.min(product.available_quantity, quantity + 1)); }}
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-foreground-muted hover:text-foreground transition-colors shrink-0"
             >
               <Plus className="w-3 h-3" />
             </button>
@@ -147,14 +170,14 @@ export default function ProductCard({
           <button
             type="button"
             onClick={handleAddToCart}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full font-bold text-sm active:scale-[0.97] transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 sm:py-2 px-2 sm:px-4 rounded-full font-bold text-sm active:scale-[0.97] transition-all duration-200 ${
               added
                 ? "bg-green-600 text-white"
                 : "bg-primary text-white hover:bg-primary-light hover:shadow-md hover:shadow-primary/20"
             }`}
           >
-            <ShoppingCart className="w-4 h-4" />
-            <span className="truncate">{added ? "Đã thêm" : "Thêm vào giỏ"}</span>
+            <ShoppingCart className="w-4 h-4 shrink-0" />
+            <span className="truncate hidden sm:inline">{added ? "Đã thêm" : "Thêm"}</span>
           </button>
         </div>
       </div>

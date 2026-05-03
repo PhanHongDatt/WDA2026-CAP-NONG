@@ -1,48 +1,92 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutGrid, Apple, Carrot, Wheat, Nut, Leaf, ShoppingBasket } from "lucide-react";
 
 import { CATEGORIES } from "@/lib/constants";
+import { LeafIcon } from "@/components/ui/icons/LeafIcon";
 
-const CategoryIcon = ({ id, className }: { id: string, className?: string }) => {
-  switch (id) {
-    case "ALL": return <LayoutGrid className={className} />;
-    case "FRUIT": return <Apple className={className} />;
-    case "VEGETABLE": return <Carrot className={className} />;
-    case "GRAIN": return <Wheat className={className} />;
-    case "TUBER": return <Nut className={className} />;
-    case "HERB": return <Leaf className={className} />;
-    case "OTHER": return <ShoppingBasket className={className} />;
-    default: return <LayoutGrid className={className} />;
-  }
+/**
+ * Category card data — mỗi item có màu nền riêng, ảnh transparent, và màu saber border
+ */
+const CATEGORY_STYLES: Record<string, { bg: string; saber: string; img: string }> = {
+  FRUIT:     { bg: "#FFF3E0", saber: "#FF9800", img: "/images/categories/fruit.png" },
+  VEGETABLE: { bg: "#E8F5E9", saber: "#4CAF50", img: "/images/categories/vegetable.png" },
+  GRAIN:     { bg: "#FFF8E1", saber: "#FFC107", img: "/images/categories/grain.png" },
+  TUBER:     { bg: "#EFEBE9", saber: "#8D6E63", img: "/images/categories/tuber.png" },
+  HERB:      { bg: "#E0F2F1", saber: "#26A69A", img: "/images/categories/herb.png" },
+  OTHER:     { bg: "#F3E5F5", saber: "#AB47BC", img: "/images/categories/other.png" },
 };
 
+
+
 export default function CategoryGrid() {
+  const items = CATEGORIES.filter((c) => c.id !== "ALL");
+
   return (
-    <section className="mb-8">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-700 mb-4 uppercase tracking-wide">
-            Danh mục
-          </h2>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-            {CATEGORIES.filter(c => c.id !== "ALL").map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/catalog?category=${cat.id}`}
-                className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-50 hover:border-primary/30 hover:bg-green-50/50 transition-all group cursor-pointer"
-              >
-                <span className="group-hover:scale-110 transition-transform text-primary/80 group-hover:text-primary">
-                  <CategoryIcon id={cat.id} className="w-8 h-8" />
-                </span>
-                <span className="text-xs text-gray-600 font-medium text-center leading-tight group-hover:text-primary transition-colors">
-                  {cat.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
+    <section className="category-section" id="category">
+      <h2 className="category-section-title journey-title">
+        <span className="journey-title-text">
+          Danh mục{" "}
+          <span className="journey-title-highlight">
+            nông sản
+            {/* Paint-stroke underline */}
+            <svg
+              className="journey-paint-stroke"
+              viewBox="0 0 120 12"
+              preserveAspectRatio="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M2 8 C20 3, 40 10, 60 6 S100 3, 118 7"
+                stroke="var(--color-primary, #2E7D32)"
+                strokeWidth="4"
+                strokeLinecap="round"
+                fill="none"
+                opacity="0.35"
+              />
+            </svg>
+          </span>
+        </span>
+        <LeafIcon />
+      </h2>
+
+      <div className="category-grid">
+        {items.map((cat) => {
+          const style = CATEGORY_STYLES[cat.id] ?? CATEGORY_STYLES.OTHER;
+
+          return (
+            <Link
+              key={cat.id}
+              href={`/catalog?category=${cat.id}`}
+              className="saber-card"
+              style={
+                {
+                  "--saber-color": style.saber,
+                  "--card-bg": style.bg,
+                } as React.CSSProperties
+              }
+            >
+              {/* Saber border wrapper — overflow:hidden clips the rotating disc */}
+              <div className="saber-card-border" aria-hidden="true" />
+
+              <div className="saber-card-inner">
+                {/* Image — overflows upward beyond card boundary */}
+                <div className="saber-card-img-wrap">
+                  <img
+                    src={style.img}
+                    alt={cat.label}
+                    className="saber-card-img"
+                    loading="lazy"
+                  />
+                </div>
+
+                {/* Title */}
+                <span className="saber-card-title">{cat.label.toUpperCase()}</span>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </section>
   );

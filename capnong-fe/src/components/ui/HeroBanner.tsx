@@ -1,138 +1,116 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { SafeImage } from "@/lib/safe-image";
+import React from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Zap, Truck } from "lucide-react";
+import { Sprout, ShoppingBasket, ArrowRight } from "lucide-react";
 
-const BANNERS = [
-  {
-    src: "/images/banners/banner-traicay.png",
-    alt: "Mùa trái cây miền Tây",
-    href: "/catalog?category=trai-cay",
-  },
-  {
-    src: "/images/banners/banner-dalat.png",
-    alt: "Nông sản Đà Lạt tươi mỗi ngày",
-    href: "/catalog?region=da-lat",
-  },
-  {
-    src: "/images/banners/banner-gomdon.png",
-    alt: "Gom đơn tiết kiệm",
-    href: "/cooperative",
-  },
+/**
+ * Film strip slides — images, title, subtitle, CTA text
+ */
+const FILM_SLIDES = [
+  { img: "/images/film-strip/1.png" },
+  { img: "/images/film-strip/2.png" },
+  { img: "/images/film-strip/3.png" },
+  { img: "/images/film-strip/4.png" },
+  { img: "/images/film-strip/5.png" },
+  { img: "/images/film-strip/6.png" },
+  { img: "/images/film-strip/7.png" },
+  { img: "/images/film-strip/8.png" },
 ];
 
-const SIDE_BANNERS = [
-  {
-    src: "/images/banners/banner-traicay.png",
-    alt: "Giá sốc hôm nay",
-    href: "/catalog?sort=flash-deal",
-    label: <span className="flex items-center gap-1.5"><Zap className="w-4 h-4 fill-current text-yellow-400" /> Giá sốc hôm nay</span>,
-  },
-  {
-    src: "/images/banners/banner-gomdon.png",
-    alt: "Miễn phí giao hàng",
-    href: "/catalog",
-    label: <span className="flex items-center gap-1.5"><Truck className="w-4 h-4 text-blue-300" /> Miễn phí giao hàng</span>,
-  },
-];
-
+/**
+ * HeroBanner — Full-width hero section "Từ nông trại đến bàn ăn"
+ * Layout: Text (left) | Mascot (center-right) | Film Strip (right edge)
+ */
 export default function HeroBanner() {
-  const [current, setCurrent] = useState(0);
-
-  const next = useCallback(() => {
-    setCurrent((c) => (c + 1) % BANNERS.length);
-  }, []);
-
-  const prev = useCallback(() => {
-    setCurrent((c) => (c - 1 + BANNERS.length) % BANNERS.length);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(next, 5000);
-    return () => clearInterval(timer);
-  }, [next]);
-
   return (
-    <section className="mb-6">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex gap-3 h-[200px] md:h-[280px]">
-          {/* Main Carousel */}
-          <div className="flex-1 relative rounded-xl overflow-hidden group">
-            {BANNERS.map((b, i) => (
-              <Link
-                key={i}
-                href={b.href}
-                className={`absolute inset-0 transition-opacity duration-700 ${
-                  i === current ? "opacity-100 z-10" : "opacity-0 z-0"
-                }`}
-              >
-                <SafeImage
-                  src={b.src}
-                  alt={b.alt}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 75vw"
-                  className="object-cover"
-                  priority={i === 0}
+    <section className="hero-section" id="hero">
+      {/* Background image */}
+      <div className="hero-bg" aria-hidden="true">
+        <div className="hero-overlay" />
+      </div>
+
+      {/* FULL HEIGHT FILM STRIP */}
+      <div className="hero-film-strip" aria-hidden="true">
+        {/* Sprocket holes */}
+        <div className="film-sprocket film-sprocket--left" />
+        <div className="film-sprocket film-sprocket--right" />
+
+        <div className="film-viewport">
+          <div className="film-track">
+            {/* Duplicate slides for seamless infinite loop */}
+            {[...FILM_SLIDES, ...FILM_SLIDES].map((slide, i) => (
+              <div className="film-frame" key={i}>
+                <img
+                  src={slide.img}
+                  alt=""
+                  className="film-frame-img"
+                  loading="lazy"
                 />
-              </Link>
+              </div>
             ))}
+          </div>
+        </div>
+      </div>
 
-            {/* Nav arrows */}
-            <button type="button"
-              onClick={(e) => { e.preventDefault(); prev(); }}
-              aria-label="Banner trước"
-              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button type="button"
-              onClick={(e) => { e.preventDefault(); next(); }}
-              aria-label="Banner tiếp theo"
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/30 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+      {/* Content — 2 columns 1:1 */}
+      <div className="hero-content">
+        {/* LEFT (50%) — Text block */}
+        <div className="hero-left">
+          <div className="hero-text">
+            <h1 className="hero-heading">
+              Từ nông trại
+              <br />
+              <span className="hero-heading-accent">
+                Đến bàn ăn
+                {/* SVG hand-drawn underline */}
+                <svg
+                  className="hero-underline"
+                  viewBox="0 0 280 12"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M2 8.5C30 3 60 2.5 90 4C120 5.5 150 3 180 5C210 7 240 4 278 7"
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            </h1>
 
-            {/* Dots */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
-              {BANNERS.map((_, i) => (
-                <button type="button"
-                  key={i}
-                  onClick={() => setCurrent(i)}
-                  aria-label={`Chuyển đến banner ${i + 1}`}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    i === current
-                      ? "bg-white w-5"
-                      : "bg-white/50 hover:bg-white/80"
-                  }`}
-                />
-              ))}
+            <p className="hero-desc">
+              Cạp Nông kết nối nông dân với người tiêu dùng.
+              <br />
+              Mang nông sản tươi ngon, minh bạch và bền vững.
+            </p>
+
+            <div className="hero-cta-group">
+              <Link href="/home#journey" className="hero-cta hero-cta--primary">
+                <Sprout className="w-5 h-5" />
+                <span>Khám phá hành trình</span>
+              </Link>
+              <Link href="/catalog" className="hero-cta hero-cta--outline">
+                <ShoppingBasket className="w-5 h-5" />
+                <span>Mua sắm ngay</span>
+              </Link>
             </div>
           </div>
+        </div>
 
-          {/* Side Banners — stacked */}
-          <div className="w-[280px] hidden lg:flex flex-col gap-3 shrink-0">
-            {SIDE_BANNERS.map((b, i) => (
-              <Link
-                key={i}
-                href={b.href}
-                className="relative flex-1 rounded-xl overflow-hidden group/side"
-              >
-                <SafeImage
-                  src={b.src}
-                  alt={b.alt}
-                  fill
-                  sizes="280px"
-                  className="object-cover group-hover/side:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <span className="absolute bottom-3 left-3 text-white font-bold text-sm z-10">
-                  {b.label}
-                </span>
-              </Link>
-            ))}
+        {/* RIGHT (50%) — Mascot */}
+        <div className="hero-right">
+          <div className="hero-mascot" aria-hidden="true">
+            <img
+              src="/images/mascot/sticker-4.svg"
+              alt=""
+              className="hero-mascot-img"
+              loading="eager"
+            />
           </div>
         </div>
       </div>

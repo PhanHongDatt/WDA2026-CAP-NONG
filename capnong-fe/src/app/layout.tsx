@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Public_Sans } from "next/font/google";
+import { Public_Sans, Signika } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -11,6 +11,13 @@ const publicSans = Public_Sans({
   display: "swap",
   variable: "--font-display",
   preload: true,
+});
+
+const signika = Signika({
+  subsets: ["latin", "vietnamese"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-heading",
 });
 const SITE_URL = "https://capnong.shop";
 
@@ -141,7 +148,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${publicSans.variable} antialiased min-h-screen flex flex-col`} suppressHydrationWarning>
+      <body className={`${publicSans.variable} ${signika.variable} antialiased min-h-screen flex flex-col`} suppressHydrationWarning>
         <ClientProviders>
           <Header />
           <main className="flex-1">{children}</main>

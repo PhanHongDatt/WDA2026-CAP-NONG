@@ -135,7 +135,7 @@ export default async function HomePage() {
 
       <main className="max-w-7xl mx-auto px-4 py-2">
         {/* SECTION: Seasonal Products */}
-        <section className="mb-12 -mx-4 px-4 py-8 bg-gradient-to-b from-green-50/50 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
+        <section className="-mx-4 px-4 py-8 bg-gradient-to-b from-green-50/50 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 mb-6">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
@@ -177,7 +177,7 @@ export default async function HomePage() {
         {/* TODO: Tích hợp API /api/bundles/open khi sẵn sàng */}
 
         {/* SECTION: Featured Farms — giống hình tham khảo carousel */}
-        <section className="mb-12 relative">
+        <section className="relative">
           {/* Scalloped decorative border — sóng xanh giống hình */}
           <div
             className="h-4 w-full mb-4"
@@ -208,7 +208,7 @@ export default async function HomePage() {
         </section>
 
         {/* SECTION: "Gợi ý cho bạn" — Shopee-style product grid */}
-        <section className="mb-12 -mx-4 px-4 py-8 bg-gradient-to-b from-primary-50/40 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
+        <section className="-mx-4 px-4 py-8 bg-gradient-to-b from-primary-50/40 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-primary uppercase tracking-widest">
               Gợi ý cho bạn

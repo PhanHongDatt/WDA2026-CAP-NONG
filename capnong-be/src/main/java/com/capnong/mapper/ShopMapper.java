@@ -12,5 +12,7 @@ public interface ShopMapper {
     @Mapping(target = "ownerUsername", source = "owner.username")
     @Mapping(target = "ownerFullName", source = "owner.fullName")
     @Mapping(target = "ownerAvatarUrl", source = "owner.avatarUrl")
+    @Mapping(target = "productCount", ignore = true)
+    @Mapping(target = "orderCount", ignore = true)
     ShopResponse toShopResponse(Shop shop);
 }

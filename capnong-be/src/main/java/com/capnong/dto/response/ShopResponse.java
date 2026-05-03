@@ -28,6 +28,10 @@ public class ShopResponse {
     private Integer totalReviews;
     private LocalDateTime createdAt;
 
+    // Aggregated stats (computed at query time)
+    private Long productCount;
+    private Long orderCount;
+
     // Owner info (safe subset)
     private UUID ownerId;
     private String ownerUsername;

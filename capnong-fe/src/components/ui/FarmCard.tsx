@@ -10,34 +10,24 @@ interface FarmCardProps {
 }
 
 /**
- * FarmCard — Redesign giống hình tham khảo "Khám phá nhà cung cấp"
- * Layout: Logo + Tên > | Dòng SP chính | Stats row | Badges
- * Hover: nhẹ nhàng translate-y + shadow
+ * FarmCard — "Khám phá nhà cung cấp" card
+ * Uses real data from the BE ShopResponse (productCount, orderCount, totalReviews)
  */
 export default function FarmCard({ shop }: FarmCardProps) {
-  /* Derive mock stats from available data */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const shopAny = shop as any;
-  const customerCount = shopAny.customer_count ?? Math.floor((shop.total_reviews || 10) * 0.8);
-  const productCount = shopAny.product_count ?? Math.floor(50 + ((shop.total_reviews || 10) * 3.7) % 80);
-  const orderCount = shopAny.order_count ?? `${Math.floor(shop.total_reviews * 1.5)}+`;
+  const productCount = shop.product_count ?? 0;
+  const orderCount = shop.order_count ?? 0;
+  const customerCount = shop.total_reviews ?? 0;
 
-  /* Derive main product line from bio */
-  const mainProducts = shopAny.main_products
-    ?? (shop.bio?.includes("dừa") ? "Trái cây, Dừa" 
-      : shop.bio?.includes("rau") ? "Rau củ quả"
-      : "Trái cây, Rau củ quả");
 
   /* Derive certification badges */
-  const badges: string[] = shopAny.certifications ?? ["ATTP"];
-  if (shop.average_rating >= 4.8) badges.push("VietGap");
-  // Deduplicate
+  const badges: string[] = ["ATTP"];
+  if (shop.average_rating >= 4.5) badges.push("VietGap");
   const uniqueBadges = [...new Set(badges)];
 
   return (
     <Link
       href={`/shop/${shop.slug}`}
-      className="group bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-2xl p-5 block hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300"
+      className="group bg-white dark:bg-surface border border-gray-200 dark:border-border rounded-2xl p-5 block hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 h-full"
     >
       {/* Header: Avatar + Name + Arrow */}
       <div className="flex items-center gap-3 mb-4">
@@ -66,18 +56,20 @@ export default function FarmCard({ shop }: FarmCardProps) {
         </div>
       </div>
 
-      {/* Main product line */}
+      {/* Shop bio */}
       <div className="mb-4">
-        <p className="text-[11px] text-gray-400 dark:text-foreground-muted mb-0.5">· Dòng sản phẩm chính:</p>
-        <p className="text-sm font-semibold text-gray-700 dark:text-foreground">{mainProducts}</p>
+        <p className="text-[11px] text-gray-400 dark:text-foreground-muted mb-0.5">· Câu chuyện nhà vườn:</p>
+        <p className="text-sm text-gray-700 dark:text-foreground line-clamp-2" title={shop.bio || ""}>
+          {shop.bio || "Nhà vườn chưa cập nhật thông tin giới thiệu."}
+        </p>
       </div>
 
-      {/* Stats row — giống hình tham khảo */}
+      {/* Stats row */}
       <div className="grid grid-cols-3 gap-2 mb-4 pb-4 border-b border-gray-100 dark:border-border">
         <div className="text-center">
           <Users className="w-4 h-4 text-gray-400 mx-auto mb-1" />
           <p className="text-base font-bold text-gray-900 dark:text-foreground">{customerCount}</p>
-          <p className="text-[10px] text-gray-400">khách hàng</p>
+          <p className="text-[10px] text-gray-400">đánh giá</p>
         </div>
         <div className="text-center">
           <Package className="w-4 h-4 text-gray-400 mx-auto mb-1" />
