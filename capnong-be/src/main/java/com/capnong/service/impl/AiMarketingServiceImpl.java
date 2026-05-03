@@ -1,5 +1,6 @@
 package com.capnong.service.impl;
 
+import com.capnong.service.AiMarketingService;
 import com.capnong.dto.request.CaptionGenerateRequest;
 import com.capnong.dto.request.PosterGenerateRequest;
 import com.capnong.dto.response.AiSessionResultDto;
@@ -13,7 +14,6 @@ import com.capnong.model.enums.AiSessionType;
 import com.capnong.repository.AiListingSessionRepository;
 import com.capnong.repository.ShopRepository;
 import com.capnong.repository.UserRepository;
-import com.capnong.service.AiMarketingService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +28,16 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
+/**
+ * AI Marketing Lab Service.
+ *
+ * Flow bất đồng bộ:
+ * 1. FE POST /api/ai/caption → tạo session IN_PROGRESS, trả sessionId
+ * 2. @Async gọi capnong-ai-service → lưu result → update session COMPLETED
+ * 3. FE GET /api/ai/sessions/{id} → poll kết quả
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -43,7 +52,17 @@ public class AiMarketingServiceImpl implements AiMarketingService {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Override
+    // ═══════════════════════════════════════════════════════════════
+    // CAPTION
+    // ═══════════════════════════════════════════════════════════════
+
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private AiMarketingService self;
+
+    /**
+     * Tạo caption session (sync) + trigger async processing.
+     */
     @Transactional
     public UUID startCaptionSession(CaptionGenerateRequest request, String username) {
         User user = findUser(username);
@@ -59,23 +78,26 @@ public class AiMarketingServiceImpl implements AiMarketingService {
 
         UUID sessionId = session.getId();
 
-        // Trigger async processing
-        processCaptionAsync(sessionId, request);
+        // Trigger async processing via 'self' proxy so @Async actually works
+        self.processCaptionAsync(sessionId, request);
 
         log.info("Caption session started: {}", sessionId);
         return sessionId;
     }
 
-    @Override
     @Async
     public void processCaptionAsync(UUID sessionId, CaptionGenerateRequest request) {
         try {
+            // Build request for ai-service
             Map<String, Object> body = new HashMap<>();
             body.put("product_name", request.getProductName());
             body.put("description", request.getDescription());
-            if (request.getProvince() != null) body.put("province", request.getProvince());
-            if (request.getStyle() != null) body.put("style", request.getStyle().name());
+            if (request.getProvince() != null)
+                body.put("province", request.getProvince());
+            if (request.getStyle() != null)
+                body.put("style", request.getStyle().name());
 
+            // Call ai-service
             String url = aiServiceUrl + "/ai/generate-caption";
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -83,10 +105,14 @@ public class AiMarketingServiceImpl implements AiMarketingService {
 
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
+            // Parse response and save result
             String resultJson = response.getBody();
-            AiListingSession session = sessionRepository.findById(sessionId).orElse(null);
-            if (session == null) return;
 
+            AiListingSession session = sessionRepository.findById(sessionId).orElse(null);
+            if (session == null)
+                return;
+
+            // Store result as JSON in session metadata
             session.setResultJson(resultJson);
             session.setStatus(AiSessionStatus.COMPLETED);
             session.setCompletedAt(LocalDateTime.now());
@@ -100,7 +126,10 @@ public class AiMarketingServiceImpl implements AiMarketingService {
         }
     }
 
-    @Override
+    // ═══════════════════════════════════════════════════════════════
+    // POSTER
+    // ═══════════════════════════════════════════════════════════════
+
     @Transactional
     public UUID startPosterSession(PosterGenerateRequest request, String username) {
         User user = findUser(username);
@@ -115,13 +144,13 @@ public class AiMarketingServiceImpl implements AiMarketingService {
         session = sessionRepository.save(session);
 
         UUID sessionId = session.getId();
-        processPosterAsync(sessionId, request, request.getMode());
+
+        self.processPosterAsync(sessionId, request, request.getMode());
 
         log.info("Poster session started: {} (mode: {})", sessionId, request.getMode());
         return sessionId;
     }
 
-    @Override
     @Async
     public void processPosterAsync(UUID sessionId, PosterGenerateRequest request, String mode) {
         try {
@@ -129,6 +158,7 @@ public class AiMarketingServiceImpl implements AiMarketingService {
             result.put("mode", mode);
 
             if ("AI_IMAGE".equalsIgnoreCase(mode)) {
+                // ─── Mode 2: AI sinh ảnh poster ───
                 Map<String, Object> body = new HashMap<>();
                 body.put("product_name", request.getProductName());
                 if (request.getDescription() != null) body.put("description", request.getDescription());
@@ -143,6 +173,8 @@ public class AiMarketingServiceImpl implements AiMarketingService {
                         new TypeReference<Map<String, Object>>() {}));
 
             } else {
+                // ─── Mode 1: HTML template (text content) ───
+                // Step 1: Remove background (nếu có ảnh)
                 if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
                     try {
                         String removeBgResult = callAiService(
@@ -157,6 +189,7 @@ public class AiMarketingServiceImpl implements AiMarketingService {
                     }
                 }
 
+                // Step 2: Generate poster content
                 Map<String, Object> body = new HashMap<>();
                 body.put("product_name", request.getProductName());
                 if (request.getDescription() != null) body.put("description", request.getDescription());
@@ -166,29 +199,35 @@ public class AiMarketingServiceImpl implements AiMarketingService {
                 body.put("template", request.getTemplate() != null
                         ? request.getTemplate().name() : "FRESH_GREEN");
 
+                // AI Refinement support
+                if (request.getInstruction() != null) body.put("instruction", request.getInstruction());
+                if (request.getCurrentState() != null) body.put("current_state", request.getCurrentState());
+
                 String contentResult = callAiService(aiServiceUrl + "/ai/poster-content", body);
                 result.put("posterContent", objectMapper.readValue(contentResult,
                         new TypeReference<Map<String, Object>>() {}));
             }
 
-            String resultJson = objectMapper.writeValueAsString(result);
-            AiListingSession session = sessionRepository.findById(sessionId).orElse(null);
-            if (session == null) return;
+    // Save result
+    String resultJson = objectMapper.writeValueAsString(result);
+    AiListingSession session = sessionRepository.findById(sessionId).orElse(null);if(session==null)return;
 
-            session.setResultJson(resultJson);
-            session.setStatus(AiSessionStatus.COMPLETED);
-            session.setCompletedAt(LocalDateTime.now());
-            sessionRepository.save(session);
+    session.setResultJson(resultJson);session.setStatus(AiSessionStatus.COMPLETED);session.setCompletedAt(LocalDateTime.now());sessionRepository.save(session);
 
-            log.info("Poster session {} completed (mode: {})", sessionId, mode);
+    log.info("Poster session {} completed (mode: {})",sessionId,mode);
 
-        } catch (Exception e) {
-            log.error("Poster processing failed for session {}: {}", sessionId, e.getMessage());
-            markFailed(sessionId, e.getMessage());
-        }
+    }catch(
+    Exception e)
+    {
+        log.error("Poster processing failed for session {}: {}", sessionId, e.getMessage());
+        markFailed(sessionId, e.getMessage());
+    }
     }
 
-    @Override
+    // ═══════════════════════════════════════════════════════════════
+    // POLLING
+    // ═══════════════════════════════════════════════════════════════
+
     @Transactional(readOnly = true)
     public AiSessionResultDto getSessionResult(UUID sessionId) {
         AiListingSession session = sessionRepository.findById(sessionId)
@@ -209,6 +248,7 @@ public class AiMarketingServiceImpl implements AiMarketingService {
         }
 
         try {
+            // Parse result JSON based on session type
             if (session.getSessionType() == AiSessionType.CAPTION) {
                 builder.caption(parseCaptionResult(session.getResultJson()));
             } else if (session.getSessionType() == AiSessionType.POSTER) {
@@ -221,6 +261,10 @@ public class AiMarketingServiceImpl implements AiMarketingService {
 
         return builder.build();
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════════
 
     private String callAiService(String url, Map<String, Object> body) {
         HttpHeaders headers = new HttpHeaders();
@@ -247,6 +291,7 @@ public class AiMarketingServiceImpl implements AiMarketingService {
     private AiSessionResultDto.CaptionResultData parseCaptionResult(String json) throws Exception {
         JsonNode root = objectMapper.readTree(json);
         List<AiSessionResultDto.CaptionItem> captions = new ArrayList<>();
+
         JsonNode captionsNode = root.path("captions");
         if (captionsNode.isArray()) {
             for (JsonNode c : captionsNode) {
@@ -256,6 +301,7 @@ public class AiMarketingServiceImpl implements AiMarketingService {
                         .build());
             }
         }
+
         List<String> hashtags = new ArrayList<>();
         JsonNode hashtagsNode = root.path("hashtags");
         if (hashtagsNode.isArray()) {
@@ -263,23 +309,27 @@ public class AiMarketingServiceImpl implements AiMarketingService {
                 hashtags.add(h.asText());
             }
         }
+
         return AiSessionResultDto.CaptionResultData.builder()
                 .captions(captions)
                 .hashtags(hashtags)
                 .build();
     }
 
+    @SuppressWarnings("unchecked")
     private AiSessionResultDto.PosterResultData parsePosterResult(String json) throws Exception {
         JsonNode root = objectMapper.readTree(json);
         String mode = root.path("mode").asText("HTML");
-        AiSessionResultDto.PosterResultData.PosterResultDataBuilder builder =
-                AiSessionResultDto.PosterResultData.builder().mode(mode);
+
+        AiSessionResultDto.PosterResultData.PosterResultDataBuilder builder = AiSessionResultDto.PosterResultData
+                .builder().mode(mode);
 
         if ("AI_IMAGE".equalsIgnoreCase(mode)) {
             JsonNode imageResult = root.path("imageResult");
             builder.imageBase64(imageResult.path("image_base64").asText(null));
             builder.mimeType(imageResult.path("mime_type").asText("image/png"));
         } else {
+            // HTML mode
             JsonNode content = root.path("posterContent");
             builder.template(content.path("template").asText());
             builder.headline(content.path("headline").asText());
@@ -291,7 +341,8 @@ public class AiMarketingServiceImpl implements AiMarketingService {
             List<String> badges = new ArrayList<>();
             JsonNode badgeNode = content.path("badge_texts");
             if (badgeNode.isArray()) {
-                for (JsonNode b : badgeNode) badges.add(b.asText());
+                for (JsonNode b : badgeNode)
+                    badges.add(b.asText());
             }
             builder.badgeTexts(badges);
 
@@ -305,13 +356,16 @@ public class AiMarketingServiceImpl implements AiMarketingService {
                         .build());
             }
 
+            // Remove-bg result
             JsonNode removeBg = root.path("removeBg");
             if (!removeBg.isMissingNode()) {
                 String noBgUrl = removeBg.path("no_bg_url").asText(null);
-                if (noBgUrl == null) noBgUrl = removeBg.path("original_url").asText(null);
+                if (noBgUrl == null)
+                    noBgUrl = removeBg.path("original_url").asText(null);
                 builder.noBgImageUrl(noBgUrl);
             }
         }
+
         return builder.build();
     }
 
@@ -321,7 +375,8 @@ public class AiMarketingServiceImpl implements AiMarketingService {
     }
 
     private Shop findShop(String username) {
-        return shopRepository.findByOwnerUsername(username)
-                .orElseThrow(() -> new AppException("Bạn chưa có gian hàng.", HttpStatus.BAD_REQUEST));
+        return shopRepository.findFirstByOwnerUsername(username)
+                .orElseThrow(() -> new AppException("Bạn chưa có gian hàng.",
+                        org.springframework.http.HttpStatus.BAD_REQUEST));
     }
 }

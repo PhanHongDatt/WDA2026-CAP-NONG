@@ -15,6 +15,7 @@ export interface AuthResult {
   access_token: string;
   refresh_token?: string;
   user: User;
+  merged_orders_count?: number;
 }
 
 export interface IAuthService {
@@ -89,6 +90,9 @@ export interface IProductService {
     pricePerUnit: number;
     availableQuantity: number;
     locationDetail: string;
+    harvestDate?: string;
+    farmingMethod?: string;
+    pesticideFree?: boolean;
   }): Promise<unknown>;
 }
 
@@ -145,10 +149,23 @@ export interface IOrderService {
 
 /* ─── Shops ─────────────────────────────────────── */
 
+/** ShopFormData — dùng cho cả createShop và updateShop */
+export interface ShopFormData {
+  name: string;
+  slug: string;
+  province: string;
+  ward: string;
+  bio?: string;
+  years_experience?: number;
+  farm_area_m2?: number;
+  avatar_url?: string;
+  cover_url?: string;
+}
+
 export interface IShopService {
   getBySlug(slug: string): Promise<Shop | null>;
   getProducts(shopSlug: string): Promise<Product[]>;
   getFeaturedShops(): Promise<Shop[]>;
-  createShop?(data: { name: string; slug: string; province: string; district: string; bio?: string }): Promise<unknown>;
-  updateShop?(slug: string, data: { name: string; slug: string; province: string; district: string; bio?: string }): Promise<unknown>;
+  createShop?(data: ShopFormData): Promise<unknown>;
+  updateShop?(slug: string, data: ShopFormData): Promise<unknown>;
 }

@@ -114,13 +114,13 @@ export default function PriceAdvisor({ productName, currentPrice, onPriceChange 
       </div>
 
       {/* Interactive visual slider */}
-      <div className="relative py-2 group">
+      <div className="relative py-2 group flex items-center h-8">
         {/* Full Track background (Gradient) */}
-        <div className="absolute inset-y-0 left-0 right-0 h-2 bg-gradient-to-r from-green-400 to-primary rounded-full pointer-events-none mt-[8px] opacity-30" />
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-2 bg-gradient-to-r from-green-400 to-primary rounded-full pointer-events-none opacity-30" />
         
         {/* Filled Track background with Animated Stripes */}
         <div 
-          className="absolute inset-y-0 left-0 h-2 bg-primary rounded-full pointer-events-none mt-[8px] overflow-hidden" 
+          className="absolute top-1/2 -translate-y-1/2 left-0 h-2 bg-primary rounded-full pointer-events-none overflow-hidden" 
           style={{ width: `${percentage}%` }}
         >
           <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.2)_10px,rgba(255,255,255,0.2)_20px)] animate-[bg-scroll_2s_linear_infinite]" style={{ backgroundSize: "28px 28px" }} />
@@ -134,11 +134,11 @@ export default function PriceAdvisor({ productName, currentPrice, onPriceChange 
           step={100}
           value={val}
           onChange={(e) => onPriceChange?.(e.target.value)}
-          className="w-full h-2 rounded-full appearance-none cursor-pointer bg-transparent relative z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md hover:[&::-webkit-slider-thumb]:scale-110 transition-all outline-none align-middle"
+          className="w-full h-2 rounded-full appearance-none cursor-pointer bg-transparent relative z-10 [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:mt-[-6px] [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-primary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md hover:[&::-webkit-slider-thumb]:scale-110 transition-all outline-none"
         />
         
         {/* Tooltip Overlay */}
-        <div className="absolute top-0 right-0 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border px-2 py-1 rounded shadow-sm text-xs font-bold pointer-events-none z-20">
+        <div className="absolute -top-1 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border px-2 py-1 rounded shadow-sm text-xs font-bold pointer-events-none z-20">
           {formatVND(val)}
         </div>
       </div>

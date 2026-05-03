@@ -19,6 +19,7 @@ import com.capnong.repository.ShopRepository;
 import com.capnong.repository.UnitRepository;
 import com.capnong.service.CloudinaryService;
 import com.capnong.service.ProductService;
+import com.capnong.service.SeasonalConfigService;
 import com.capnong.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -46,6 +47,7 @@ public class ProductServiceImpl implements ProductService {
     private final UnitRepository unitRepository;
     private final CloudinaryService cloudinaryService;
     private final ProductMapper productMapper;
+    private final SeasonalConfigService seasonalConfigService;
 
     // ═══════════════════════════════════════════════════════════════
     //  CREATE
@@ -53,6 +55,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "dashboard_farmer", key = "#username")
     public ProductResponse createProduct(ProductCreateRequest request, String username) {
         Shop shop = findShopByUsername(username);
         ProductCategory category = parseCategory(request.getCategory());
@@ -76,7 +79,14 @@ public class ProductServiceImpl implements ProductService {
                 .weight(request.getWeight())
                 .origin(request.getOrigin())
                 .shelfLife(request.getShelfLife())
-                .status(ProductStatus.UPCOMING)
+                .status(seasonalConfigService.calculateProductStatus(
+                        shop.getProvince(),
+                        category.name(),
+                        request.getHarvestDate(),
+                        request.getAvailableFrom(),
+                        request.getAvailableQuantity(),
+                        java.time.LocalDate.now()
+                ))
                 .build();
 
         return productMapper.toProductResponse(productRepository.save(product));
@@ -140,6 +150,14 @@ public class ProductServiceImpl implements ProductService {
         product.setWeight(request.getWeight());
         product.setOrigin(request.getOrigin());
         product.setShelfLife(request.getShelfLife());
+        product.setStatus(seasonalConfigService.calculateProductStatus(
+                product.getShop().getProvince(),
+                product.getCategory().name(),
+                request.getHarvestDate(),
+                request.getAvailableFrom(),
+                request.getAvailableQuantity(),
+                java.time.LocalDate.now()
+        ));
 
         return productMapper.toProductResponse(productRepository.save(product));
     }
@@ -263,6 +281,22 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    @Override
+    @Transactional
+    @CacheEvict(value = "products", key = "#productId")
+    public void updateImageSortOrder(UUID productId, List<UUID> imageIds, String username) {
+        findProductOwnedBy(productId, username);
+        
+        for (short i = 0; i < imageIds.size(); i++) {
+            UUID imgId = imageIds.get(i);
+            ProductImage image = productImageRepository.findById(imgId).orElse(null);
+            if (image != null && image.getProduct().getId().equals(productId)) {
+                image.setSortOrder(i);
+                productImageRepository.save(image);
+            }
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  HELPERS
     // ═══════════════════════════════════════════════════════════════
@@ -277,7 +311,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private Shop findShopByUsername(String username) {
-        return shopRepository.findByOwnerUsername(username)
+        return shopRepository.findFirstByOwnerUsername(username)
                 .orElseThrow(() -> new AppException("Bạn chưa có gian hàng. Vui lòng tạo gian hàng trước.",
                         HttpStatus.BAD_REQUEST));
     }

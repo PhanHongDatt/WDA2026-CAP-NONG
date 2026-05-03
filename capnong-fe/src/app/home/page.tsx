@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Leaf, Truck, ShieldCheck, Users } from "lucide-react";
 import ProductCard from "@/components/ui/ProductCard";
 import FarmCard from "@/components/ui/FarmCard";
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryGrid from "@/components/ui/CategoryGrid";
 import FlashDeal from "@/components/ui/FlashDeal";
+import CoopPoolCard from "@/components/ui/CoopPoolCard";
 import { productService, shopService } from "@/services";
-import { MOCK_SEASONAL_PRODUCTS, MOCK_NEW_PRODUCTS, MOCK_SHOPS } from "@/lib/mock-data";
+import { getOpenBundles } from "@/services/api/htx";
+import { MOCK_SEASONAL_PRODUCTS, MOCK_NEW_PRODUCTS, MOCK_SHOPS, MOCK_BUNDLE } from "@/lib/mock-data";
+import type { Bundle } from "@/types/order";
 
 
 
@@ -32,20 +35,20 @@ const jsonLd = {
     {
       "@type": "WebSite",
       name: "Cạp Nông",
-      url: "https://capnong.vn",
+      url: "https://capnong.shop",
       description: "Hệ sinh thái thương mại nông sản thông minh",
       inLanguage: "vi",
       potentialAction: {
         "@type": "SearchAction",
-        target: "https://capnong.vn/catalog?q={search_term_string}",
+        target: "https://capnong.shop/catalog?q={search_term_string}",
         "query-input": "required name=search_term_string",
       },
     },
     {
       "@type": "Organization",
       name: "Cạp Nông",
-      url: "https://capnong.vn",
-      logo: "https://capnong.vn/images/logo.png",
+      url: "https://capnong.shop",
+      logo: "https://capnong.shop/images/logo.png",
       sameAs: [],
       contactPoint: {
         "@type": "ContactPoint",
@@ -58,7 +61,7 @@ const jsonLd = {
 };
 
 export default async function HomePage() {
-  const [seasonalProducts, newProducts, shops] = await Promise.all([
+  const [seasonalProducts, newProducts, shops, openBundles] = await Promise.all([
     productService.getSeasonalProducts().then((result) => {
       // If the backend API returns an empty list, forcibly inject mock data to ensure the UI is not empty
       if (result && result.length > 0) return result;
@@ -74,6 +77,15 @@ export default async function HomePage() {
       if (result && result.length > 0) return result;
       return MOCK_SHOPS;
     }).catch(() => MOCK_SHOPS),
+
+    // Fetch open bundles — BE: GET /api/v1/cooperatives/bundles (snake_case response)
+    getOpenBundles().then((result) => {
+      if (Array.isArray(result) && result.length > 0) {
+        // BE response already snake_case — khớp với Bundle type trong types/order.ts
+        return result as unknown as Bundle[];
+      }
+      return [MOCK_BUNDLE];
+    }).catch(() => [MOCK_BUNDLE]),
   ]);
   return (
     <>
@@ -88,10 +100,10 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" suppressHydrationWarning>
             {[
-              { gradient: "card-gradient-organic", icon: "🌿", title: "Hữu cơ", desc: "VietGAP / GlobalGAP" },
-              { gradient: "card-gradient-delivery", icon: "🚛", title: "Giao tận nhà", desc: "Tươi ngon mỗi ngày" },
-              { gradient: "card-gradient-trace", icon: "🔍", title: "Truy xuất", desc: "Nguồn gốc minh bạch" },
-              { gradient: "card-gradient-coop", icon: "🤝", title: "Gom đơn", desc: "Tiết kiệm 20-40%" },
+              { gradient: "card-gradient-organic", icon: <Leaf className="w-7 h-7 text-green-600" />, title: "Hữu cơ", desc: "VietGAP / GlobalGAP" },
+              { gradient: "card-gradient-delivery", icon: <Truck className="w-7 h-7 text-blue-600" />, title: "Giao tận nhà", desc: "Tươi ngon mỗi ngày" },
+              { gradient: "card-gradient-trace", icon: <ShieldCheck className="w-7 h-7 text-indigo-600" />, title: "Truy xuất", desc: "Nguồn gốc minh bạch" },
+              { gradient: "card-gradient-coop", icon: <Users className="w-7 h-7 text-orange-600" />, title: "Gom đơn", desc: "Tiết kiệm 20-40%" },
             ].map((item) => (
               <div
                 key={item.title}
@@ -99,7 +111,7 @@ export default async function HomePage() {
                 className={`${item.gradient} relative overflow-visible rounded-2xl p-5 pt-10 text-center shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-300`}
               >
                 {/* Icon — nhô lên trên viền card */}
-                <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-4xl drop-shadow-lg bg-white/20 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center">
+                <span className="absolute -top-4 left-1/2 -translate-x-1/2 drop-shadow-lg bg-white/90 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center border border-white/20">
                   {item.icon}
                 </span>
                 <p className="font-extrabold text-white text-base leading-tight">{item.title}</p>
@@ -187,8 +199,10 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* SECTION: Cooperative Pool — hiện khi có API gom đơn thật */}
-        {/* TODO: Tích hợp API /api/bundles/open khi sẵn sàng */}
+        {/* SECTION: Cooperative Pool — Gom đơn nông sản */}
+        {openBundles.length > 0 && openBundles.filter(b => b.status === "OPEN").slice(0, 1).map((bundle) => (
+          <CoopPoolCard key={bundle.id} pool={bundle} />
+        ))}
 
         {/* SECTION: Featured Farms — giống hình tham khảo carousel */}
         <section className="mb-12 relative">

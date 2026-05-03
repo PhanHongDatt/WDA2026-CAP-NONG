@@ -476,7 +476,7 @@ servers:
 
 description: Spring Boot - Development
 
-- url: https://api.capnong.vn/v1
+- url: https://api.capnong.shop/v1
 
 description: Spring Boot - Production
 

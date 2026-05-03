@@ -16,9 +16,13 @@ import java.math.BigDecimal;
 @SQLRestriction("deleted = false")
 public class Shop extends BaseEntity {
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
+
+    @Column(name = "is_htx_shop", nullable = false)
+    @Builder.Default
+    private Boolean isHtxShop = false;
 
     @Column(nullable = false, unique = true, length = 100)
     private String slug;
@@ -30,7 +34,7 @@ public class Shop extends BaseEntity {
     private String province;
 
     @Column(nullable = false, length = 100)
-    private String district;
+    private String ward;
 
     @Column(columnDefinition = "TEXT")
     private String bio;

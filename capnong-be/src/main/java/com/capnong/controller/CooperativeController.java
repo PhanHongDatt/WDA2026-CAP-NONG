@@ -5,6 +5,7 @@ import com.capnong.dto.request.PledgeRequest;
 import com.capnong.dto.response.ApiResponse;
 import com.capnong.dto.response.BundleResponseDto;
 import com.capnong.dto.response.PledgeResponseDto;
+import com.capnong.dto.response.ShopResponse;
 import com.capnong.security.UserDetailsImpl;
 import com.capnong.service.CooperativeService;
 import jakarta.validation.Valid;
@@ -56,14 +57,48 @@ public class CooperativeController {
      * Bundles của 1 HTX_SHOP.
      */
     @GetMapping("/shops/{shopId}/bundles")
-    @Operation(summary = "Lấy các gói gom đơn của HTX", description = "Lấy tất cả các bundles đã được tạo bởi một Hợp tác xã (HTX_SHOP) cụ thể.")
+    @Operation(summary = "Lấy các gói gom đơn của HTX (theo HtxShop ID)", description = "Lấy tất cả các bundles đã được tạo bởi một Hợp tác xã (HTX_SHOP) cụ thể.")
     public ResponseEntity<ApiResponse<List<BundleResponseDto>>> getShopBundles(@PathVariable UUID shopId) {
         return ResponseEntity.ok(ApiResponse.success("OK", cooperativeService.getShopBundles(shopId)));
+    }
+
+    /**
+     * Bundles theo Shop.id (FE shop page truyền Shop.id).
+     */
+    @GetMapping("/shops-by-id/{shopId}/bundles")
+    @Operation(summary = "Lấy các gói gom đơn theo Shop ID", description = "Lấy bundles theo Shop.id (không phải HtxShop.id) để hỗ trợ shop page.")
+    public ResponseEntity<ApiResponse<List<BundleResponseDto>>> getShopBundlesByShopId(@PathVariable UUID shopId) {
+        return ResponseEntity.ok(ApiResponse.success("OK", cooperativeService.getShopBundlesByShopId(shopId)));
     }
 
     // ═══════════════════════════════════════════════════════════════
     //  BUNDLE — Manager Actions
     // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Kích hoạt gian hàng HTX (explicit)
+     */
+    @PostMapping("/shop")
+    @PreAuthorize("hasRole('HTX_MANAGER')")
+    @Operation(summary = "Kích hoạt gian hàng HTX", description = "Tạo rõ ràng gian hàng cho HTX thay vì đợi tạo Bundle đầu tiên.")
+    public ResponseEntity<ApiResponse<ShopResponse>> activateHtxShop(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(ApiResponse.success("Kích hoạt gian hàng HTX thành công", 
+                cooperativeService.createExplicitHtxShop(userDetails.getId())));
+    }
+
+    /**
+     * Tất cả bundles của HTX (mọi trạng thái) — dành cho Manager dashboard.
+     */
+    @GetMapping("/my-bundles")
+    @PreAuthorize("hasAnyRole('HTX_MANAGER', 'HTX_MEMBER')")
+    @Operation(summary = "Lấy tất cả bundles của HTX mình",
+            description = "Trả về tất cả bundles (OPEN, FULL, CONFIRMED, EXPIRED, CANCELLED) của HTX mà người dùng đang thuộc.")
+    public ResponseEntity<ApiResponse<List<BundleResponseDto>>> getMyHtxBundles(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(ApiResponse.success("OK",
+                cooperativeService.getMyHtxBundles(userDetails.getId())));
+    }
 
     /**
      * HTX_MANAGER tạo Bundle mới.

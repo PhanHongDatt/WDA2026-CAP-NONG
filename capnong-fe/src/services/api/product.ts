@@ -128,6 +128,9 @@ export const apiProductService: IProductService = {
     pricePerUnit: number;
     availableQuantity: number;
     locationDetail: string;
+    harvestDate?: string;
+    farmingMethod?: string;
+    pesticideFree?: boolean;
   }): Promise<unknown> {
     const reqData = {
       name: data.name,
@@ -137,6 +140,9 @@ export const apiProductService: IProductService = {
       price_per_unit: data.pricePerUnit,
       available_quantity: data.availableQuantity,
       location_detail: data.locationDetail,
+      harvest_date: data.harvestDate,
+      farming_method: data.farmingMethod,
+      pesticide_free: data.pesticideFree,
     };
     const res = await api.post("/api/products", reqData);
     return res.data.data || res.data;
@@ -147,6 +153,21 @@ export const apiProductService: IProductService = {
 export const createProduct = apiProductService.createProduct!.bind(apiProductService);
 
 /* ═══════ Product Management (FARMER+) ═══════ */
+
+/**
+ * Lấy danh sách sản phẩm của Seller hiện tại — GET /api/products/seller
+ */
+export async function getSellerProducts(page = 0, size = 50): Promise<PaginatedResult<Product>> {
+  const res = await api.get("/api/products/seller", { params: { page, size } });
+  const data = res.data.data || res.data;
+  return {
+    content: normalizeProducts(data.content || []),
+    total_elements: data.total_elements ?? data.totalElements ?? 0,
+    total_pages: data.total_pages ?? data.totalPages ?? 0,
+    page: data.page ?? 0,
+    size: data.size ?? 20,
+  };
+}
 
 /**
  * Cập nhật toàn bộ thông tin sản phẩm — PUT /api/products/{id}
@@ -240,4 +261,10 @@ export async function deleteProductImages(productId: string, imageIds: string[])
   await api.delete(`/api/products/${productId}/images`, {
     params: { ids: imageIds.join(",") },
   });
+}
+/**
+ * Cập nhật thứ tự ảnh — PUT /api/products/{productId}/images/sort
+ */
+export async function updateProductImageSort(productId: string, imageIds: string[]): Promise<void> {
+  await api.put(`/api/products/${productId}/images/sort`, imageIds);
 }

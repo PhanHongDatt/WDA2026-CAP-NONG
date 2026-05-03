@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/dashboard/", "/checkout/", "/cart/"],
       },
     ],
-    sitemap: "https://capnong.vn/sitemap.xml",
+    sitemap: "https://capnong.shop/sitemap.xml",
   };
 }

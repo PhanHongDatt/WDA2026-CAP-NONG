@@ -172,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /* ─── Logout ─── */
   const logout = useCallback(() => {
     authService.logout();
+    sessionStorage.removeItem("capnong-shop-prompt-dismissed");
     setUser(null);
     setViewMode("BUY");
   }, []);

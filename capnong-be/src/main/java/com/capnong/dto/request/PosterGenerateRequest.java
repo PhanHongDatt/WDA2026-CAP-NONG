@@ -29,4 +29,8 @@ public class PosterGenerateRequest {
      * Ví dụ: gemini-2.5-flash-image, gemini-3.1-flash-image-preview, imagen-4.0-generate-001
      */
     private String imageModel;
+
+    // AI Refinement
+    private String instruction;
+    private Object currentState;
 }

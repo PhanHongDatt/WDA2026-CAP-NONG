@@ -40,8 +40,8 @@ public class SeasonalConfigController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('HTX_MANAGER', 'ADMIN')")
-    @Operation(summary = "Tạo cấu hình mùa vụ", description = "HTX_MANAGER hoặc ADMIN tạo config mùa vụ")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Tạo cấu hình mùa vụ", description = "Chỉ ADMIN tạo config mùa vụ")
     public ResponseEntity<ApiResponse<SeasonalConfigResponse>> createConfig(
             @Valid @RequestBody SeasonalConfigRequest request,
             Authentication authentication) {
@@ -53,7 +53,7 @@ public class SeasonalConfigController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('HTX_MANAGER', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật cấu hình mùa vụ")
     public ResponseEntity<ApiResponse<SeasonalConfigResponse>> updateConfig(
             @PathVariable UUID id,

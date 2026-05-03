@@ -49,7 +49,7 @@ public class AiListingServiceImpl implements AiListingService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-        Shop shop = shopRepository.findByOwnerUsername(username)
+        Shop shop = shopRepository.findFirstByOwnerUsername(username)
                 .orElseThrow(() -> new AppException("Bạn chưa có gian hàng.", HttpStatus.BAD_REQUEST));
 
         // 1. Tạo session
@@ -94,7 +94,7 @@ public class AiListingServiceImpl implements AiListingService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
 
-        Shop shop = shopRepository.findByOwnerUsername(username)
+        Shop shop = shopRepository.findFirstByOwnerUsername(username)
                 .orElseThrow(() -> new AppException("Bạn chưa có gian hàng.", HttpStatus.BAD_REQUEST));
 
         // 1. Tạo session

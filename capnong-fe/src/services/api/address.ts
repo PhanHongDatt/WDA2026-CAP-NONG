@@ -40,7 +40,7 @@ export interface UserAddress {
   fullName: string;
   phone: string;
   street: string;
-  district: string;
+  ward: string;
   province: string;
   isDefault: boolean;
 }
@@ -57,7 +57,7 @@ export const apiUserAddressService = {
       fullName: item.full_name || item.fullName || "",
       phone: item.phone || "",
       street: item.street || "",
-      district: item.district || "",
+      ward: item.ward || "",
       province: item.province || "",
       isDefault: item.is_default || item.isDefault || false,
     }));
@@ -69,7 +69,7 @@ export const apiUserAddressService = {
       full_name: data.fullName,
       phone: data.phone,
       street: data.street,
-      district: data.district,
+      ward: data.ward,
       province: data.province,
       is_default: data.isDefault,
     };
@@ -80,7 +80,7 @@ export const apiUserAddressService = {
       fullName: item.full_name || item.fullName || "",
       phone: item.phone || "",
       street: item.street || "",
-      district: item.district || "",
+      ward: item.ward || "",
       province: item.province || "",
       isDefault: item.is_default || item.isDefault || false,
     };
@@ -92,7 +92,7 @@ export const apiUserAddressService = {
       full_name: data.fullName,
       phone: data.phone,
       street: data.street,
-      district: data.district,
+      ward: data.ward,
       province: data.province,
       is_default: data.isDefault,
     };
@@ -103,7 +103,7 @@ export const apiUserAddressService = {
       fullName: item.full_name || item.fullName || "",
       phone: item.phone || "",
       street: item.street || "",
-      district: item.district || "",
+      ward: item.ward || "",
       province: item.province || "",
       isDefault: item.is_default || item.isDefault || false,
     };
@@ -123,7 +123,7 @@ export const apiUserAddressService = {
       fullName: item.full_name || item.fullName || "",
       phone: item.phone || "",
       street: item.street || "",
-      district: item.district || "",
+      ward: item.ward || "",
       province: item.province || "",
       isDefault: item.is_default || item.isDefault || false,
     };

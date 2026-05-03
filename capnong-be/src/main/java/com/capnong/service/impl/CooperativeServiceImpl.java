@@ -39,6 +39,7 @@ public class CooperativeServiceImpl implements CooperativeService {
     private final UnitRepository unitRepository;
     private final TelegramNotificationService telegramNotificationService;
     private final BundleMapper bundleMapper;
+    private final com.capnong.mapper.ShopMapper shopMapper;
 
     public CooperativeServiceImpl(CooperativeBundleRepository bundleRepository,
                                   BundlePledgeRepository pledgeRepository,
@@ -49,7 +50,8 @@ public class CooperativeServiceImpl implements CooperativeService {
                                   ShopRepository shopRepository,
                                   UnitRepository unitRepository,
                                   TelegramNotificationService telegramNotificationService,
-                                  BundleMapper bundleMapper) {
+                                  BundleMapper bundleMapper,
+                                  com.capnong.mapper.ShopMapper shopMapper) {
         this.bundleRepository = bundleRepository;
         this.pledgeRepository = pledgeRepository;
         this.htxShopRepository = htxShopRepository;
@@ -60,13 +62,46 @@ public class CooperativeServiceImpl implements CooperativeService {
         this.unitRepository = unitRepository;
         this.telegramNotificationService = telegramNotificationService;
         this.bundleMapper = bundleMapper;
+        this.shopMapper = shopMapper;
+    }
+
+    @Override
+    @Transactional
+    public com.capnong.dto.response.ShopResponse createExplicitHtxShop(UUID managerId) {
+        User manager = findUserOrThrow(managerId);
+        Htx htx = htxRepository.findByManager_Id(managerId)
+                .orElseThrow(() -> new AppException("Bạn chưa quản lý HTX nào", HttpStatus.FORBIDDEN));
+
+        if (htxShopRepository.findByHtx_Id(htx.getId()).isPresent()) {
+            throw new AppException("HTX của bạn đã kích hoạt gian hàng", HttpStatus.CONFLICT);
+        }
+
+        HtxShop htxShop = createHtxShop(htx, manager);
+        return shopMapper.toShopResponse(htxShop.getShop());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<BundleResponseDto> getOpenBundles() {
         return bundleRepository.findByStatus(BundleStatus.OPEN).stream()
-                .map(b -> bundleMapper.toBundleDto(b, false))
+                .map(b -> bundleMapper.toBundleDto(b, true))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BundleResponseDto> getMyHtxBundles(UUID userId) {
+        User user = findUserOrThrow(userId);
+        Htx htx = user.getHtx();
+        if (htx == null) {
+            // Fallback: check if user is a manager
+            htx = htxRepository.findByManager_Id(userId).orElse(null);
+        }
+        if (htx == null) {
+            throw new AppException("Bạn chưa thuộc HTX nào", HttpStatus.FORBIDDEN);
+        }
+        return bundleRepository.findByHtxShop_Htx_IdOrderByCreatedAtDesc(htx.getId()).stream()
+                .map(b -> bundleMapper.toBundleDto(b, true))
                 .collect(Collectors.toList());
     }
 
@@ -81,15 +116,25 @@ public class CooperativeServiceImpl implements CooperativeService {
     @Transactional(readOnly = true)
     public List<BundleResponseDto> getShopBundles(UUID htxShopId) {
         return bundleRepository.findByHtxShop_IdOrderByCreatedAtDesc(htxShopId).stream()
-                .map(b -> bundleMapper.toBundleDto(b, false))
+                .map(b -> bundleMapper.toBundleDto(b, true))
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<PledgeResponseDto> getMyPledges(UUID farmerId) {
-        return pledgeRepository.findByFarmer_IdAndStatus(farmerId, PledgeStatus.ACTIVE).stream()
+        // Fix #4: return all pledge statuses so FE dashboard shows full history
+        return pledgeRepository.findByFarmer_IdOrderByCreatedAtDesc(farmerId).stream()
                 .map(bundleMapper::toPledgeDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BundleResponseDto> getShopBundlesByShopId(UUID shopId) {
+        // Fix #6: FE passes Shop.id, not HtxShop.id
+        return bundleRepository.findByHtxShop_Shop_IdOrderByCreatedAtDesc(shopId).stream()
+                .map(b -> bundleMapper.toBundleDto(b, true))
                 .collect(Collectors.toList());
     }
 
@@ -357,7 +402,7 @@ public class CooperativeServiceImpl implements CooperativeService {
                 .unit(unit)
                 .pricePerUnit(bundle.getPricePerUnit())
                 .availableQuantity(bundle.getCurrentPledgedQuantity())
-                .locationDetail(htxShop.getHtx().getProvince() + ", " + htxShop.getHtx().getDistrict())
+                .locationDetail(htxShop.getHtx().getProvince() + ", " + htxShop.getHtx().getWard())
                 .status(ProductStatus.IN_SEASON)
                 .bundleId(bundle.getId())
                 .build();
@@ -368,22 +413,29 @@ public class CooperativeServiceImpl implements CooperativeService {
     }
 
     private HtxShop createHtxShop(Htx htx, User manager) {
-        Shop shop = Shop.builder()
+        String htxSlug = "htx-" + htx.getOfficialCode();
+        // Avoid slug collision
+        if (shopRepository.existsBySlug(htxSlug)) {
+            htxSlug = htxSlug + "-" + System.currentTimeMillis();
+        }
+        
+        Shop htxShopEntity = Shop.builder()
                 .owner(manager)
-                .slug("htx-" + htx.getOfficialCode())
+                .slug(htxSlug)
                 .name("Gian hàng " + htx.getName())
                 .province(htx.getProvince())
-                .district(htx.getDistrict())
+                .ward(htx.getWard())
                 .bio("Gian hàng sỉ của " + htx.getName())
+                .isHtxShop(true)
                 .build();
-        shop = shopRepository.save(shop);
+        htxShopEntity = shopRepository.save(htxShopEntity);
 
         HtxShop htxShop = HtxShop.builder()
                 .htx(htx)
                 .slug("htx-" + htx.getOfficialCode())
                 .name("HTX " + htx.getName())
                 .description("Gian hàng sỉ của " + htx.getName())
-                .shop(shop)
+                .shop(htxShopEntity)
                 .build();
 
         return htxShopRepository.save(htxShop);
@@ -396,7 +448,7 @@ public class CooperativeServiceImpl implements CooperativeService {
                 .slug(htxShop.getSlug())
                 .name(htxShop.getName())
                 .province(htx.getProvince())
-                .district(htx.getDistrict())
+                .ward(htx.getWard())
                 .bio(htxShop.getDescription())
                 .build();
         shop = shopRepository.save(shop);

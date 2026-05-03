@@ -27,7 +27,7 @@ db_password       = "your-db-password" # ⚠️ CHANGE THIS (min 8 chars)
 db_storage_size   = 20                 # GB
 
 # ─── Domain ──────────────────────────────────
-domain_name = ""                       # e.g. "capnong.vn"
+domain_name = ""                       # e.g. "capnong.shop"
 
 # ─── Security ────────────────────────────────
 ssh_allowed_cidr = "0.0.0.0/0"        # ⚠️ Restrict to your IP: "1.2.3.4/32"

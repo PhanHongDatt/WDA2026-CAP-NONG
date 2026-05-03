@@ -17,7 +17,7 @@ public class HtxResponse {
     private String name;
     private String officialCode;
     private String province;
-    private String district;
+    private String ward;
     private String description;
     private String documentUrl;
     private String status;

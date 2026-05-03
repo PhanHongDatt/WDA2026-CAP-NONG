@@ -1,8 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { LayoutGrid, Apple, Carrot, Wheat, Nut, Leaf, ShoppingBasket } from "lucide-react";
 
 import { CATEGORIES } from "@/lib/constants";
+
+const CategoryIcon = ({ id, className }: { id: string, className?: string }) => {
+  switch (id) {
+    case "ALL": return <LayoutGrid className={className} />;
+    case "FRUIT": return <Apple className={className} />;
+    case "VEGETABLE": return <Carrot className={className} />;
+    case "GRAIN": return <Wheat className={className} />;
+    case "TUBER": return <Nut className={className} />;
+    case "HERB": return <Leaf className={className} />;
+    case "OTHER": return <ShoppingBasket className={className} />;
+    default: return <LayoutGrid className={className} />;
+  }
+};
 
 export default function CategoryGrid() {
   return (
@@ -19,8 +33,8 @@ export default function CategoryGrid() {
                 href={`/catalog?category=${cat.id}`}
                 className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-50 hover:border-primary/30 hover:bg-green-50/50 transition-all group cursor-pointer"
               >
-                <span className="text-3xl group-hover:scale-110 transition-transform">
-                  {cat.icon}
+                <span className="group-hover:scale-110 transition-transform text-primary/80 group-hover:text-primary">
+                  <CategoryIcon id={cat.id} className="w-8 h-8" />
                 </span>
                 <span className="text-xs text-gray-600 font-medium text-center leading-tight group-hover:text-primary transition-colors">
                   {cat.label}

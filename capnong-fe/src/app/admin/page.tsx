@@ -175,7 +175,7 @@ function AdminContent() {
           name: h.name || "",
           registration_code: h.official_code || h.officialCode || "",
           province: h.province || "",
-          commune: h.district || "",
+          commune: h.ward || "",
           description: h.description || "",
           creator_name: h.created_by_username || h.createdByUsername || h.manager_full_name || h.managerFullName || "",
           creator_phone: "",

@@ -80,7 +80,7 @@ function parseTranscript(transcript: string): VoiceProductResult {
 
   // Extract quantity
   let quantity = 0;
-  const qtyMatch = t.match(/(\d+)\s*(tạ|tấn|yến|kg|ký|trái|hộp|bó)/i)
+  const qtyMatch = t.match(/(\d+)\s*(t|tấn|yến|kg|ký|trái|hộp|bó)/i)
     || t.match(/(?:có|bán)\s+(\d+)\s/i);
   if (qtyMatch) {
     quantity = parseInt(qtyMatch[1]);
@@ -91,10 +91,11 @@ function parseTranscript(transcript: string): VoiceProductResult {
   }
 
   // Extract unit
-  let unit = "Kg";
-  if (t.includes("trái") || t.includes("quả")) unit = "Trái";
-  if (t.includes("hộp") || t.includes("khay")) unit = "Hộp";
-  if (t.includes("bó")) unit = "Bó";
+  let unit = "KG";
+  if (t.includes("trái") || t.includes("quả")) unit = "TRAI";
+  if (t.includes("hộp") || t.includes("khay") || t.includes("thùng")) unit = "HOP";
+  if (t.includes("bó") || t.includes("chùm")) unit = "BO";
+  if (t.includes("bao") || t.includes("túi")) unit = "BAO";
 
   // Extract location
   let location = "";
@@ -113,9 +114,9 @@ function parseTranscript(transcript: string): VoiceProductResult {
 
   // Extract farming method
   let farmingMethod = "";
-  if (t.includes("hữu cơ") || t.includes("organic")) farmingMethod = "Hữu cơ";
-  if (t.includes("vietgap")) farmingMethod = "VietGAP";
-  if (t.includes("không thuốc") || t.includes("ko thuốc") || t.includes("không dùng thuốc")) farmingMethod = "Hữu cơ";
+  if (t.includes("hữu cơ") || t.includes("organic")) farmingMethod = "ORGANIC";
+  if (t.includes("vietgap")) farmingMethod = "VIETGAP";
+  if (t.includes("không thuốc") || t.includes("ko thuốc") || t.includes("không dùng thuốc")) farmingMethod = "ORGANIC";
 
   // Build description from transcript
   const description = transcript;
@@ -291,11 +292,24 @@ export default function VoiceRecorder({ onResult }: VoiceRecorderProps) {
         return obj === "HIGH" ? 0.95 : obj === "MEDIUM" ? 0.7 : 0.4;
       };
 
+      const normalizeUnitCode = (u: string) => {
+        const s = String(u).toLowerCase();
+        if (s.includes("kg") || s.includes("ky") || s.includes("ký")) return "KG";
+        if (s.includes("tạ") || s.includes("ta")) return "TA";
+        if (s.includes("tấn") || s.includes("tan")) return "TAN";
+        if (s.includes("yến") || s.includes("yen")) return "YEN";
+        if (s.includes("trái") || s.includes("quả") || s.includes("trai")) return "TRAI";
+        if (s.includes("hộp") || s.includes("hop") || s.includes("thùng") || s.includes("thung")) return "HOP";
+        if (s.includes("bó") || s.includes("bo") || s.includes("chùm") || s.includes("chum")) return "BO";
+        if (s.includes("bao") || s.includes("túi") || s.includes("tui")) return "BAO";
+        return "KG";
+      };
+
       const result: VoiceProductResult = {
         name: safeGet(apiResult.product_name || apiResult.name, "Sản phẩm mới"),
         description: safeGet(apiResult.description, textToProcess),
         price: Number(safeGet(apiResult.price_per_unit || apiResult.pricePerUnit, 0)),
-        unit: safeGet(apiResult.quantity_unit || apiResult.unitCode, "Kg"),
+        unit: normalizeUnitCode(safeGet(apiResult.quantity_unit || apiResult.unitCode, "KG")),
         quantity: Number(safeGet(apiResult.quantity || apiResult.availableQuantity, 0)),
         location: safeGet(apiResult.location || apiResult.harvestNote, ""),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

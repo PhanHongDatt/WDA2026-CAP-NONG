@@ -33,7 +33,7 @@ public class TelegramNotificationServiceImpl implements TelegramNotificationServ
 
     @Override
     public Notification notify(UUID userId, NotificationType type, String title, String body) {
-        // 1. In-app notification
+        // 1. In-app notification (DB)
         Notification notification = notificationService.createNotification(userId, type, title, body);
 
         // 2. Telegram (async, non-blocking)

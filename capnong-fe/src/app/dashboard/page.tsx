@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -17,6 +17,8 @@ import SimpleBarChart from "@/components/ui/SimpleBarChart";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 
+const AIDigestCard = lazy(() => import("@/components/ui/AIDigestCard"));
+
 const STATS = [
   { label: "Đơn hàng", value: "28", icon: Package, color: "text-info bg-blue-50 dark:bg-blue-900/30" },
   { label: "Sản phẩm", value: "12", icon: ShoppingCart, color: "text-primary bg-primary-50 dark:bg-primary-dark" },
@@ -25,9 +27,9 @@ const STATS = [
 ];
 
 const RECENT_ORDERS = [
-  { id: "#CN-0042", buyer: "Nguyễn Thu Hà", product: "Xoài Cát Hòa Lộc x2", total: 190000, status: "Đang giao", statusColor: "text-primary bg-primary-50" },
-  { id: "#CN-0041", buyer: "Trần Minh Tuấn", product: "Cam Sành Hà Giang x5", total: 225000, status: "Đã xác nhận", statusColor: "text-info bg-blue-50" },
-  { id: "#CN-0040", buyer: "Lê Văn Bình", product: "Bưởi Da Xanh x3", total: 204000, status: "Đã nhận", statusColor: "text-success bg-green-50" },
+  { originalId: "mock1", id: "#CN-0042", buyer: "Nguyễn Thu Hà", product: "Xoài Cát Hòa Lộc x2", total: 190000, status: "Đang giao", statusColor: "text-primary bg-primary-50" },
+  { originalId: "mock2", id: "#CN-0041", buyer: "Trần Minh Tuấn", product: "Cam Sành Hà Giang x5", total: 225000, status: "Đã xác nhận", statusColor: "text-info bg-blue-50" },
+  { originalId: "mock3", id: "#CN-0040", buyer: "Lê Văn Bình", product: "Bưởi Da Xanh x3", total: 204000, status: "Đã nhận", statusColor: "text-success bg-green-50" },
 ];
 
 const REVENUE_DATA = [
@@ -57,23 +59,25 @@ const EMPTY_STATS = [
 function DashboardContent() {
   const { user, isHtxManager } = useAuth();
   const displayName = user?.full_name || "Nhà vườn";
-  const roleSubtitle = isHtxManager
-    ? `Tổng quan hợp tác xã${user?.htx_name ? " — " + user.htx_name : ""}`
-    : "Tổng quan hoạt động gian hàng của bạn";
+  const roleSubtitle = "Tổng quan hoạt động gian hàng của bạn";
 
   const [stats, setStats] = useState<any[]>(USE_MOCK ? STATS : EMPTY_STATS);
   const [recentOrders, setRecentOrders] = useState(USE_MOCK ? RECENT_ORDERS : []);
   const [revenueData, setRevenueData] = useState(USE_MOCK ? REVENUE_DATA : [] as { label: string; value: number }[]);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [productNames, setProductNames] = useState<string[] | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
       const { orderService } = await import("@/services");
       const { apiDashboardService } = await import("@/services/api/dashboard");
+      const { getSellerProducts } = await import("@/services/api/product");
       
-      const [summaryRes, ordersRes, revenueRes] = await Promise.allSettled([
+      const [summaryRes, ordersRes, revenueRes, productsRes] = await Promise.allSettled([
         apiDashboardService.getFarmerSummary(),
         orderService.getSellerSubOrders({ size: 3 }),
         apiDashboardService.getMonthlyRevenue(),
+        getSellerProducts(0, 10),
       ]);
 
       const summary = summaryRes.status === "fulfilled" 
@@ -98,6 +102,8 @@ function DashboardContent() {
         { label: "Đánh giá", value: ratingDisplay, icon: Star, color: "text-warning bg-yellow-50 dark:bg-yellow-900/30" },
       ]);
 
+      setPendingOrdersCount(summary.pendingOrders || 0);
+
       if (orders.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setRecentOrders(orders.slice(0, 3).map((o: any) => {
@@ -109,7 +115,8 @@ function DashboardContent() {
           }).join(", ") || "—";
 
           return {
-            id: o.subOrderCode || String(o.id || "").substring(0, 8) || "#???",
+            originalId: o.id, // Full UUID for React key
+            id: o.subOrderCode || String(o.id || "").substring(0, 8).toUpperCase() || "#???",
             buyer: o.buyerName || o.order?.buyerName || o.order?.guestName || o.order?.buyer_name || o.order?.guest_name || "Khách",
             product: itemsText,
             total: o.subtotal || o.totalAmount || 0,
@@ -124,6 +131,12 @@ function DashboardContent() {
       // Monthly revenue chart
       if (revenueRes.status === "fulfilled" && revenueRes.value.length > 0) {
         setRevenueData(revenueRes.value.map(r => ({ label: r.label, value: r.revenue })));
+      }
+
+      if (productsRes.status === "fulfilled") {
+        setProductNames(productsRes.value.content.map(p => p.name));
+      } else {
+        setProductNames([]);
       }
     } catch {
       if (USE_MOCK) { setStats(STATS); setRecentOrders(RECENT_ORDERS); setRevenueData(REVENUE_DATA); }
@@ -190,6 +203,26 @@ function DashboardContent() {
         </div>
       )}
 
+      {/* AI Proactive Digest — Trợ lý AI nhắc nhở */}
+      {["FARMER", "HTX_MANAGER", "HTX_MEMBER"].includes(user?.role || "") && (
+        <Suspense fallback={
+          <div className="h-32 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/10 dark:to-blue-900/10 border border-emerald-200/60 dark:border-emerald-800/30 rounded-2xl animate-pulse flex items-center justify-center text-sm text-foreground-muted">
+            🤖 Đang tải Trợ lý AI...
+          </div>
+        }>
+          {productNames !== null ? (
+            <AIDigestCard
+              province={(user as any)?.province || "Tiền Giang"}
+              farmerName={user?.full_name || undefined}
+              products={productNames}
+            />
+          ) : (
+            <div className="h-32 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/10 dark:to-blue-900/10 border border-emerald-200/60 dark:border-emerald-800/30 rounded-2xl animate-pulse flex items-center justify-center text-sm text-foreground-muted">
+              🤖 Đang chuẩn bị dữ liệu sản phẩm...
+            </div>
+          )}
+        </Suspense>
+      )}
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
@@ -238,9 +271,9 @@ function DashboardContent() {
               </Link>
             </div>
             <div className="divide-y divide-border">
-              {recentOrders.map((order) => (
+              {recentOrders.map((order, i) => (
                 <div
-                  key={order.id}
+                  key={order.originalId || order.id || i}
                   className="px-5 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-surface-hover transition-colors"
                 >
                 <div className="flex-1 min-w-0">
@@ -317,19 +350,21 @@ function DashboardContent() {
           </div>
 
           {/* Notification */}
-          <div className="mt-4 p-4 bg-primary/5 rounded-xl border border-primary/10">
-            <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-foreground">
-                  3 đơn hàng cần xác nhận
-                </p>
-                <p className="text-xs text-foreground-muted mt-0.5">
-                  Vui lòng xác nhận trong vòng 24 giờ
-                </p>
+          {pendingOrdersCount > 0 && (
+            <div className="mt-4 p-4 bg-primary/5 rounded-xl border border-primary/10">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    {pendingOrdersCount} đơn hàng cần xác nhận
+                  </p>
+                  <p className="text-xs text-foreground-muted mt-0.5">
+                    Vui lòng xác nhận trong vòng 24 giờ
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

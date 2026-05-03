@@ -23,6 +23,30 @@ services:
     networks:
       - capnong-prod
 
+  # ─── PostgreSQL 16 ───────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: capnong-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-capnong_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-capnong}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your_postgres_password_here}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-capnong}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - capnong-prod
+
+
+
   # ─── Backend (Spring Boot 3 + Java 21) ───────
   backend:
     build:
@@ -31,16 +55,22 @@ services:
     container_name: capnong-backend
     restart: unless-stopped
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       kafka:
         condition: service_started
+    env_file: .env
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-validate}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://${RDS_ENDPOINT}:5432/${POSTGRES_DB}}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-${POSTGRES_USER}}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${POSTGRES_PASSWORD}}
+      # Keep other env vars that are not datasource (they are provided by .env)
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -75,10 +105,10 @@ services:
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_URL: https://${DOMAIN_NAME:-localhost}/api
-      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Cạp Nông}
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      NEXT_PUBLIC_API_URL: "https://capnong.shop/api"
+      NEXT_PUBLIC_APP_NAME: "Cạp Nông"
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
@@ -99,7 +129,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       APP_ENV: production
-      ALLOWED_ORIGINS: https://${DOMAIN_NAME:-localhost}
+      ALLOWED_ORIGINS: "https://capnong.shop,http://backend:8080"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 30s
@@ -156,9 +186,7 @@ services:
 volumes:
   redis_data:
   kafka_data:
-  certbot-etc:
-  certbot-var:
-  certbot-www:
+  postgres_data:
 
 networks:
   capnong-prod:

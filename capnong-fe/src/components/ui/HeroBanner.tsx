@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { SafeImage } from "@/lib/safe-image";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Zap, Truck } from "lucide-react";
 
 const BANNERS = [
   {
@@ -28,13 +28,13 @@ const SIDE_BANNERS = [
     src: "/images/banners/banner-traicay.png",
     alt: "Giá sốc hôm nay",
     href: "/catalog?sort=flash-deal",
-    label: "⚡ Giá sốc hôm nay",
+    label: <span className="flex items-center gap-1.5"><Zap className="w-4 h-4 fill-current text-yellow-400" /> Giá sốc hôm nay</span>,
   },
   {
     src: "/images/banners/banner-gomdon.png",
     alt: "Miễn phí giao hàng",
     href: "/catalog",
-    label: "🚚 Miễn phí giao hàng",
+    label: <span className="flex items-center gap-1.5"><Truck className="w-4 h-4 text-blue-300" /> Miễn phí giao hàng</span>,
   },
 ];
 

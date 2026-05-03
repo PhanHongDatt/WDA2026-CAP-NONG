@@ -22,7 +22,7 @@ public class Htx extends BaseEntity {
     private String province;
 
     @Column(nullable = false, length = 100)
-    private String district;
+    private String ward;
 
     @Column(columnDefinition = "TEXT")
     private String description;

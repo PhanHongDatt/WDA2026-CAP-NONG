@@ -10,8 +10,11 @@ import {
   MapPin,
   Package,
   Calendar,
+  Building2,
+  TrendingUp,
 } from "lucide-react";
 import { shopService } from "@/services";
+import { getShopBundles } from "@/services/api/htx";
 import ProductCard from "@/components/ui/ProductCard";
 import type { Shop } from "@/types/shop";
 import type { Product } from "@/types/product";
@@ -22,7 +25,10 @@ export default function ShopPage() {
 
   const [shop, setShop] = useState<Shop | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [bundles, setBundles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isHtxShop = slug.startsWith("htx-");
 
   useEffect(() => {
     async function load() {
@@ -33,6 +39,11 @@ export default function ShopPage() {
         if (s) {
           const prods = await shopService.getProducts(slug);
           setProducts(prods);
+          
+          if (slug.startsWith("htx-")) {
+            const b = await getShopBundles(s.id);
+            setBundles(b);
+          }
         }
       } catch { /* ignore */ }
       setLoading(false);
@@ -70,22 +81,33 @@ export default function ShopPage() {
       <div className="bg-white dark:bg-surface rounded-2xl border border-border overflow-hidden">
         {/* Banner */}
         <div className="h-40 bg-gradient-to-r from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 relative">
-          {shop.avatar_url && (
-            <Image src={shop.avatar_url} alt="Banner" fill className="object-cover opacity-30" />
+          {shop.cover_url && (
+            <Image src={shop.cover_url} alt="Banner" fill className="object-cover opacity-30" />
           )}
         </div>
         {/* Info */}
         <div className="px-6 pb-6 -mt-10 relative">
           <div className="flex items-end gap-4">
-            <div className="w-20 h-20 bg-primary text-white rounded-xl flex items-center justify-center text-3xl font-black border-4 border-white dark:border-surface shadow-lg shrink-0">
-              {shop.name.charAt(0)}
+            <div className="w-20 h-20 bg-primary text-white rounded-xl flex items-center justify-center text-3xl font-black border-4 border-white dark:border-surface shadow-lg shrink-0 overflow-hidden relative">
+              {shop.avatar_url ? (
+                <Image src={shop.avatar_url} alt={shop.name} fill className="object-cover" />
+              ) : (
+                shop.name.charAt(0)
+              )}
             </div>
             <div className="flex-1 pt-12">
-              <h1 className="text-2xl font-black text-foreground">{shop.name}</h1>
+              <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
+                {shop.name}
+                {isHtxShop && (
+                  <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-bold ml-2">
+                    <Building2 className="w-3 h-3" /> Gian hàng Hợp tác xã
+                  </span>
+                )}
+              </h1>
               <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-foreground-muted">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4 text-primary" />
-                  {shop.district}, {shop.province}
+                  {shop.ward}, {shop.province}
                 </span>
                 <span className="flex items-center gap-1">
                   <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -109,6 +131,34 @@ export default function ShopPage() {
           )}
         </div>
       </div>
+
+      {/* HTX Bundles section */}
+      {isHtxShop && bundles.length > 0 && (
+        <section className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 p-6 rounded-2xl">
+          <h2 className="text-xl font-bold text-amber-900 dark:text-amber-500 mb-4 flex items-center gap-2">
+            <Package className="w-5 h-5" /> Sản phẩm sỉ (Gom đơn HTX)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {bundles.filter(b => b.status === "OPEN" || b.status === "CONFIRMED").map(b => (
+              <div key={b.id} className="bg-white dark:bg-surface p-5 rounded-xl flex justify-between items-center border border-amber-100 dark:border-amber-800">
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-foreground">{b.product_name}</h3>
+                  <div className="text-sm text-gray-500 mt-1 flex gap-3">
+                    <span className="text-amber-600 font-medium">{b.status}</span>
+                    <span>Hạn: {new Date(b.deadline).toLocaleDateString("vi-VN")}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-gray-900 dark:text-foreground">{b.price_per_unit?.toLocaleString()}đ /{b.unit_code}</p>
+                  <Link href={`/cooperative/bundles/${b.id}`} className="inline-block mt-2 text-primary hover:underline text-sm font-medium">
+                    Xem chi tiết →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Products */}
       <section>

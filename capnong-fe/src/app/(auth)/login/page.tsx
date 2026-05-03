@@ -79,6 +79,9 @@ export default function LoginPage() {
                 email: result.auth_response.email || result.email,
                 phone: result.auth_response.phone,
               }));
+              // Sign out of Supabase — we only use it as OAuth broker,
+              // app auth lives in our BE JWT tokens
+              await supabase.auth.signOut().catch(() => {});
               window.dispatchEvent(new Event("auth-changed"));
               showToast("success", "Đăng nhập Google thành công!");
               router.push("/home");
@@ -167,6 +170,9 @@ export default function LoginPage() {
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/login`,
+          queryParams: {
+            prompt: "consent",  // Force re-consent to ensure fresh identity
+          },
         },
       });
       if (error) throw error;
@@ -191,9 +197,11 @@ export default function LoginPage() {
         <div className="bg-white dark:bg-surface rounded-2xl shadow-lg border border-border p-8">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary/10 rounded-2xl mb-3">
-              <Leaf className="w-7 h-7 text-primary" />
-            </div>
+            <img
+              src="/images/logo.png"
+              alt="Cạp Nông Logo"
+              className="w-16 h-16 object-contain mb-1 mx-auto block"
+            />
             <h1 className="text-2xl font-black text-foreground">Đăng nhập</h1>
             <p className="text-foreground-muted text-sm mt-1">
               Chào mừng bạn quay lại Cạp Nông
@@ -345,9 +353,11 @@ export default function LoginPage() {
               /* Username form */
               <>
                 <div className="text-center mb-5">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-2xl mb-3">
-                    <Leaf className="w-6 h-6 text-primary" />
-                  </div>
+                  <img
+                    src="/images/logo.png"
+                    alt="Cạp Nông Logo"
+                    className="w-14 h-14 object-contain mb-1 mx-auto block"
+                  />
                   <h2 className="text-xl font-black text-foreground">Hoàn tất đăng ký</h2>
                   <p className="text-foreground-muted text-sm mt-1">Chọn username cho tài khoản Google</p>
                 </div>
@@ -416,6 +426,9 @@ export default function LoginPage() {
                           role: auth.role,
                           email: googleEmail,
                         }));
+                        // Sign out Supabase — only used as OAuth broker
+                        const { supabase: sb } = await import("@/lib/supabase");
+                        await sb.auth.signOut().catch(() => {});
                         window.dispatchEvent(new Event("auth-changed"));
                         setRegisterDone(true);
                         showToast("success", "Đăng ký thành công!");

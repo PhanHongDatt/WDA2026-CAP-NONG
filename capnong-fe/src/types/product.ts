@@ -16,7 +16,7 @@ export interface ShopSummary {
   slug: string;
   name: string;
   province: string;
-  district: string;
+  ward: string;
   avatar_url?: string;
   owner: UserSummary;
   average_rating: number;
@@ -41,10 +41,12 @@ export interface Product {
   location_detail: string;          // Địa điểm canh tác cụ thể
   status: ProductStatus;
   images: string[];                 // Tối đa 10 ảnh (Cloudinary URLs)
+  image_objects?: {id: string, url: string}[];
   average_rating?: number;
   total_reviews: number;
   sold_count: number;               // FE-computed (hoặc từ API riêng)
   shop: ShopSummary;                // Nested shop info
+  bundle_id?: string;               // UUID nếu thuộc bundle
   created_at: string;
   updated_at: string;
 }
@@ -70,7 +72,7 @@ export interface Category {
 export interface ProductFilter {
   category?: ProductCategory;
   province?: string;
-  district?: string;
+  ward?: string;
   status?: ProductStatus;
   farming_method?: FarmingMethod;
   min_price?: number;

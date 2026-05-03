@@ -8,6 +8,8 @@ import java.util.UUID;
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
 public class PledgeResponseDto {
     private UUID id;
+    private UUID bundleId;
+    private String bundleName;
     private UserSummaryDto farmer;
     private BigDecimal quantity;
     private BigDecimal contributionPercent;

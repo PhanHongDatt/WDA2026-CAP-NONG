@@ -16,12 +16,15 @@ import {
   LogOut,
   Users,
   Shield,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import FontSizeToggle from "@/components/ui/FontSizeToggle";
 import NotificationBell from "@/components/ui/NotificationBell";
 import { cartService } from "@/services";
+import ShopSelectModal from "@/components/shop/ShopSelectModal";
+import type { Shop } from "@/types/shop";
 
 /**
  * Header — Role-based UI
@@ -38,9 +41,33 @@ export default function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const { user, isLoggedIn, isFarmer, isHtxMember, isHtxManager, isAdmin, logout } = useAuth();
+  const { user, isLoggedIn, isFarmer, isHtxMember, isHtxManager, isAdmin, isSellMode, toggleViewMode, logout } = useAuth();
   const [cartCount, setCartCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
+
+  const [shopSelectModalOpen, setShopSelectModalOpen] = useState(false);
+  const [myShops, setMyShops] = useState<Shop[]>([]);
+
+  const handleShopClick = async () => {
+    setUserMenuOpen(false);
+    setMobileMenuOpen(false);
+    if (!isHtxManager) {
+      router.push("/dashboard");
+      return;
+    }
+    try {
+      const { getAllMyShops } = await import("@/services/api/shop");
+      const shops = await getAllMyShops();
+      if (shops.length > 1) {
+        setMyShops(shops);
+        setShopSelectModalOpen(true);
+      } else {
+        router.push("/dashboard");
+      }
+    } catch {
+      router.push("/dashboard");
+    }
+  };
 
   useEffect(() => {
     if (user && user.role === "BUYER") {
@@ -113,9 +140,16 @@ export default function Header() {
           {/* Logo */}
           <Link
             href="/"
-            className="text-3xl font-black text-primary tracking-tight shrink-0"
+            className="flex items-center gap-2 shrink-0"
           >
-            CẠP NÔNG
+            <img
+              src="/images/logo.png"
+              alt="Cạp Nông Logo"
+              className="w-10 h-10 object-contain"
+            />
+            <span className="text-2xl font-black text-primary tracking-tight hidden sm:inline">
+              CẠP NÔNG
+            </span>
           </Link>
 
           {/* Category Toggle → link to catalog */}
@@ -142,6 +176,22 @@ export default function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-3 lg:gap-4 shrink-0 ml-auto">
+            {/* ─── Sell / Buy Mode Toggle (FARMER+ only) ─── */}
+            {isLoggedIn && isFarmer && (
+              <button
+                type="button"
+                onClick={toggleViewMode}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-300 ${
+                  isSellMode
+                    ? "bg-primary text-white border-primary shadow-sm shadow-primary/20"
+                    : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/40"
+                }`}
+                title={isSellMode ? "Đang ở chế độ Bán — nhấn để chuyển sang Mua" : "Đang ở chế độ Mua — nhấn để chuyển sang Bán"}
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                {isSellMode ? "Bán hàng" : "Mua hàng"}
+              </button>
+            )}
             {/* Font Size + Theme toggles */}
             <div className="hidden lg:flex items-center gap-2">
               <FontSizeToggle />
@@ -150,19 +200,19 @@ export default function Header() {
 
             {/* Wishlist — only logged in */}
             {isLoggedIn && (
-              <Link href="/wishlist" className="relative cursor-pointer hidden md:block" aria-label="Danh sách yêu thích">
+              <Link href="/wishlist" className="relative cursor-pointer hidden md:flex items-center" aria-label="Danh sách yêu thích">
                 <Heart className="w-6 h-6 text-gray-600 dark:text-foreground-muted hover:text-primary transition-colors" />
               </Link>
             )}
 
             {/* Notifications — only logged in */}
-            <div className="hidden md:block">
+            <div className="hidden md:flex items-center">
               <NotificationBell />
             </div>
 
-            {/* Cart — only buyers & guests */}
-            {(!isLoggedIn || user?.role === "BUYER") && (
-              <Link href="/cart" className="relative cursor-pointer" aria-label="Giỏ hàng">
+            {/* Cart — only in BUY mode & for buyers/guests */}
+            {(!isLoggedIn || (user?.role === "BUYER") || (isFarmer && !isSellMode)) && (
+              <Link href="/cart" className="relative cursor-pointer flex items-center" aria-label="Giỏ hàng">
                 <ShoppingCart className="w-6 h-6 text-gray-600 dark:text-foreground-muted hover:text-primary transition-colors" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 flex h-4 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-surface animate-pop-in">
@@ -246,10 +296,14 @@ export default function Header() {
                     {/* Farmer links */}
                     {isFarmer && (
                       <>
-                        <Link href="/dashboard" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-surface-hover text-gray-700 dark:text-foreground transition-colors" onClick={() => setUserMenuOpen(false)}>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); handleShopClick(); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-surface-hover text-gray-700 dark:text-foreground transition-colors"
+                        >
                           <Store className="w-4 h-4" />
                           <span>Gian hàng của tôi</span>
-                        </Link>
+                        </button>
                         <Link href="/dashboard/orders" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-surface-hover text-gray-700 dark:text-foreground transition-colors" onClick={() => setUserMenuOpen(false)}>
                           <Package className="w-4 h-4" />
                           <span>Quản lý đơn hàng</span>
@@ -373,26 +427,62 @@ export default function Header() {
                     </div>
                   </div>
 
-                  {isFarmer && (
-                    <Link href="/dashboard" className="text-gray-700 dark:text-foreground font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
-                      🏪 Gian hàng của tôi
+                  {user?.role === "BUYER" && (
+                    <Link href="/orders" className="flex items-center gap-2 text-gray-700 dark:text-foreground font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
+                      <Package className="w-5 h-5" /> Đơn hàng của tôi
                     </Link>
                   )}
+
+                  {isFarmer && (
+                    <>
+                      {/* Mobile Sell/Buy Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => { toggleViewMode(); setMobileMenuOpen(false); }}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors ${
+                          isSellMode
+                            ? "bg-primary/10 text-primary"
+                            : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                        }`}
+                      >
+                        <ArrowLeftRight className="w-4 h-4" />
+                        {isSellMode ? "Đang ở chế độ Bán → chuyển sang Mua" : "Đang ở chế độ Mua → chuyển sang Bán"}
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); handleShopClick(); }}
+                        className="flex items-center gap-2 text-left text-gray-700 dark:text-foreground font-medium hover:text-primary"
+                      >
+                        <Store className="w-5 h-5" /> Gian hàng của tôi
+                      </button>
+                      <Link href="/dashboard/orders" className="flex items-center gap-2 text-gray-700 dark:text-foreground font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
+                        <Package className="w-5 h-5" /> Quản lý đơn hàng
+                      </Link>
+                    </>
+                  )}
                   {isHtxMember && user?.htx_name && (
-                    <Link href="/cooperative" className="text-gray-700 dark:text-foreground font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
-                      🤝 {user?.htx_name}
+                    <Link href="/cooperative" className="flex items-center gap-2 text-gray-700 dark:text-foreground font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
+                      <Users className="w-5 h-5 text-primary" /> {user?.htx_name}
                     </Link>
                   )}
                   {isHtxManager && (
-                    <Link href="/cooperative/manage" className="text-primary font-medium" onClick={() => setMobileMenuOpen(false)}>
-                      🛡️ Quản lý HTX
+                    <Link href="/cooperative/manage" className="flex items-center gap-2 text-primary font-medium hover:text-primary-dark" onClick={() => setMobileMenuOpen(false)}>
+                      <Shield className="w-5 h-5" /> Quản lý HTX
                     </Link>
                   )}
+                  {isAdmin && (
+                    <Link href="/admin" className="flex items-center gap-2 text-red-500 font-medium hover:text-red-600" onClick={() => setMobileMenuOpen(false)}>
+                      <Shield className="w-5 h-5" /> Quản trị hệ thống
+                    </Link>
+                  )}
+                  <Link href="/profile" className="flex items-center gap-2 text-gray-700 dark:text-foreground font-medium hover:text-primary border-t border-gray-100 dark:border-border pt-3 mt-1" onClick={() => setMobileMenuOpen(false)}>
+                    <User className="w-5 h-5" /> Tài khoản
+                  </Link>
                   <button type="button"
                     onClick={() => { logout(); setMobileMenuOpen(false); }}
-                    className="text-left text-red-500 font-medium"
+                    className="flex items-center gap-2 text-left text-red-500 font-medium hover:text-red-600"
                   >
-                    Đăng xuất
+                    <LogOut className="w-5 h-5" /> Đăng xuất
                   </button>
                 </>
               )}
@@ -400,6 +490,12 @@ export default function Header() {
           </div>
         )}
       </header>
+
+      <ShopSelectModal 
+        isOpen={shopSelectModalOpen} 
+        onClose={() => setShopSelectModalOpen(false)} 
+        shops={myShops} 
+      />
     </>
   );
 }

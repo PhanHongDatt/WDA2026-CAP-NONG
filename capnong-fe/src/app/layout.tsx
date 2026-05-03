@@ -12,7 +12,7 @@ const publicSans = Public_Sans({
   variable: "--font-display",
   preload: true,
 });
-const SITE_URL = "https://capnong.vn";
+const SITE_URL = "https://capnong.shop";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -123,6 +123,21 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('capnong-theme');if(t==='dark'){document.documentElement.classList.add('dark')}var f=localStorage.getItem('capnong-font-size');if(f){document.documentElement.classList.add('font-'+f)}}catch(e){}})();
             if(!window.crypto){window.crypto={}}if(!window.crypto.randomUUID){window.crypto.randomUUID=function(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)})}}`,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                  }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
           }}
         />
       </head>

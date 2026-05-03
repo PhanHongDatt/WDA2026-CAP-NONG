@@ -41,6 +41,8 @@ public class OrderServiceImpl implements OrderService {
     private final OtpService otpService;
     private final AddressService addressService;
     private final OrderEventNotifier orderEventNotifier;
+    private final BundlePledgeRepository bundlePledgeRepository;
+    private final OrderDispatchRepository orderDispatchRepository;
 
     @Override
     @Transactional
@@ -177,6 +179,77 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(grandTotal);
         Order savedOrder = orderRepository.save(order);
 
+        // ── Step 5: Cooperative Order Dispatch ──
+        // Tự động chia đơn cho từng farmer dựa trên pledge contribution.
+        // Guard: null contributionPercent (fallback tỷ lệ qty), pledge cap, cumulative cap.
+        for (SubOrder subOrder : savedOrder.getSubOrders()) {
+            for (OrderItem orderItem : subOrder.getItems()) {
+                if (orderItem.getProduct().getBundleId() != null) {
+                    UUID bundleId = orderItem.getProduct().getBundleId();
+                    List<BundlePledge> pledges = bundlePledgeRepository.findByBundle_IdAndStatus(bundleId, PledgeStatus.ACTIVE);
+                    if (pledges.isEmpty()) continue;
+
+                    BigDecimal orderQty = orderItem.getQuantity();
+
+                    // Tính tổng pledged qty để fallback tỷ lệ khi contributionPercent is null
+                    BigDecimal totalPledgedQty = pledges.stream()
+                            .map(BundlePledge::getQuantity)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    if (totalPledgedQty.compareTo(BigDecimal.ZERO) == 0) continue;
+
+                    BigDecimal totalDispatched = BigDecimal.ZERO;
+                    List<OrderDispatch> dispatches = new ArrayList<>();
+
+                    for (int i = 0; i < pledges.size(); i++) {
+                        BundlePledge pledge = pledges.get(i);
+
+                        // Cap: không dispatch quá pledge.quantity cho farmer này
+                        BigDecimal alreadyDispatched = orderDispatchRepository
+                                .sumDispatchedByPledgeId(pledge.getId());
+                        BigDecimal pledgeRemaining = pledge.getQuantity()
+                                .subtract(alreadyDispatched != null ? alreadyDispatched : BigDecimal.ZERO);
+                        if (pledgeRemaining.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                        BigDecimal dispatchQty;
+                        if (i == pledges.size() - 1) {
+                            // Last farmer gets remainder to avoid rounding drift
+                            dispatchQty = orderQty.subtract(totalDispatched);
+                        } else {
+                            // Fallback: nếu contributionPercent null → tính từ qty ratio
+                            BigDecimal pct = pledge.getContributionPercent();
+                            if (pct == null || pct.compareTo(BigDecimal.ZERO) == 0) {
+                                pct = pledge.getQuantity()
+                                        .multiply(BigDecimal.valueOf(100))
+                                        .divide(totalPledgedQty, 4, java.math.RoundingMode.HALF_UP);
+                            }
+                            dispatchQty = orderQty.multiply(pct)
+                                    .divide(BigDecimal.valueOf(100), 3, java.math.RoundingMode.HALF_UP);
+                        }
+
+                        // Cap to pledge remaining & order remaining
+                        dispatchQty = dispatchQty.min(pledgeRemaining);
+                        dispatchQty = dispatchQty.min(orderQty.subtract(totalDispatched));
+
+                        if (dispatchQty.compareTo(BigDecimal.ZERO) > 0) {
+                            dispatches.add(OrderDispatch.builder()
+                                    .orderItem(orderItem)
+                                    .farmer(pledge.getFarmer())
+                                    .pledge(pledge)
+                                    .dispatchedQuantity(dispatchQty)
+                                    .build());
+                            totalDispatched = totalDispatched.add(dispatchQty);
+                        }
+
+                        if (totalDispatched.compareTo(orderQty) >= 0) break;
+                    }
+                    if (!dispatches.isEmpty()) {
+                        orderDispatchRepository.saveAll(dispatches);
+                    }
+                }
+            }
+        }
+
         // Clear cart after checkout
         cartService.clearCart(guestSessionId, userId);
 
@@ -214,7 +287,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public Page<OrderResponseDto.SubOrderDto> getSellerSubOrders(UUID sellerId, String status, Pageable pageable) {
         // Find seller's shop
-        Shop shop = shopRepository.findByOwner_Id(sellerId)
+        Shop shop = shopRepository.findFirstByOwner_Id(sellerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa có gian hàng"));
 
         Page<SubOrder> subOrders;
@@ -239,11 +312,24 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException("Bạn không có quyền hủy đơn hàng này", HttpStatus.FORBIDDEN);
         }
 
-        // Check ALL sub-orders are PENDING
-        boolean allPending = order.getSubOrders().stream()
-                .allMatch(so -> so.getStatus() == OrderStatus.PENDING);
-        if (!allPending) {
-            throw new AppException("Chỉ có thể hủy khi tất cả đơn con đang ở trạng thái PENDING",
+        executeOrderCancellation(order);
+    }
+
+    @Override
+    @Transactional
+    public void cancelGuestOrder(String orderCode, String phone) {
+        Order order = orderRepository.findByOrderNumberAndGuestPhone(orderCode, phone)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
+
+        executeOrderCancellation(order);
+    }
+
+    private void executeOrderCancellation(Order order) {
+        // Allow canceling if sub-orders are PENDING or PREPARING
+        boolean canCancel = order.getSubOrders().stream()
+                .allMatch(so -> so.getStatus() == OrderStatus.PENDING || so.getStatus() == OrderStatus.PREPARING);
+        if (!canCancel) {
+            throw new AppException("Chỉ có thể hủy khi đơn hàng chưa giao cho đơn vị vận chuyển (trước trạng thái Đang Giao)",
                     HttpStatus.BAD_REQUEST);
         }
 
@@ -251,7 +337,7 @@ public class OrderServiceImpl implements OrderService {
         for (SubOrder subOrder : order.getSubOrders()) {
             subOrder.setStatus(OrderStatus.CANCELLED);
             subOrder.setCancelledBy(CancelledBy.BUYER);
-            subOrder.setCancelReason("Buyer hủy đơn");
+            subOrder.setCancelReason("Khách hàng hủy đơn");
 
             restoreInventory(subOrder);
 
@@ -330,12 +416,33 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponseDto.SubOrderDto> getSubOrdersByShopId(UUID shopId, UUID ownerId, String status, Pageable pageable) {
+        // Verify ownership
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Gian hàng không tồn tại"));
+        if (!shop.getOwner().getId().equals(ownerId)) {
+            throw new AppException("Bạn không có quyền xem đơn hàng của gian hàng này", HttpStatus.FORBIDDEN);
+        }
+
+        Page<SubOrder> subOrders;
+        if (status != null && !status.isBlank()) {
+            OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
+            subOrders = subOrderRepository.findByShop_IdAndStatusOrderByCreatedAtDesc(shopId, orderStatus, pageable);
+        } else {
+            subOrders = subOrderRepository.findByShop_IdOrderByCreatedAtDesc(shopId, pageable);
+        }
+
+        return subOrders.map(this::mapToSubOrderDto);
+    }
+
+    @Override
     @Transactional
-    public void mergeGuestOrdersToUser(String phone, String email, UUID userId) {
-        if (userId == null) return;
+    public int mergeGuestOrdersToUser(String phone, String email, UUID userId) {
+        if (userId == null) return 0;
 
         List<Order> unmergedOrders = orderRepository.findUnmergedGuestOrders(phone, email);
-        if (unmergedOrders.isEmpty()) return;
+        if (unmergedOrders.isEmpty()) return 0;
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -345,6 +452,8 @@ public class OrderServiceImpl implements OrderService {
             order.setIsMerged(true);
             orderRepository.save(order);
         }
+
+        return unmergedOrders.size();
     }
 
     @Override
@@ -429,7 +538,7 @@ public class OrderServiceImpl implements OrderService {
                 .phone(order.getGuestPhone() != null ? order.getGuestPhone()
                         : (order.getUser() != null ? order.getUser().getPhone() : null))
                 .street(order.getStreetAddress())
-                .district(order.getWardName())
+                .ward(order.getWardName())
                 .province(order.getProvinceName())
                 .build();
 
@@ -448,13 +557,17 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderResponseDto.SubOrderDto mapToSubOrderDto(SubOrder subOrder) {
+        Order order = subOrder.getOrder();
+        String buyerName = order.getGuestName() != null ? order.getGuestName() : (order.getUser() != null ? order.getUser().getFullName() : null);
+        String buyerPhone = order.getGuestPhone() != null ? order.getGuestPhone() : (order.getUser() != null ? order.getUser().getPhone() : null);
+
         Shop shop = subOrder.getShop();
         ShopResponseDto shopDto = shop != null ? ShopResponseDto.builder()
                 .id(shop.getId())
                 .slug(shop.getSlug())
                 .name(shop.getName())
                 .province(shop.getProvince())
-                .district(shop.getDistrict())
+                .ward(shop.getWard())
                 .avatarUrl(shop.getAvatarUrl())
                 .build() : null;
 
@@ -476,6 +589,10 @@ public class OrderServiceImpl implements OrderService {
 
         return OrderResponseDto.SubOrderDto.builder()
                 .id(subOrder.getId())
+                .orderCode(order.getOrderNumber())
+                .buyerName(buyerName)
+                .buyerPhone(buyerPhone)
+                .createdAt(order.getCreatedAt())
                 .shop(shopDto)
                 .items(itemDtos)
                 .subtotal(subOrder.getSubtotal().doubleValue())

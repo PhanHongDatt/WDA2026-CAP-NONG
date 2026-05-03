@@ -17,10 +17,33 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import ProgressBar from "@/components/ui/ProgressBar";
 
+/* ─── Display interfaces — khớp BE response (snake_case qua WebConfig) ─── */
+
+interface HtxDetail {
+  name: string;
+  province: string;
+  members: number;
+  manager: string;
+  description: string;
+  rating: number;
+  total_orders: number;
+}
+
+interface BundleDisplay {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+  image: string;
+  target_qty: number;
+  current_qty: number;
+  deadline: string;
+  status: "OPEN" | "FULFILLED";
+}
+
 /* ─── Default mock data (fallback khi API chưa sẵn) ─── */
-const MOCK_HTX = {
+const MOCK_HTX: HtxDetail = {
   name: "HTX Trái Cây Bến Tre",
-  slug: "htx-trai-cay-ben-tre",
   province: "Bến Tre",
   members: 15,
   manager: "Nguyễn Văn A",
@@ -29,7 +52,7 @@ const MOCK_HTX = {
   total_orders: 128,
 };
 
-const MOCK_BUNDLES = [
+const MOCK_BUNDLES: BundleDisplay[] = [
   {
     id: "bp-1",
     name: "Bưởi Da Xanh Bến Tre",
@@ -39,7 +62,7 @@ const MOCK_BUNDLES = [
     target_qty: 800,
     current_qty: 520,
     deadline: "25/03/2026",
-    status: "OPEN" as const,
+    status: "OPEN",
   },
   {
     id: "bp-2",
@@ -50,7 +73,7 @@ const MOCK_BUNDLES = [
     target_qty: 500,
     current_qty: 500,
     deadline: "18/03/2026",
-    status: "FULFILLED" as const,
+    status: "FULFILLED",
   },
   {
     id: "bp-3",
@@ -61,20 +84,73 @@ const MOCK_BUNDLES = [
     target_qty: 1000,
     current_qty: 350,
     deadline: "30/03/2026",
-    status: "OPEN" as const,
+    status: "OPEN",
   },
 ];
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
 
+/**
+ * Map BE snake_case HtxResponse → FE HtxDetail.
+ *
+ * BE HtxResponse fields (after SNAKE_CASE serialization):
+ *   id, name, official_code, province, ward, description,
+ *   document_url, status, admin_note, created_at,
+ *   manager_id, manager_username, manager_full_name,
+ *   created_by_user_id, created_by_username
+ *
+ * NOTE: HtxResponse KHÔNG có totalMembers. Chỉ HtxResponseDto mới có.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapHtxDetail(raw: any): HtxDetail {
+  return {
+    name: raw.name || "—",
+    province: raw.province || "—",
+    members: Number(raw.total_members) || 0,          // HtxResponseDto có total_members
+    manager: raw.manager_full_name || raw.manager_username || "—",
+    description: raw.description || "",
+    rating: Number(raw.rating) || 0,
+    total_orders: Number(raw.total_orders) || 0,
+  };
+}
+
+/**
+ * Map BE snake_case BundleResponseDto → FE BundleDisplay.
+ *
+ * BE BundleResponseDto fields (after SNAKE_CASE serialization):
+ *   id, htx_shop, product_category, product_name, unit_code,
+ *   target_quantity, current_pledged_quantity, progress_percent,
+ *   price_per_unit, deadline, status, description, min_pledge_quantity,
+ *   pledges (List<PledgeResponseDto>), created_at
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapBundleDisplay(b: any): BundleDisplay {
+  return {
+    id: String(b.id || ""),
+    name: b.product_name || "Sản phẩm",
+    price: Number(b.price_per_unit) || 0,
+    unit: b.unit_code || "kg",
+    image: "📦",
+    target_qty: Number(b.target_quantity) || 0,
+    current_qty: Number(b.current_pledged_quantity) || 0,
+    deadline: b.deadline
+      ? new Date(b.deadline).toLocaleDateString("vi-VN")
+      : "—",
+    status:
+      b.status === "FULL" ||
+      b.status === "CONFIRMED" ||
+      Number(b.current_pledged_quantity) >= Number(b.target_quantity)
+        ? "FULFILLED"
+        : "OPEN",
+  };
+}
+
 export default function HtxShopPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [htx, setHtx] = useState<any>(USE_MOCK ? MOCK_HTX : null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [bundles, setBundles] = useState<any[]>(USE_MOCK ? MOCK_BUNDLES : []);
+  const [htx, setHtx] = useState<HtxDetail | null>(USE_MOCK ? MOCK_HTX : null);
+  const [bundles, setBundles] = useState<BundleDisplay[]>(USE_MOCK ? MOCK_BUNDLES : []);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -85,38 +161,15 @@ export default function HtxShopPage() {
         htxApi.getHtxDetail(slug),
         htxApi.getOpenBundles(),
       ]);
+
+      // Map HTX detail: BE snake_case → FE
       if (htxDetail) {
-        setHtx({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          name: (htxDetail as any).name || "—",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          province: (htxDetail as any).province || "—",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          members: (htxDetail as any).memberCount || (htxDetail as any).members || 0,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          manager: (htxDetail as any).managerName || "—",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          description: (htxDetail as any).description || "",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          rating: (htxDetail as any).rating || 0,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          total_orders: (htxDetail as any).totalOrders || 0,
-        });
+        setHtx(mapHtxDetail(htxDetail));
       }
+
+      // Map bundles: BE snake_case → FE
       if (Array.isArray(apiBundles) && apiBundles.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapped = apiBundles.map((b: any) => ({
-          id: b.id || b.bundleId,
-          name: b.productName || b.name || "Sản phẩm",
-          price: b.pricePerUnit || b.price || 0,
-          unit: b.unitCode || b.unit || "kg",
-          image: "📦",
-          target_qty: b.targetQuantity || b.target_qty || 0,
-          current_qty: b.currentQuantity || b.current_qty || 0,
-          deadline: b.deadline ? new Date(b.deadline).toLocaleDateString("vi-VN") : "—",
-          status: b.status === "FULFILLED" || (b.currentQuantity >= b.targetQuantity) ? "FULFILLED" as const : "OPEN" as const,
-        }));
-        setBundles(mapped);
+        setBundles(apiBundles.map(mapBundleDisplay));
       }
     } catch {
       if (USE_MOCK) { setHtx(MOCK_HTX); setBundles(MOCK_BUNDLES); }
@@ -159,9 +212,15 @@ export default function HtxShopPage() {
             <p className="text-sm text-gray-600 dark:text-foreground-muted">{htx?.description || ""}</p>
             <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-foreground-muted">
               <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {htx?.province || "—"}</span>
-              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {htx?.members || 0} thành viên</span>
-              <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-400" /> {htx?.rating || 0}</span>
-              <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {htx?.total_orders || 0} đơn hoàn thành</span>
+              {(htx?.members ?? 0) > 0 && (
+                <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {htx?.members} thành viên</span>
+              )}
+              {(htx?.rating ?? 0) > 0 && (
+                <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-400" /> {htx?.rating}</span>
+              )}
+              {(htx?.total_orders ?? 0) > 0 && (
+                <span className="flex items-center gap-1"><Package className="w-3.5 h-3.5" /> {htx?.total_orders} đơn hoàn thành</span>
+              )}
             </div>
           </div>
         </div>
@@ -189,12 +248,12 @@ export default function HtxShopPage() {
                     </span>
                   </div>
                   <h3 className="font-bold text-gray-900 dark:text-foreground">{bp.name}</h3>
-                  <p className="text-lg font-black text-primary">{formatCurrency(bp.price)}<span className="text-xs font-normal text-foreground-muted">/{bp.unit}</span></p>
+                  <p className="text-lg font-black text-primary">{formatCurrency(bp.price)}<span className="text-xs font-normal text-foreground-muted">/{bp.unit.toLowerCase()}</span></p>
 
                   {/* Progress */}
                   <div>
                     <div className="flex justify-between text-[10px] text-foreground-muted mb-1">
-                      <span>{bp.current_qty}/{bp.target_qty} {bp.unit}</span>
+                      <span>{bp.current_qty}/{bp.target_qty} {bp.unit.toLowerCase()}</span>
                       <span>{progress}%</span>
                     </div>
                     <div className="bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">

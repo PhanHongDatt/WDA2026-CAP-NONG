@@ -2,7 +2,7 @@
  * Shop Normalizer — Transform BE ShopResponse (camelCase) → FE Shop (snake_case)
  *
  * BE ShopResponse fields:
- *   id (UUID), slug, name, province, district, bio,
+ *   id (UUID), slug, name, province, ward, bio,
  *   yearsExperience, farmAreaM2, avatarUrl, coverUrl,
  *   averageRating, totalReviews, createdAt,
  *   ownerId, ownerUsername, ownerFullName, ownerAvatarUrl
@@ -27,7 +27,7 @@ export function normalizeShop(raw: any): Shop {
     slug: raw.slug || "",
     name: raw.name || "",
     province: raw.province || "",
-    district: raw.district || "",
+    ward: raw.ward || "",
     bio: raw.bio || undefined,
     description: raw.description || undefined,
     years_experience: raw.yearsExperience ?? raw.years_experience ?? undefined,
@@ -42,6 +42,7 @@ export function normalizeShop(raw: any): Shop {
       avatar_url: raw.ownerAvatarUrl || undefined,
     },
     htx: raw.htx || undefined,
+    isHtxShop: raw.isHtxShop ?? raw.is_htx_shop ?? false,
     average_rating: Number(raw.averageRating ?? raw.average_rating ?? 0),
     total_reviews: Number(raw.totalReviews ?? raw.total_reviews ?? 0),
     created_at: raw.createdAt || raw.created_at || new Date().toISOString(),

@@ -51,7 +51,7 @@ export async function createHtx(data: {
   name: string;
   officialCode: string;
   province: string;
-  district: string;
+  ward: string;
   description?: string;
   documentUrl?: string;
 }): Promise<unknown> {
@@ -59,7 +59,7 @@ export async function createHtx(data: {
     name: data.name,
     official_code: data.officialCode,
     province: data.province,
-    district: data.district,
+    ward: data.ward,
     description: data.description,
     document_url: data.documentUrl,
   };
@@ -68,10 +68,30 @@ export async function createHtx(data: {
 }
 
 /**
+ * Upload giấy tờ HTX (FARMER hoặc HTX_MANAGER)
+ */
+export async function uploadHtxDocument(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await api.post("/api/htx/upload-document", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data;
+}
+
+/**
  * Gửi yêu cầu gia nhập HTX (FARMER)
  */
 export async function requestJoinHtx(htxId: string, message?: string): Promise<void> {
   await api.post(`/api/htx/${htxId}/join`, { message });
+}
+
+/**
+ * Lấy danh sách yêu cầu gia nhập của bản thân (FARMER)
+ */
+export async function getMyJoinRequests(): Promise<unknown[]> {
+  const res = await api.get("/api/htx/my-join-requests");
+  return res.data.data || res.data || [];
 }
 
 /**
@@ -125,6 +145,22 @@ export async function removeMember(memberId: string): Promise<void> {
   await api.delete(`/api/htx/members/${memberId}`);
 }
 
+/**
+ * Chuyển quyền Chủ HTX cho một HTX_MEMBER (HTX_MANAGER)
+ * Chủ cũ → HTX_MEMBER, Chủ mới → HTX_MANAGER
+ */
+export async function transferOwnership(newManagerId: string): Promise<void> {
+  await api.patch("/api/htx/transfer", { new_manager_id: newManagerId });
+}
+
+/**
+ * Giải tán HTX (HTX_MANAGER)
+ * Tất cả thành viên → FARMER, HTX → DISSOLVED
+ */
+export async function dissolveHtx(): Promise<void> {
+  await api.delete("/api/htx/dissolve");
+}
+
 /* ═══════ Join Request Shortcuts ═══════ */
 
 export async function approveJoinRequest(requestId: string): Promise<void> {
@@ -135,7 +171,15 @@ export async function rejectJoinRequest(requestId: string): Promise<void> {
   await handleJoinRequest(requestId, "REJECT");
 }
 
-/* ═══════ Cooperative Bundles ═══════ */
+/* ═══════ Cooperative Bundles & Shop ═══════ */
+
+/**
+ * Kích hoạt rõ ràng Gian Hàng HTX cho HTX_MANAGER
+ */
+export async function activateHtxShop(): Promise<any> {
+  const res = await api.post("/api/v1/cooperatives/shop");
+  return res.data;
+}
 
 /**
  * Danh sách bundles đang OPEN (public)
@@ -146,13 +190,22 @@ export async function getOpenBundles(): Promise<unknown[]> {
 }
 
 /**
+ * Tất cả bundles của HTX mình quản lý (mọi trạng thái) — dành cho Manager
+ */
+export async function getMyHtxBundles(): Promise<unknown[]> {
+  const res = await api.get("/api/v1/cooperatives/my-bundles");
+  return res.data.data || res.data || [];
+}
+
+/**
  * Chi tiết bundle + pledges + progress
  */
-export async function getBundleDetail(bundleId: string): Promise<{ bundle: unknown; pledges: unknown[] }> {
+export async function getBundleDetail(bundleId: string): Promise<{ bundle: any; pledges: any[] }> {
   const res = await api.get(`/api/v1/cooperatives/bundles/${bundleId}`);
   const data = res.data.data || res.data;
+  // BundleResponseDto is flat with pledges[] inside, all snake_case
   return {
-    bundle: data.bundle || data,
+    bundle: data,
     pledges: data.pledges || [],
   };
 }
@@ -161,7 +214,8 @@ export async function getBundleDetail(bundleId: string): Promise<{ bundle: unkno
  * Bundles của 1 HTX shop
  */
 export async function getShopBundles(shopId: string): Promise<unknown[]> {
-  const res = await api.get(`/api/v1/cooperatives/shops/${shopId}/bundles`);
+  // Fix #6: use /shops-by-id/ endpoint that accepts Shop.id (not HtxShop.id)
+  const res = await api.get(`/api/v1/cooperatives/shops-by-id/${shopId}/bundles`);
   return res.data.data || res.data || [];
 }
 
@@ -178,6 +232,8 @@ export async function createBundle(data: {
   description?: string;
   minPledgeQuantity?: number;
 }): Promise<unknown> {
+  // WebConfig.java dùng PropertyNamingStrategies.SNAKE_CASE toàn cục
+  // → Jackson deserialize kỳ vọng snake_case keys trong JSON body
   const payload = {
     product_category: data.productCategory,
     product_name: data.productName,

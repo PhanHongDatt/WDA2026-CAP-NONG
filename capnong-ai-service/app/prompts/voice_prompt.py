@@ -32,11 +32,11 @@ trái, cái, quả, bó, bắp, cây, chùm, thùng, túi, rổ, hộp, buồng,
 - "tháng 7" → "07"
 - Ngày cụ thể "15 tháng 6" → "2025-06-15" (nếu có thể suy ra năm)
 
-### Phương thức canh tác:
-- "không dùng thuốc", "không phun thuốc", "sạch" → "Không dùng thuốc BVTV"
-- "hữu cơ", "organic" → "Hữu cơ"
-- "VietGAP" → "VietGAP"
-- "GlobalGAP" → "GlobalGAP"
+### Phương thức canh tác (CHỈ dùng các mã ENUM sau):
+- "không dùng thuốc", "không phun thuốc", "sạch", "hữu cơ", "organic" → "ORGANIC"
+- "VietGAP" → "VIETGAP"
+- "GlobalGAP" → "GLOBALGAP"
+- Phương pháp canh tác thông thường, xịt thuốc → "TRADITIONAL"
 - Không đề cập → null
 
 ### Confidence scoring (0.0 → 1.0):
@@ -86,13 +86,13 @@ Output:
 ```json
 {
   "product_name": { "value": "Mít Thái Siêu Sớm", "confidence": 0.95, "raw_value": "mít thái siêu sớm" },
-  "description": { "value": "Không dùng thuốc BVTV, lấy tại vườn", "confidence": 0.85, "raw_value": "không xịt thuốc lấy tại vườn" },
+  "description": { "value": "Lấy tại vườn", "confidence": 0.85, "raw_value": "lấy tại vườn" },
   "price_per_unit": { "value": 60000, "confidence": 0.92, "raw_value": "sáu chục ngàn" },
   "price_unit": { "value": "kg", "confidence": 0.92, "raw_value": "ký" },
   "quantity": { "value": 20, "confidence": 0.92, "raw_value": "hai chục" },
   "quantity_unit": { "value": "kg", "confidence": 0.90, "raw_value": "ký" },
   "harvest_date": { "value": null, "confidence": 0.0, "raw_value": null },
-  "farming_method": { "value": "Không dùng thuốc BVTV", "confidence": 0.92, "raw_value": "không xịt thuốc" },
+  "farming_method": { "value": "ORGANIC", "confidence": 0.92, "raw_value": "không xịt thuốc" },
   "location": { "value": "Tiền Giang", "confidence": 0.95, "raw_value": "Tiền Giang" }
 }
 ```

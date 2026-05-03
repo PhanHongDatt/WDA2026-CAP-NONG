@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
- * Root page — role-based redirect
- * - Guest/Buyer → /home
- * - Farmer/HTX → /dashboard
+ * Root page — role-based + mode-based redirect
+ * - Guest → /home
+ * - Buyer → /home
  * - Admin → /admin
+ * - Farmer SELL Mode → /dashboard
+ * - Farmer BUY Mode → /home
  */
 export default function RootPage() {
-  const { isLoggedIn, isFarmer, isHtxManager, isHtxMember, isAdmin } = useAuth();
+  const { isLoggedIn, isFarmer, isHtxManager, isHtxMember, isAdmin, isSellMode } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -19,12 +21,12 @@ export default function RootPage() {
       router.replace("/home");
     } else if (isAdmin) {
       router.replace("/admin");
-    } else if (isFarmer || isHtxManager || isHtxMember) {
+    } else if ((isFarmer || isHtxManager || isHtxMember) && isSellMode) {
       router.replace("/dashboard");
     } else {
       router.replace("/home");
     }
-  }, [isLoggedIn, isFarmer, isHtxManager, isHtxMember, isAdmin, router]);
+  }, [isLoggedIn, isFarmer, isHtxManager, isHtxMember, isAdmin, isSellMode, router]);
 
   return (
     <div className="flex items-center justify-center min-h-[50vh]">

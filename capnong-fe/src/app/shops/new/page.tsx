@@ -28,7 +28,7 @@ function CreateShopContent() {
     years_experience: "",
     farm_area_m2: "",
     address_street: "",
-    address_district: "",
+    address_ward: "",
     address_province: "",
   });
 
@@ -57,7 +57,7 @@ function CreateShopContent() {
           name: form.name,
           slug: form.slug,
           province: form.address_province,
-          district: form.address_district,
+          ward: form.address_ward,
           bio: form.bio || undefined,
         });
       }
@@ -175,8 +175,8 @@ function CreateShopContent() {
             <input id="shop-street" type="text" value={form.address_street} onChange={(e) => handleChange("address_street", e.target.value)} placeholder="Ấp 3, xã Long Khánh" className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
           <div>
-            <label htmlFor="shop-district" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Quận / Huyện</label>
-            <input id="shop-district" type="text" value={form.address_district} onChange={(e) => handleChange("address_district", e.target.value)} placeholder="Cai Lậy" className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            <label htmlFor="shop-ward" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Xã / Phường</label>
+            <input id="shop-ward" type="text" value={form.address_ward} onChange={(e) => handleChange("address_ward", e.target.value)} placeholder="Cai Lậy" className="w-full px-4 py-2.5 bg-white dark:bg-background border border-gray-200 dark:border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
           <div>
             <label htmlFor="shop-province" className="block text-xs font-medium text-gray-500 dark:text-foreground-muted mb-1">Tỉnh / Thành phố</label>

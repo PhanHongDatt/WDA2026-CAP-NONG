@@ -46,7 +46,7 @@ const MOCK_ORDER = {
     { name: "Xoài Cát Hòa Lộc", qty: 2, price: 95000, image: "/images/products/xoai-cat.png" },
     { name: "Cam Sành Hà Giang", qty: 3, price: 45000, image: "/images/products/cam-sanh.png" },
   ],
-  shipping_fee: 25000,
+  shipping_fee: 0,
   note: "Giao buổi sáng, gọi trước khi giao.",
 };
 
@@ -86,7 +86,7 @@ export default function SellerOrderDetailPage() {
               price: i.pricePerUnit || 0,
               image: i.productImage || "/images/products/xoai-cat.png",
             })),
-            shipping_fee: found.shippingFee || 25000,
+            shipping_fee: found.shippingFee || 0,
             note: found.orderNotes || "",
           });
         }
@@ -223,7 +223,7 @@ export default function SellerOrderDetailPage() {
           </div>
           <div className="flex justify-between text-foreground-muted">
             <span>Phí vận chuyển</span>
-            <span>{formatCurrency(order.shipping_fee)}</span>
+            <span className="text-green-600 font-medium">Miễn phí</span>
           </div>
           <div className="flex justify-between font-bold text-foreground text-base pt-1">
             <span>Tổng cộng</span>

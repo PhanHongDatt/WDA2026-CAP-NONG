@@ -19,7 +19,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 8000, // 8s — đủ cho API bình thường, tránh SW hiểu nhầm offline
+  timeout: 60000, // 60s — nới rộng để hỗ trợ upload ảnh và gọi AI model
 });
 
 /* ─── Request Interceptor ─── */
@@ -123,6 +123,13 @@ api.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    // Extract the backend's default message payload to avoid generic 500 error display
+    if (error.response?.data && (error.response.data as any).message) {
+      error.message = (error.response.data as any).message;
+    } else if (error.response?.data && typeof error.response.data === 'string') {
+       error.message = error.response.data;
     }
 
     return Promise.reject(error);

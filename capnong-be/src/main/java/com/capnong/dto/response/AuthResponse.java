@@ -25,4 +25,7 @@ public class AuthResponse {
 
     /** Slug gian hàng của user (null nếu chưa tạo shop) */
     private String shopSlug;
+
+    /** Số đơn hàng vãng lai đã được liên kết (chỉ có khi register) */
+    private Integer mergedOrdersCount;
 }

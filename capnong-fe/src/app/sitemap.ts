@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const BASE_URL = "https://capnong.vn";
+const BASE_URL = "https://capnong.shop";
 
 // Dynamic slugs from mock data — replace with API call when backend ready
 const productSlugs = [

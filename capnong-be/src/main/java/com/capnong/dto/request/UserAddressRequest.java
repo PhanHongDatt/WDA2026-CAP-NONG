@@ -20,7 +20,7 @@ public class UserAddressRequest {
 
     @NotBlank(message = "Quận/Huyện không được để trống")
     @Size(max = 100)
-    private String district;
+    private String ward;
 
     @NotBlank(message = "Tỉnh/Thành phố không được để trống")
     @Size(max = 100)
