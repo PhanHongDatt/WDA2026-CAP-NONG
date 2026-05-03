@@ -427,6 +427,12 @@ export default function Header() {
                     </div>
                   </div>
 
+                  {user?.role === "BUYER" && (
+                    <Link href="/orders" className="flex items-center gap-2 text-gray-700 dark:text-foreground font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
+                      <Package className="w-5 h-5" /> Đơn hàng của tôi
+                    </Link>
+                  )}
+
                   {isFarmer && (
                     <>
                       {/* Mobile Sell/Buy Toggle */}
@@ -445,27 +451,38 @@ export default function Header() {
                       <button 
                         type="button"
                         onClick={(e) => { e.preventDefault(); handleShopClick(); }}
-                        className="text-left text-gray-700 dark:text-foreground font-medium hover:text-primary"
+                        className="flex items-center gap-2 text-left text-gray-700 dark:text-foreground font-medium hover:text-primary"
                       >
-                        🏪 Gian hàng của tôi
+                        <Store className="w-5 h-5" /> Gian hàng của tôi
                       </button>
+                      <Link href="/dashboard/orders" className="flex items-center gap-2 text-gray-700 dark:text-foreground font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
+                        <Package className="w-5 h-5" /> Quản lý đơn hàng
+                      </Link>
                     </>
                   )}
                   {isHtxMember && user?.htx_name && (
-                    <Link href="/cooperative" className="text-gray-700 dark:text-foreground font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
-                      🤝 {user?.htx_name}
+                    <Link href="/cooperative" className="flex items-center gap-2 text-gray-700 dark:text-foreground font-medium hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
+                      <Users className="w-5 h-5 text-primary" /> {user?.htx_name}
                     </Link>
                   )}
                   {isHtxManager && (
-                    <Link href="/cooperative/manage" className="text-primary font-medium" onClick={() => setMobileMenuOpen(false)}>
-                      🛡️ Quản lý HTX
+                    <Link href="/cooperative/manage" className="flex items-center gap-2 text-primary font-medium hover:text-primary-dark" onClick={() => setMobileMenuOpen(false)}>
+                      <Shield className="w-5 h-5" /> Quản lý HTX
                     </Link>
                   )}
+                  {isAdmin && (
+                    <Link href="/admin" className="flex items-center gap-2 text-red-500 font-medium hover:text-red-600" onClick={() => setMobileMenuOpen(false)}>
+                      <Shield className="w-5 h-5" /> Quản trị hệ thống
+                    </Link>
+                  )}
+                  <Link href="/profile" className="flex items-center gap-2 text-gray-700 dark:text-foreground font-medium hover:text-primary border-t border-gray-100 dark:border-border pt-3 mt-1" onClick={() => setMobileMenuOpen(false)}>
+                    <User className="w-5 h-5" /> Tài khoản
+                  </Link>
                   <button type="button"
                     onClick={() => { logout(); setMobileMenuOpen(false); }}
-                    className="text-left text-red-500 font-medium"
+                    className="flex items-center gap-2 text-left text-red-500 font-medium hover:text-red-600"
                   >
-                    Đăng xuất
+                    <LogOut className="w-5 h-5" /> Đăng xuất
                   </button>
                 </>
               )}

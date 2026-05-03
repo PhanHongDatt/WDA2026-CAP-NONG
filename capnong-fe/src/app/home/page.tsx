@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Leaf, Truck, ShieldCheck, Users } from "lucide-react";
 import ProductCard from "@/components/ui/ProductCard";
 import FarmCard from "@/components/ui/FarmCard";
 import HeroBanner from "@/components/ui/HeroBanner";
@@ -100,10 +100,10 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" suppressHydrationWarning>
             {[
-              { gradient: "card-gradient-organic", icon: "🌿", title: "Hữu cơ", desc: "VietGAP / GlobalGAP" },
-              { gradient: "card-gradient-delivery", icon: "🚛", title: "Giao tận nhà", desc: "Tươi ngon mỗi ngày" },
-              { gradient: "card-gradient-trace", icon: "🔍", title: "Truy xuất", desc: "Nguồn gốc minh bạch" },
-              { gradient: "card-gradient-coop", icon: "🤝", title: "Gom đơn", desc: "Tiết kiệm 20-40%" },
+              { gradient: "card-gradient-organic", icon: <Leaf className="w-7 h-7 text-green-600" />, title: "Hữu cơ", desc: "VietGAP / GlobalGAP" },
+              { gradient: "card-gradient-delivery", icon: <Truck className="w-7 h-7 text-blue-600" />, title: "Giao tận nhà", desc: "Tươi ngon mỗi ngày" },
+              { gradient: "card-gradient-trace", icon: <ShieldCheck className="w-7 h-7 text-indigo-600" />, title: "Truy xuất", desc: "Nguồn gốc minh bạch" },
+              { gradient: "card-gradient-coop", icon: <Users className="w-7 h-7 text-orange-600" />, title: "Gom đơn", desc: "Tiết kiệm 20-40%" },
             ].map((item) => (
               <div
                 key={item.title}
@@ -111,7 +111,7 @@ export default async function HomePage() {
                 className={`${item.gradient} relative overflow-visible rounded-2xl p-5 pt-10 text-center shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-300`}
               >
                 {/* Icon — nhô lên trên viền card */}
-                <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-4xl drop-shadow-lg bg-white/20 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center">
+                <span className="absolute -top-4 left-1/2 -translate-x-1/2 drop-shadow-lg bg-white/90 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center border border-white/20">
                   {item.icon}
                 </span>
                 <p className="font-extrabold text-white text-base leading-tight">{item.title}</p>

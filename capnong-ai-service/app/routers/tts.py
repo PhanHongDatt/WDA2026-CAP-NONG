@@ -56,15 +56,18 @@ async def synthesize_speech(request: TTSRequest):
             raise HTTPException(status_code=500, detail="Failed to synthesize speech")
 
 
-    # Step 2: Since the URL might have CORS issues, we stream it back through our backend
-    # If the Zalo URL is CORS-friendly, we could just return the URL and let FE fetch it.
-    # But streaming it is safer.
-    
-    async def audio_stream():
-        async with httpx.AsyncClient() as stream_client:
-            async with stream_client.stream("GET", audio_url) as stream_resp:
-                async for chunk in stream_resp.aiter_bytes():
-                    yield chunk
-
-    return StreamingResponse(audio_stream(), media_type="audio/mpeg")
+    # Step 2: Download fully with retry mechanism because Zalo CDN might take a moment to prepare the file.
+    import asyncio
+    async with httpx.AsyncClient(timeout=30.0) as stream_client:
+        for attempt in range(5):
+            try:
+                audio_resp = await stream_client.get(audio_url)
+                if audio_resp.status_code == 200 and len(audio_resp.content) > 100:
+                    from fastapi import Response
+                    return Response(content=audio_resp.content, media_type="audio/mpeg")
+            except Exception:
+                pass
+            await asyncio.sleep(1.0)
+            
+        raise HTTPException(status_code=500, detail="Zalo TTS audio not ready after retries")
 

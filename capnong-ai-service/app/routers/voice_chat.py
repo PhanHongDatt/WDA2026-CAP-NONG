@@ -4,17 +4,17 @@ from fastapi import APIRouter, HTTPException, status
 from app.schemas.voice_chat_schema import VoiceChatRequest, VoiceChatResponse
 import google.generativeai as genai
 from app.config import get_settings
-from app.prompts.voice_chat_prompt import build_voice_chat_prompt
+from app.prompts.voice_chat_prompt import build_voice_chat_prompt, VOICE_CHAT_SYSTEM_PROMPT
 
 router = APIRouter(prefix="/ai", tags=["AI Features"])
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 GENERATION_CONFIG = genai.types.GenerationConfig(
-    temperature=0.4,
-    top_p=0.8,
+    temperature=0.55,
+    top_p=0.85,
     top_k=10,
-    max_output_tokens=1024,
+    max_output_tokens=1500,
     response_mime_type="application/json",
 )
 
@@ -54,14 +54,24 @@ async def voice_chat(request: VoiceChatRequest) -> VoiceChatResponse:
         conversation_history=request.conversation_history,
     )
 
+    # Fix Issue #11: Pass VOICE_CHAT_SYSTEM_PROMPT as system_instruction
+    # so the model has all parsing rules, intent recognition, and output format.
     model = genai.GenerativeModel(
         model_name=settings.gemini_model,
         generation_config=GENERATION_CONFIG,
+        system_instruction=VOICE_CHAT_SYSTEM_PROMPT,
     )
+    
+    SAFETY_SETTINGS = [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ]
 
     for attempt in range(3):
         try:
-            response = await model.generate_content_async(prompt)
+            response = await model.generate_content_async(prompt, safety_settings=SAFETY_SETTINGS)
             result = _extract_json(response.text)
             
             # Đảm bảo extra_fields là list

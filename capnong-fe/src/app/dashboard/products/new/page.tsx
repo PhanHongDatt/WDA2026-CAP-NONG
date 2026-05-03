@@ -51,7 +51,17 @@ export default function NewProductPage() {
     if (result.quantity > 0) setQuantity(String(result.quantity));
     if (result.location) setLocation(result.location);
     if (result.harvestDate) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(result.harvestDate)) setHarvestDate(result.harvestDate);
+      // Accept YYYY-MM-DD directly, or try to parse other formats
+      if (/^\d{4}-\d{2}-\d{2}$/.test(result.harvestDate)) {
+        setHarvestDate(result.harvestDate);
+      } else {
+        // Try Date.parse as fallback
+        const parsed = Date.parse(result.harvestDate);
+        if (!isNaN(parsed)) {
+          setHarvestDate(new Date(parsed).toISOString().split("T")[0]);
+        }
+        // If completely unparsable, skip silently — user can fill manually
+      }
     }
     if (result.farmingMethod) setFarmingMethod(result.farmingMethod);
     setVoiceConfidence(result.confidence);

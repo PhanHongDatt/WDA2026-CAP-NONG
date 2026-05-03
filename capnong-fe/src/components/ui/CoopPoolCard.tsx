@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, Users } from "lucide-react";
+import { Clock, Users, Flame } from "lucide-react";
 import type { CoopPool } from "@/types/order";
 import ProgressBar from "@/components/ui/ProgressBar";
 
@@ -30,8 +30,8 @@ export default function CoopPoolCard({ pool }: CoopPoolCardProps) {
       <div className="bg-green-50 rounded-2xl p-8 border border-green-100 flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
         {/* Left - Info */}
         <div className="flex-shrink-0">
-          <div className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full mb-4 inline-block uppercase tracking-wider">
-            🔥 Đang gom đơn
+          <div className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full mb-4 inline-flex items-center gap-1 uppercase tracking-wider">
+            <Flame className="w-4 h-4 fill-current text-yellow-300" /> Đang gom đơn
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             {pool.product_name}
