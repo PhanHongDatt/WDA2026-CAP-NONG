@@ -208,7 +208,7 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
     }
   };
 
-  const startListening = async () => {
+  const startListening = useCallback(async () => {
     setState("listening");
     setInterimText("");
     audioChunksRef.current = [];
@@ -288,7 +288,7 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       alert("Lỗi truy cập microphone. Vui lòng cấp quyền sử dụng mic.");
       setState("error");
     }
-  };
+  }, [handleSilence, processTranscript]); // Thêm dependencies phù hợp
 
   const stopListeningManual = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
