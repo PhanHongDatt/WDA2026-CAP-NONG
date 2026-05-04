@@ -1,0 +1,61 @@
+name: Debug - Collect EC2 deployment diagnostics
+
+on:
+  workflow_dispatch:
+
+jobs:
+  collect-diagnostics:
+    name: Collect remote EC2 diagnostics (non-destructive)
+    runs-on: ubuntu-latest
+    permissions: read-all
+    steps:
+      - name: Run remote diagnostics via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            APP_DIR=/opt/capnong
+
+            echo "=== uname ==="
+            uname -a || true
+
+            echo "=== Docker version ==="
+            docker --version || true
+
+            echo "=== Docker Compose version ==="
+            docker compose version || docker-compose --version || true
+
+            echo "=== Disk usage ==="
+            df -h || true
+
+            echo "=== App dir listing ==="
+            ls -la $APP_DIR || true
+
+            echo "=== .env (redacted) ==="
+            if [ -f $APP_DIR/.env ]; then
+              grep -v -E 'PASSWORD|KEY|SECRET|TOKEN|SSH' $APP_DIR/.env || true
+            else
+              echo '.env not present'
+            fi
+
+            echo "=== Docker Compose ps ==="
+            if [ -f $APP_DIR/docker-compose.prod.yml ]; then
+              docker compose -f $APP_DIR/docker-compose.prod.yml ps --all || true
+            else
+              docker compose ps --all || true
+            fi
+
+            echo "=== Recent backend logs ==="
+            docker compose -f $APP_DIR/docker-compose.prod.yml logs --tail=200 backend || true
+
+            echo "=== Recent ai-service logs ==="
+            docker compose -f $APP_DIR/docker-compose.prod.yml logs --tail=200 ai-service || true
+
+            echo "=== Recent nginx logs ==="
+            docker compose -f $APP_DIR/docker-compose.prod.yml logs --tail=200 nginx || true
+
+            echo "=== End diagnostics ==="
