@@ -40,7 +40,6 @@ jobs:
           cd capnong-fe
           npm ci --legacy-peer-deps
       - name: Code Linting
-        continue-on-error: true
         run: |
           cd capnong-fe
           npm run lint

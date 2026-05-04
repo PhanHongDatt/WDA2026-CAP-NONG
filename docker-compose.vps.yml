@@ -29,8 +29,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-capnong_dev}
       POSTGRES_USER: ${POSTGRES_USER:-capnong}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-capnong123}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -125,7 +123,7 @@ services:
       # AI Service (Python FastAPI)
       AI_SERVICE_URL: http://ai-service:8001
       # Spring profile
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: prod
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
     networks:
       - capnong-network

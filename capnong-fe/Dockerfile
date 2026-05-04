@@ -25,7 +25,8 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 
-RUN addgroup -S capnong && adduser -S capnong -G capnong
+RUN addgroup -S capnong && adduser -S capnong -G capnong && \
+    apk add --no-cache curl
 
 # Copy standalone output
 COPY --from=builder --chown=capnong:capnong /app/.next/standalone ./

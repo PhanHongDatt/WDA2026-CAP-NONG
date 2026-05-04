@@ -27,6 +27,23 @@ output "vpc_id" {
   value       = module.networking.vpc_id
 }
 
+output "ecr_backend_url" {
+  value = module.ecr.backend_repo_url
+}
+
+output "ecr_frontend_url" {
+  value = module.ecr.frontend_repo_url
+}
+
+output "ecr_ai_service_url" {
+  value = module.ecr.ai_service_repo_url
+}
+
+output "alb_dns_name" {
+  description = "DNS name of the Application Load Balancer"
+  value       = module.alb.alb_dns_name
+}
+
 output "ssh_command" {
   description = "SSH command to connect to EC2"
   value       = "ssh -i ~/.ssh/${var.ec2_key_name}.pem ec2-user@${module.ec2.elastic_ip}"

@@ -42,25 +42,29 @@ jobs:
           envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,RDS_ENDPOINT,REDIS_PASSWORD,JWT_SECRET,GEMINI_API_KEY,TELEGRAM_BOT_TOKEN,TELEGRAM_BOT_USERNAME,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET
           script_stop: true
           script: |
-            echo "Starting deployment at $(date)..."
+            set -euo pipefail
+            APP_DIR="/opt/capnong"
+            COMPOSE="sudo docker compose -f $APP_DIR/docker-compose.prod.yml"
 
-            if [ ! -d "/opt/WDA2026-CAP-NONG/.git" ]; then
-              echo "Error: /opt/WDA2026-CAP-NONG is not a git repository."
+            echo "=== Starting deployment at $(date) ==="
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo "Error: $APP_DIR is not a git repository."
               echo "Please run './deploy.sh setup' on the EC2 host first."
               exit 1
             fi
 
-            cd /opt/WDA2026-CAP-NONG
+            cd "$APP_DIR"
 
             # Preserve existing values for secrets not yet configured in GitHub
-            REDIS_PASSWORD="${REDIS_PASSWORD:-$(grep '^REDIS_PASSWORD='          .env 2>/dev/null | cut -d= -f2- || true)}"
-            JWT_SECRET="${JWT_SECRET:-$(grep '^JWT_SECRET='              .env 2>/dev/null | cut -d= -f2- || true)}"
-            GEMINI_API_KEY="${GEMINI_API_KEY:-$(grep '^GEMINI_API_KEY='          .env 2>/dev/null | cut -d= -f2- || true)}"
+            REDIS_PASSWORD="${REDIS_PASSWORD:-$(grep '^REDIS_PASSWORD='        .env 2>/dev/null | cut -d= -f2- || true)}"
+            JWT_SECRET="${JWT_SECRET:-$(grep '^JWT_SECRET='                    .env 2>/dev/null | cut -d= -f2- || true)}"
+            GEMINI_API_KEY="${GEMINI_API_KEY:-$(grep '^GEMINI_API_KEY='        .env 2>/dev/null | cut -d= -f2- || true)}"
             TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-$(grep '^TELEGRAM_BOT_TOKEN='      .env 2>/dev/null | cut -d= -f2- || true)}"
-            TELEGRAM_BOT_USERNAME="${TELEGRAM_BOT_USERNAME:-$(grep '^TELEGRAM_BOT_USERNAME='   .env 2>/dev/null | cut -d= -f2- || true)}"
-            CLOUDINARY_CLOUD_NAME="${CLOUDINARY_CLOUD_NAME:-$(grep '^CLOUDINARY_CLOUD_NAME='   .env 2>/dev/null | cut -d= -f2- || true)}"
+            TELEGRAM_BOT_USERNAME="${TELEGRAM_BOT_USERNAME:-$(grep '^TELEGRAM_BOT_USERNAME='  .env 2>/dev/null | cut -d= -f2- || true)}"
+            CLOUDINARY_CLOUD_NAME="${CLOUDINARY_CLOUD_NAME:-$(grep '^CLOUDINARY_CLOUD_NAME='  .env 2>/dev/null | cut -d= -f2- || true)}"
             CLOUDINARY_API_KEY="${CLOUDINARY_API_KEY:-$(grep '^CLOUDINARY_API_KEY='      .env 2>/dev/null | cut -d= -f2- || true)}"
-            CLOUDINARY_API_SECRET="${CLOUDINARY_API_SECRET:-$(grep '^CLOUDINARY_API_SECRET='   .env 2>/dev/null | cut -d= -f2- || true)}"
+            CLOUDINARY_API_SECRET="${CLOUDINARY_API_SECRET:-$(grep '^CLOUDINARY_API_SECRET='  .env 2>/dev/null | cut -d= -f2- || true)}"
 
             # Write .env from injected secrets
             printf '%s\n' \
@@ -79,17 +83,47 @@ jobs:
               > .env
 
             # Add safe directory for git to prevent dubious ownership error
-            sudo git config --global --add safe.directory /opt/WDA2026-CAP-NONG
+            sudo git config --global --add safe.directory "$APP_DIR"
 
             # Reset local changes and pull latest
             sudo git fetch --all
             sudo git reset --hard origin/main
 
-            # Rebuild images and start containers
-            sudo docker-compose -f docker-compose.prod.yml build --no-cache
-            sudo docker-compose -f docker-compose.prod.yml up -d
+            # Tag existing images for rollback before building new ones
+            echo "--- Tagging current images for rollback..."
+            sudo docker tag capnong-backend:latest  capnong-backend:rollback  2>/dev/null || true
+            sudo docker tag capnong-frontend:latest capnong-frontend:rollback 2>/dev/null || true
+            sudo docker tag capnong-ai-service:latest capnong-ai-service:rollback 2>/dev/null || true
 
-            # Prune old images to prevent disk space issues
-            sudo docker system prune -f
+            # Build new images (use layer cache — only rebuild changed layers)
+            echo "--- Building images..."
+            $COMPOSE build
 
-            echo "Deployment completed at $(date)"
+            # Start containers
+            echo "--- Starting containers..."
+            $COMPOSE up -d
+
+            # Smoke test: wait up to 90s for backend health
+            echo "--- Running smoke test..."
+            RETRIES=9
+            until curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; do
+              RETRIES=$((RETRIES - 1))
+              if [ "$RETRIES" -le 0 ]; then
+                echo "✖ Smoke test failed — rolling back..."
+                $COMPOSE down --remove-orphans
+                sudo docker tag capnong-backend:rollback  capnong-backend:latest  2>/dev/null || true
+                sudo docker tag capnong-frontend:rollback capnong-frontend:latest 2>/dev/null || true
+                sudo docker tag capnong-ai-service:rollback capnong-ai-service:latest 2>/dev/null || true
+                $COMPOSE up -d
+                echo "✖ Rolled back to previous release. Investigate and redeploy."
+                exit 1
+              fi
+              echo "  Waiting for backend... ($RETRIES retries left)"
+              sleep 10
+            done
+            echo "✔ Smoke test passed."
+
+            # Prune only dangling images (not all unused — avoids removing rollback tags)
+            sudo docker image prune -f
+
+            echo "=== Deployment completed at $(date) ==="

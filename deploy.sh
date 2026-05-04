@@ -72,18 +72,43 @@ EOF
 
 cmd_deploy() {
   info "Starting manual deployment routines..."
-  
+
   cd "$APP_DIR"
-  
+
   info "Pulling latest code from main branch..."
   git pull origin main
+
+  info "Tagging current images for rollback..."
+  docker tag capnong-backend:latest  capnong-backend:rollback  2>/dev/null || true
+  docker tag capnong-frontend:latest capnong-frontend:rollback 2>/dev/null || true
+  docker tag capnong-ai-service:latest capnong-ai-service:rollback 2>/dev/null || true
 
   info "Building and starting Docker production containers..."
   docker compose -f docker-compose.prod.yml build
   docker compose -f docker-compose.prod.yml up -d
-  
-  info "Cleaning up unused Docker resources..."
-  docker system prune -f
+
+  info "Running smoke test..."
+  RETRIES=9
+  until curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; do
+    RETRIES=$((RETRIES - 1))
+    if [ "$RETRIES" -le 0 ]; then
+      error "Smoke test failed — rolling back..."
+      docker compose -f docker-compose.prod.yml down --remove-orphans
+      docker tag capnong-backend:rollback  capnong-backend:latest  2>/dev/null || true
+      docker tag capnong-frontend:rollback capnong-frontend:latest 2>/dev/null || true
+      docker tag capnong-ai-service:rollback capnong-ai-service:latest 2>/dev/null || true
+      docker compose -f docker-compose.prod.yml up -d
+      error "Rolled back to previous release. Investigate and redeploy."
+      exit 1
+    fi
+    warn "Waiting for backend... ($RETRIES retries left)"
+    sleep 10
+  done
+
+  info "Smoke test passed."
+
+  info "Cleaning up dangling images..."
+  docker image prune -f
 
   info "Deployment complete."
 }

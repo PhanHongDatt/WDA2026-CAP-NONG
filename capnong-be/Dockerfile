@@ -28,7 +28,8 @@ RUN mvn clean package -Dmaven.test.skip=true -B -q
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-RUN addgroup -S capnong && adduser -S capnong -G capnong
+RUN addgroup -S capnong && adduser -S capnong -G capnong && \
+    apk add --no-cache curl
 
 COPY --from=builder /build/target/*.jar app.jar
 RUN mkdir -p /app/logs && chown -R capnong:capnong /app

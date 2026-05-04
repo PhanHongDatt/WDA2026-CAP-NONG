@@ -1,0 +1,97 @@
+name: CI/CD - AWS EC2 Deployment
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ─── Phase 1: Test ──────────────────────────────────────────
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Backend Test
+        run: |
+          cd capnong-be
+          chmod +x mvnw
+          ./mvnw test -B -q
+
+      - name: AI Service Test
+        run: |
+          cd capnong-ai-service
+          pip install -r requirements.txt
+          PYTHONPATH=. pytest
+
+  # ─── Phase 2: Build & Push to ECR ───────────────────────────
+  build-and-push:
+    name: Build & Push to ECR
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push images to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Build & Push Backend
+          docker build -t $ECR_REGISTRY/capnong-backend:latest ./capnong-be
+          docker push $ECR_REGISTRY/capnong-backend:latest
+          
+          # Build & Push Frontend
+          docker build \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
+            -t $ECR_REGISTRY/capnong-frontend:latest ./capnong-fe
+          docker push $ECR_REGISTRY/capnong-frontend:latest
+          
+          # Build & Push AI Service
+          docker build -t $ECR_REGISTRY/capnong-ai-service:latest ./capnong-ai-service
+          docker push $ECR_REGISTRY/capnong-ai-service:latest
+
+  # ─── Phase 3: Deploy to EC2 ─────────────────────────────────
+  deploy:
+    name: Deploy to EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION
+          script: |
+            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            export AWS_REGION=${{ secrets.AWS_REGION }}
+            export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+            
+            APP_DIR="/opt/capnong"
+            cd $APP_DIR
+            
+            # Login to ECR
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            
+            # Pull latest images
+            docker compose -f docker-compose.aws.yml pull
+            
+            # Restart services
+            docker compose -f docker-compose.aws.yml up -d --remove-orphans
+            
+            # Cleanup
+            docker image prune -f
