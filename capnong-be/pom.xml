@@ -167,6 +167,13 @@
             <version>2.3.2</version>
         </dependency>
 
+        <!-- Twilio for SMS and Voice Calls -->
+        <dependency>
+            <groupId>com.twilio.sdk</groupId>
+            <artifactId>twilio</artifactId>
+            <version>10.1.2</version>
+        </dependency>
+
     </dependencies>
 
     <!-- ─── Build ──────────────────────────────── -->

@@ -22,6 +22,7 @@ public class OrderEventNotifierImpl implements OrderEventNotifier {
 
     private final TelegramNotificationService telegramNotificationService;
     private final ShopRepository shopRepository;
+    private final com.capnong.service.SmartNotificationService smartNotificationService;
 
     @Override
     public void notifyNewOrder(Order order, Collection<SubOrder> subOrders) {
@@ -34,6 +35,10 @@ public class OrderEventNotifierImpl implements OrderEventNotifier {
                     String body = "Bạn có đơn hàng mới với " + subOrder.getItems().size()
                             + " sản phẩm. Tổng: " + subOrder.getSubtotal() + "₫";
                     telegramNotificationService.notify(farmerId, NotificationType.NEW_ORDER, title, body);
+                    
+                    // Trigger Smart Notification (SMS/Voice Call)
+                    Double totalAmount = subOrder.getSubtotal() != null ? subOrder.getSubtotal().doubleValue() : 0.0;
+                    smartNotificationService.processNewOrderEvent(subOrder.getId(), farmerId, totalAmount);
                 }
             } catch (Exception e) {
                 logger.warn("Failed to notify farmer for sub-order {}: {}", subOrder.getId(), e.getMessage());
