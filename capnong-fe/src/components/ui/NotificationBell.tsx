@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, Package, Users, ShoppingCart, Star, MessageSquare, CheckCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import * as notificationApi from "@/services/api/notification";
@@ -44,6 +45,7 @@ function timeAgo(dateStr: string) {
  */
 export default function NotificationBell() {
   const { isLoggedIn } = useAuth();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -80,7 +82,6 @@ export default function NotificationBell() {
 
   /* Fetch on mount + poll unread count only when tab visible */
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
 
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -121,8 +122,9 @@ export default function NotificationBell() {
 
   /* Refresh when dropdown opens */
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (open) fetchNotifications();
+    if (open) {
+      fetchNotifications();
+    }
   }, [open, fetchNotifications]);
 
   // Close on outside click
@@ -159,9 +161,9 @@ export default function NotificationBell() {
     
     // Simple redirect based on type
     if (n.type === "ORDER_NEW" || n.type === "NEW_ORDER") {
-      window.location.href = "/dashboard/orders";
+      router.push("/dashboard/orders");
     } else if (n.type.includes("ORDER")) {
-      window.location.href = "/orders";
+      router.push("/orders");
     }
   };
 

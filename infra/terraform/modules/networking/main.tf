@@ -68,8 +68,44 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
+  count          = length(var.public_subnet_cidrs)
+  subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
+}
+
+# ─── Security Group: ALB ────────────────────
+
+resource "aws_security_group" "alb" {
+  name        = "${var.project_name}-alb-sg"
+  description = "Security group for Application Load Balancer"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-alb-sg"
+  }
 }
 
 # ─── Security Group: EC2 ────────────────────
@@ -79,7 +115,7 @@ resource "aws_security_group" "ec2" {
   description = "Security group for EC2 Docker host"
   vpc_id      = aws_vpc.main.id
 
-  # SSH — restrict to known IP in production (set ssh_allowed_cidr in tfvars)
+  # SSH
   ingress {
     description = "SSH"
     from_port   = 22
@@ -88,22 +124,13 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = [var.ssh_allowed_cidr]
   }
 
-  # HTTP
+  # HTTP from ALB only
   ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # HTTPS
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "HTTP from ALB"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
   }
 
   # All outbound

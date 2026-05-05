@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, MicOff, SquareSquare, ArrowRight, Loader2, PlayCircle, SkipForward, RotateCcw, CheckCircle2, Volume2, AlertTriangle, Lightbulb, TrendingUp } from "lucide-react";
 import { synthesizeSpeech, sendVoiceChatMessage, VoiceChatResponse, transcribeSpeech } from "@/services/api/voice";
 
@@ -191,13 +191,170 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
     }
   };
 
-  const startConversation = () => {
-    setState("hello");
-    setChatHistory([{ role: "ai", text: "Chào bác. Con sẽ giúp bác đăng sản phẩm. Bác có thể nói 'bỏ qua' nếu không muốn trả lời một câu nhé. Bác đang bán loại nông sản gì ạ?" }]);
-    speak("Chào bác. Con sẽ giúp bác đăng sản phẩm. Bác có thể nói bỏ qua nếu không muốn trả lời một câu nhé. Bác đang bán loại nông sản gì ạ?");
+  const finishFlow = () => {
+    setState("done");
+    // Fix Issue #9: Clean up audio blob URL on finish
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    if (onResult) {
+      // Use refs to avoid stale closures — finishFlow is called from within processTranscript
+      // before React re-renders, so state variables would be stale.
+      const fields = collectedFieldsRef.current;
+
+      // Fix Issue #10: Build transcript from full conversation history
+      const fullTranscript = chatHistoryRef.current
+        .filter((m: ChatMessage) => m.role === "user")
+        .map((m: ChatMessage) => m.text)
+        .join(" | ");
+
+      // Normalize harvestDate to YYYY-MM-DD
+      let normalizedHarvestDate = fields.harvestDate || "";
+      if (normalizedHarvestDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalizedHarvestDate)) {
+        const parsed = Date.parse(normalizedHarvestDate);
+        if (!isNaN(parsed)) {
+          const d = new Date(parsed);
+          normalizedHarvestDate = d.toISOString().split("T")[0];
+        } else {
+          const isoMatch = normalizedHarvestDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+          const vnMatch = normalizedHarvestDate.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          if (isoMatch) {
+            normalizedHarvestDate = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+          } else if (vnMatch) {
+            normalizedHarvestDate = `${vnMatch[3]}-${vnMatch[2].padStart(2, "0")}-${vnMatch[1].padStart(2, "0")}`;
+          }
+        }
+      }
+
+      // Normalize farmingMethod to expected ENUM
+      let normalizedFarmingMethod = fields.farmingMethod || "";
+      const fmUpper = normalizedFarmingMethod.toUpperCase();
+      if (fmUpper.includes("ORGANIC") || fmUpper.includes("HỮU CƠ")) normalizedFarmingMethod = "ORGANIC";
+      else if (fmUpper.includes("VIETGAP")) normalizedFarmingMethod = "VIETGAP";
+      else if (fmUpper.includes("GLOBALGAP")) normalizedFarmingMethod = "GLOBALGAP";
+      else if (fmUpper.includes("TRADITIONAL") || fmUpper.includes("TRUYỀN THỐNG") || fmUpper.includes("THƯỜNG")) normalizedFarmingMethod = "TRADITIONAL";
+
+      onResult({
+        name: fields.name || "",
+        description: fields.description || "",
+        price: fields.price || 0,
+        unit: fields.quantity_unit || "KG",
+        quantity: fields.quantity || 0,
+        location: fields.location || "",
+        harvestDate: normalizedHarvestDate,
+        farmingMethod: normalizedFarmingMethod,
+        confidence: confidencesRef.current,
+        transcript: fullTranscript,
+      });
+    }
   };
 
-  const handleSilence = () => {
+  const processTranscript = useCallback(async (transcript: string) => {
+    if (!transcript.trim()) return;
+    
+    // Fix Issue #1: Use ref to get the latest chatHistory, not the stale closure value.
+    const newHistory = [...chatHistoryRef.current, { role: "user", text: transcript } as ChatMessage];
+    setChatHistory(newHistory);
+    setInterimText("");
+    setState("processing");
+
+    const currentField = FLOW_STEPS[stepIndexRef.current];
+    if (currentField === "confirm") {
+      try {
+        const response: VoiceChatResponse = await sendVoiceChatMessage({
+          current_field: "confirm",
+          transcript,
+          collected_fields: collectedFieldsRef.current,
+          conversation_history: newHistory.filter(m => m.role !== "advice").map(m => ({ role: m.role as "ai" | "user", text: m.text })),
+        });
+
+        if (response.intent === "answer" && response.extracted_value === "yes") {
+          finishFlow();
+        } else if (response.intent === "correct" && response.correction_target) {
+          // User wants to fix a specific field → jump to that field's step
+          const targetIdx = FLOW_STEPS.indexOf(response.correction_target);
+          if (targetIdx >= 0) {
+            setStepIndex(targetIdx);
+          }
+          const msgs: ChatMessage[] = [{ role: "ai", text: response.next_question }];
+          if (response.advice) msgs.push({ role: "advice", text: response.advice, priceRange: response.market_price_range || undefined });
+          setChatHistory(h => [...h, ...msgs]);
+          speak(response.next_question);
+        } else {
+          // Unclear or "no" → AI generates a helpful follow-up question
+          const msgs2: ChatMessage[] = [{ role: "ai", text: response.next_question }];
+          if (response.advice) msgs2.push({ role: "advice", text: response.advice, priceRange: response.market_price_range || undefined });
+          setChatHistory(h => [...h, ...msgs2]);
+          speak(response.next_question);
+        }
+      } catch (e) {
+        console.error(e);
+        speak("Dạ bác xác nhận đăng sản phẩm này không ạ? Bác nói Có hoặc Không nhé.");
+        setChatHistory(h => [...h, { role: "ai", text: "Dạ bác xác nhận đăng sản phẩm này không ạ? Bác nói Có hoặc Không nhé." }]);
+      }
+      return;
+    }
+
+    try {
+      const response: VoiceChatResponse = await sendVoiceChatMessage({
+        current_field: currentField,
+        transcript,
+        collected_fields: collectedFieldsRef.current,
+        conversation_history: newHistory.filter(m => m.role !== "advice").map(m => ({ role: m.role as "ai" | "user", text: m.text })),
+      });
+
+      let nextIndex = stepIndexRef.current;
+      const updatedFields = { ...collectedFieldsRef.current };
+      const updatedConfidences = { ...confidencesRef.current };
+
+      if (response.intent === "skip") {
+        nextIndex++;
+      } else if (response.intent === "go_back") {
+        nextIndex = Math.max(0, nextIndex - 1);
+      } else if (response.intent === "correct") {
+        // Target specifically
+        if (response.correction_target) {
+           updatedFields[response.correction_target] = response.correction_value;
+        }
+      } else {
+        // Answer intent
+        if (response.extracted_value !== undefined && response.extracted_value !== null) {
+          updatedFields[currentField] = response.extracted_value;
+          updatedConfidences[currentField] = response.confidence;
+        }
+        
+        // Handle extra fields mentioned
+        if (response.extra_fields && response.extra_fields.length > 0) {
+          response.extra_fields.forEach(f => {
+            if (f.value !== undefined && f.value !== null) {
+              updatedFields[f.field] = f.value;
+              updatedConfidences[f.field] = 0.8; 
+            }
+          });
+        }
+        
+        nextIndex++;
+        // Skip ahead if we already have the next field filled via extra_fields
+        while (nextIndex < FLOW_STEPS.length - 1 && updatedFields[FLOW_STEPS[nextIndex]] !== undefined) {
+           nextIndex++;
+        }
+      }
+
+      setCollectedFields(updatedFields);
+      setConfidences(updatedConfidences);
+      setStepIndex(nextIndex);
+
+      const newMsgs: ChatMessage[] = [{ role: "ai", text: response.next_question }];
+      if (response.advice) newMsgs.push({ role: "advice", text: response.advice, priceRange: response.market_price_range || undefined });
+      setChatHistory(h => [...h, ...newMsgs]);
+      speak(response.next_question);
+
+    } catch (e) {
+      console.error(e);
+      speak("Xin lỗi bác, có lỗi kĩ thuật. Bác nói lại giúp con nghen.");
+      setChatHistory(h => [...h, { role: "ai", text: "Xin lỗi bác, có lỗi kĩ thuật. Bác nói lại giúp con nghen." }]);
+    }
+  }, [speak, finishFlow]);
+
+  const handleSilence = useCallback(() => {
     silenceCountRef.current += 1;
     if (silenceCountRef.current >= 3) {
       setState("listening");
@@ -206,9 +363,9 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       speak("Bác ơi, bác nói giúp con nghen.");
       setChatHistory(h => [...h, { role: "ai", text: "Bác ơi, bác nói giúp con nghen." }]);
     }
-  };
+  }, [speak]);
 
-  const startListening = async () => {
+  const startListening = useCallback(async () => {
     setState("listening");
     setInterimText("");
     audioChunksRef.current = [];
@@ -288,182 +445,29 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       alert("Lỗi truy cập microphone. Vui lòng cấp quyền sử dụng mic.");
       setState("error");
     }
-  };
+  }, [handleSilence, processTranscript]); // Thêm dependencies phù hợp
 
   const stopListeningManual = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
     }
   };
+  // Note: Duplicate implementations of `processTranscript` and `finishFlow` were
+  // present below; they have been removed because the file already defines
+  // `processTranscript` (as a `useCallback`) and `finishFlow` above. Keeping the
+  // `useCallback` variant ensures stable references for hooks like
+  // `startListening` which depend on `processTranscript`.
 
-  const processTranscript = async (transcript: string) => {
-    if (!transcript.trim()) return;
-    
-    // Fix Issue #1: Use ref to get the latest chatHistory, not the stale closure value.
-    // When called from recognition.onend, `chatHistory` is captured at startListening() time.
-    const newHistory = [...chatHistoryRef.current, { role: "user", text: transcript } as ChatMessage];
-    setChatHistory(newHistory);
-    setInterimText("");
-    setState("processing");
-
-    const currentField = FLOW_STEPS[stepIndexRef.current];
-    // Fix Issue #6: Delegate confirm step to AI instead of brittle string matching.
-    // AI can understand nuanced responses like "sai giá" → ask which field to fix,
-    // instead of resetting everything when user says "không".
-    if (currentField === "confirm") {
-      try {
-        const response: VoiceChatResponse = await sendVoiceChatMessage({
-          current_field: "confirm",
-          transcript,
-          collected_fields: collectedFieldsRef.current,
-          conversation_history: newHistory.filter(m => m.role !== "advice").map(m => ({ role: m.role as "ai" | "user", text: m.text })),
-        });
-
-        if (response.intent === "answer" && response.extracted_value === "yes") {
-          finishFlow();
-        } else if (response.intent === "correct" && response.correction_target) {
-          // User wants to fix a specific field → jump to that field's step
-          const targetIdx = FLOW_STEPS.indexOf(response.correction_target);
-          if (targetIdx >= 0) {
-            setStepIndex(targetIdx);
-          }
-          const msgs: ChatMessage[] = [{ role: "ai", text: response.next_question }];
-          if (response.advice) msgs.push({ role: "advice", text: response.advice, priceRange: response.market_price_range || undefined });
-          setChatHistory(h => [...h, ...msgs]);
-          speak(response.next_question);
-        } else {
-          // Unclear or "no" → AI generates a helpful follow-up question
-          const msgs2: ChatMessage[] = [{ role: "ai", text: response.next_question }];
-          if (response.advice) msgs2.push({ role: "advice", text: response.advice, priceRange: response.market_price_range || undefined });
-          setChatHistory(h => [...h, ...msgs2]);
-          speak(response.next_question);
-        }
-      } catch (e) {
-        console.error(e);
-        speak("Dạ bác xác nhận đăng sản phẩm này không ạ? Bác nói Có hoặc Không nhé.");
-        setChatHistory(h => [...h, { role: "ai", text: "Dạ bác xác nhận đăng sản phẩm này không ạ? Bác nói Có hoặc Không nhé." }]);
-      }
-      return;
-    }
-
-    try {
-      const response: VoiceChatResponse = await sendVoiceChatMessage({
-        current_field: currentField,
-        transcript,
-        collected_fields: collectedFieldsRef.current,
-        conversation_history: newHistory.filter(m => m.role !== "advice").map(m => ({ role: m.role as "ai" | "user", text: m.text })),
-      });
-
-      let nextIndex = stepIndexRef.current;
-      const updatedFields = { ...collectedFieldsRef.current };
-      const updatedConfidences = { ...confidencesRef.current };
-
-      if (response.intent === "skip") {
-        nextIndex++;
-      } else if (response.intent === "go_back") {
-        nextIndex = Math.max(0, nextIndex - 1);
-      } else if (response.intent === "correct") {
-        // Target specifically
-        if (response.correction_target) {
-           updatedFields[response.correction_target] = response.correction_value;
-        }
-      } else {
-        // Answer intent
-        if (response.extracted_value !== undefined && response.extracted_value !== null) {
-          updatedFields[currentField] = response.extracted_value;
-          updatedConfidences[currentField] = response.confidence;
-        }
-        
-        // Handle extra fields mentioned
-        if (response.extra_fields && response.extra_fields.length > 0) {
-          response.extra_fields.forEach(f => {
-            if (f.value !== undefined && f.value !== null) {
-              updatedFields[f.field] = f.value;
-              // Default to medium-high confidence for extra fields derived from side mentions
-              updatedConfidences[f.field] = 0.8; 
-            }
-          });
-        }
-        
-        nextIndex++;
-        // Skip ahead if we already have the next field filled via extra_fields
-        while (nextIndex < FLOW_STEPS.length - 1 && updatedFields[FLOW_STEPS[nextIndex]] !== undefined) {
-           nextIndex++;
-        }
-      }
-
-      setCollectedFields(updatedFields);
-      setConfidences(updatedConfidences);
-      setStepIndex(nextIndex);
-
-      const newMsgs: ChatMessage[] = [{ role: "ai", text: response.next_question }];
-      if (response.advice) newMsgs.push({ role: "advice", text: response.advice, priceRange: response.market_price_range || undefined });
-      setChatHistory(h => [...h, ...newMsgs]);
-      speak(response.next_question);
-
-    } catch (e) {
-      console.error(e);
-      speak("Xin lỗi bác, có lỗi kĩ thuật. Bác nói lại giúp con nghen.");
-      setChatHistory(h => [...h, { role: "ai", text: "Xin lỗi bác, có lỗi kĩ thuật. Bác nói lại giúp con nghen." }]);
-      // state will eventually become "listening" again after speak ends.
-    }
-  };
-
-  const finishFlow = () => {
-    setState("done");
-    // Fix Issue #9: Clean up audio blob URL on finish
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
-    if (onResult) {
-      // Use refs to avoid stale closures — finishFlow is called from within processTranscript
-      // before React re-renders, so state variables would be stale.
-      const fields = collectedFieldsRef.current;
-
-      // Fix Issue #10: Build transcript from full conversation history
-      const fullTranscript = chatHistoryRef.current
-        .filter(m => m.role === "user")
-        .map(m => m.text)
-        .join(" | ");
-
-      // Normalize harvestDate to YYYY-MM-DD
-      let normalizedHarvestDate = fields.harvestDate || "";
-      if (normalizedHarvestDate && !/^\d{4}-\d{2}-\d{2}$/.test(normalizedHarvestDate)) {
-        const parsed = Date.parse(normalizedHarvestDate);
-        if (!isNaN(parsed)) {
-          const d = new Date(parsed);
-          normalizedHarvestDate = d.toISOString().split("T")[0];
-        } else {
-          const isoMatch = normalizedHarvestDate.match(/(\d{4})-(\d{2})-(\d{2})/);
-          const vnMatch = normalizedHarvestDate.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-          if (isoMatch) {
-            normalizedHarvestDate = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-          } else if (vnMatch) {
-            normalizedHarvestDate = `${vnMatch[3]}-${vnMatch[2].padStart(2, "0")}-${vnMatch[1].padStart(2, "0")}`;
-          }
-        }
-      }
-
-      // Normalize farmingMethod to expected ENUM
-      let normalizedFarmingMethod = fields.farmingMethod || "";
-      const fmUpper = normalizedFarmingMethod.toUpperCase();
-      if (fmUpper.includes("ORGANIC") || fmUpper.includes("HỮU CƠ")) normalizedFarmingMethod = "ORGANIC";
-      else if (fmUpper.includes("VIETGAP")) normalizedFarmingMethod = "VIETGAP";
-      else if (fmUpper.includes("GLOBALGAP")) normalizedFarmingMethod = "GLOBALGAP";
-      else if (fmUpper.includes("TRADITIONAL") || fmUpper.includes("TRUYỀN THỐNG") || fmUpper.includes("THƯỜNG")) normalizedFarmingMethod = "TRADITIONAL";
-
-      onResult({
-        name: fields.name || "",
-        description: fields.description || "",
-        price: fields.price || 0,
-        unit: fields.quantity_unit || "KG",
-        quantity: fields.quantity || 0,
-        location: fields.location || "",
-        harvestDate: normalizedHarvestDate,
-        farmingMethod: normalizedFarmingMethod,
-        confidence: confidencesRef.current,
-        transcript: fullTranscript,
-      });
-    }
-  };
+  const startConversation = useCallback(() => {
+    // Start with a friendly AI greeting and begin TTS → listening flow
+    const greeting = "Dạ chào bác, con là trợ lý. Con sẽ hỏi vài thông tin để đăng sản phẩm, bác cứ nói tự nhiên nhé.";
+    setChatHistory(h => [...h, { role: "ai", text: greeting }] as ChatMessage[]);
+    // speak will trigger startListening when audio ends via handleAudioEnd
+    speak(greeting).catch(() => {
+      // If TTS fails, directly start listening
+      startListening();
+    });
+  }, [speak, startListening]);
 
   return (
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-900 rounded-xl max-w-2xl mx-auto overflow-hidden shadow-sm flex flex-col h-[500px]">

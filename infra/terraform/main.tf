@@ -10,10 +10,17 @@ module "networking" {
 
   project_name         = var.project_name
   vpc_cidr             = var.vpc_cidr
-  public_subnet_cidr   = var.public_subnet_cidr
+  public_subnet_cidrs  = ["10.0.1.0/24", "10.0.10.0/24"] # Cần 2 public subnets cho ALB
   private_subnet_cidrs = var.private_subnet_cidrs
   availability_zones   = var.availability_zones
   ssh_allowed_cidr     = var.ssh_allowed_cidr
+}
+
+# ─── ECR Repositories ────────────────────────
+
+module "ecr" {
+  source       = "./modules/ecr"
+  project_name = var.project_name
 }
 
 # ─── EC2 Docker Host ────────────────────────
@@ -30,6 +37,20 @@ module "ec2" {
   iam_instance_profile = var.iam_instance_profile
 
   depends_on = [module.networking]
+}
+
+# ─── Application Load Balancer & SSL ────────
+
+module "alb" {
+  source                = "./modules/alb"
+  project_name          = var.project_name
+  vpc_id                = module.networking.vpc_id
+  public_subnet_ids     = module.networking.public_subnet_ids
+  alb_security_group_id = module.networking.alb_security_group_id
+  instance_id           = module.ec2.instance_id
+  domain_name           = "capnong.shop" # Tên miền của bạn
+
+  depends_on = [module.ec2]
 }
 
 # ─── RDS PostgreSQL ─────────────────────────

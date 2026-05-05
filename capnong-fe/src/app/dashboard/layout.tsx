@@ -83,8 +83,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Close mobile sidebar on navigation
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    if (mobileOpen) {
+      setMobileOpen(false);
+    }
+  }, [pathname, mobileOpen]);
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";

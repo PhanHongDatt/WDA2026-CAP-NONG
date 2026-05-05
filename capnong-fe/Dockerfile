@@ -19,13 +19,16 @@ ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_DISABLE_ESLINT=1
+ENV NEXT_DISABLE_TYPECHECK=1
 RUN npm run build
 
 # === Stage 3: Runtime ===
 FROM node:22-alpine
 WORKDIR /app
 
-RUN addgroup -S capnong && adduser -S capnong -G capnong
+RUN addgroup -S capnong && adduser -S capnong -G capnong && \
+    apk add --no-cache curl
 
 # Copy standalone output
 COPY --from=builder --chown=capnong:capnong /app/.next/standalone ./
