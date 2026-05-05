@@ -5,10 +5,31 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Leaf, ArrowLeft, Loader2, CheckCircle2, KeyRound } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { TornEdgeBottom } from "@/components/ui/TornEdges";
 
 type Step = "phone" | "otp" | "reset" | "done";
 
 export default function ForgotPasswordPage() {
+  return (
+    <div className="relative w-full">
+      <div 
+        className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-16 relative z-0"
+        style={{
+          backgroundImage: 'url("/images/banners/banner-background.png")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        <div className="absolute inset-0 bg-white/20 dark:bg-black/40 z-[-1]" />
+        
+        <ForgotPasswordContent />
+      </div>
+      <TornEdgeBottom />
+    </div>
+  );
+}
+
+function ForgotPasswordContent() {
   const router = useRouter();
   const { showToast } = useToast();
 
@@ -108,11 +129,9 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  /* ═══ Step 4: Done ═══ */
   if (step === "done") {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4 py-8 bg-background-light">
-        <div className="w-full max-w-md text-center space-y-6">
+      <div className="w-full max-w-md my-8 relative z-10 text-center space-y-6">
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-12 h-12 text-primary" />
           </div>
@@ -127,14 +146,12 @@ export default function ForgotPasswordPage() {
             Đăng nhập
           </Link>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-8 bg-background-light">
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-surface rounded-2xl shadow-lg border border-border p-8">
+    <div className="w-full max-w-md my-8 relative z-10">
+      <div className="bg-white dark:bg-surface rounded-2xl shadow-xl border border-border p-8">
 
           {/* Back button */}
           <button
@@ -303,7 +320,6 @@ export default function ForgotPasswordPage() {
             </Link>
           </p>
         </div>
-      </div>
     </div>
   );
 }

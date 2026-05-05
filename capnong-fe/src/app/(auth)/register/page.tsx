@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Leaf, User, Tractor, Package, CheckCircle2, Loader2, ArrowLeft, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { TornEdgeBottom } from "@/components/ui/TornEdges";
 
 type Step = "form" | "otp" | "done";
 
@@ -81,8 +82,7 @@ function GoogleRegisterForm() {
   /* Done state */
   if (done) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4 py-8 bg-background-light">
-        <div className="w-full max-w-md text-center space-y-6">
+      <div className="w-full max-w-md my-8 relative z-10 text-center space-y-6">
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-12 h-12 text-primary" />
           </div>
@@ -99,15 +99,13 @@ function GoogleRegisterForm() {
             </button>
           </div>
         </div>
-      </div>
     );
   }
 
   /* Google register form */
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-8 bg-background-light">
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-surface rounded-2xl shadow-lg border border-border p-8">
+    <div className="w-full max-w-md my-8 relative z-10">
+      <div className="bg-white dark:bg-surface rounded-2xl shadow-xl border border-border p-8">
           {/* Header */}
           <div className="text-center mb-6">
             <img
@@ -188,7 +186,6 @@ function GoogleRegisterForm() {
             </Link>
           </p>
         </div>
-      </div>
     </div>
   );
 }
@@ -337,11 +334,9 @@ function RegisterContent() {
     }
   };
 
-  /* ═══════ STEP 3: Done ═══════ */
   if (step === "done") {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4 py-8 bg-background-light">
-        <div className="w-full max-w-md text-center space-y-6">
+      <div className="w-full max-w-md my-8 relative z-10 text-center space-y-6">
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-12 h-12 text-primary" />
           </div>
@@ -373,16 +368,13 @@ function RegisterContent() {
             </Link>
           </div>
         </div>
-      </div>
     );
   }
 
-  /* ═══════ STEP 2: OTP Verification ═══════ */
   if (step === "otp") {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4 py-8 bg-background-light">
-        <div className="w-full max-w-md">
-          <div className="bg-white dark:bg-surface rounded-2xl shadow-lg border border-border p-8">
+      <div className="w-full max-w-md my-8 relative z-10">
+        <div className="bg-white dark:bg-surface rounded-2xl shadow-xl border border-border p-8">
             <button
               type="button"
               onClick={() => { setStep("form"); setOtp(["", "", "", "", "", ""]); }}
@@ -450,15 +442,12 @@ function RegisterContent() {
             </button>
           </div>
         </div>
-      </div>
     );
   }
 
-  /* ═══════ STEP 1: Registration Form ═══════ */
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-8 bg-background-light">
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-surface rounded-2xl shadow-lg border border-border p-8">
+    <div className="w-full max-w-md my-8 relative z-10">
+      <div className="bg-white dark:bg-surface rounded-2xl shadow-xl border border-border p-8">
           {/* Logo */}
           <div className="text-center mb-6">
             <img
@@ -573,7 +562,6 @@ function RegisterContent() {
             <Link href="/login" className="text-primary font-bold hover:underline">Đăng nhập</Link>
           </p>
         </div>
-      </div>
     </div>
   );
 }
@@ -581,12 +569,26 @@ function RegisterContent() {
 /* ─── Default Export with Suspense for useSearchParams ─── */
 export default function RegisterPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    <div className="relative w-full">
+      <div 
+        className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-16 relative z-0"
+        style={{
+          backgroundImage: 'url("/images/banners/banner-background.png")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        <div className="absolute inset-0 bg-white/20 dark:bg-black/40 z-[-1]" />
+        
+        <Suspense fallback={
+          <div className="w-full flex justify-center py-20 relative z-10">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        }>
+          <RegisterContent />
+        </Suspense>
       </div>
-    }>
-      <RegisterContent />
-    </Suspense>
+      <TornEdgeBottom />
+    </div>
   );
 }
