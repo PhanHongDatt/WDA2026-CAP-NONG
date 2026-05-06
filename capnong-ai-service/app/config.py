@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # FPT AI keys
     fpt_ai_api_key: str = ""
     
+    # Google Cloud STT API Key
+    google_stt_api_key: str = ""
+    
     app_env: str = "development"
     log_level: str = "INFO"
     allowed_origins: str = "http://localhost:3000"

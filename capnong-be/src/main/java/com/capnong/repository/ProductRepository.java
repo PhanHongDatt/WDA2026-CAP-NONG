@@ -38,7 +38,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     @Query(value = "SELECT * FROM products WHERE status NOT IN ('HIDDEN', 'REJECTED') AND available_quantity > 0 ORDER BY RANDOM() LIMIT :limit", nativeQuery = true)
     List<Product> findRandomProducts(@Param("limit") int limit);
 
-    Page<Product> findByShop_Owner_Username(String username, Pageable pageable);
+    Page<Product> findByShop_Owner_UsernameAndShop_IsHtxShop(String username, boolean isHtxShop, Pageable pageable);
 
     @Query("SELECT COUNT(p) FROM Product p WHERE p.shop.owner.username = :username AND p.status != 'HIDDEN'")
     long countActiveByShopOwnerUsername(@Param("username") String username);

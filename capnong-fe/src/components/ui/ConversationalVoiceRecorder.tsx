@@ -4,10 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, MicOff, SquareSquare, ArrowRight, Loader2, PlayCircle, SkipForward, RotateCcw, CheckCircle2, Volume2, AlertTriangle, Lightbulb, TrendingUp } from "lucide-react";
 import { synthesizeSpeech, sendVoiceChatMessage, VoiceChatResponse, transcribeSpeech } from "@/services/api/voice";
 
-// Fix Issue #13: Configurable TTS speaker voice instead of hardcoded value.
-// Zalo AI TTS speaker IDs: 1 = Nam nữ (South women), 2 = Bắc nữ (Northern women),
-//                           3 = Nam nam (South men),   4 = Bắc nam (Northern men)
-const DEFAULT_TTS_SPEAKER_ID = 1;
+// FPT.AI TTS with region-based voice auto-selection.
+// Voice is determined by the farmer's location (collectedFields.location).
 
 export interface ConversationalVoiceResult {
   name: string;
@@ -126,7 +124,7 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
     }
   }, [chatHistory, interimText]);
 
-  // Handle Speech Synthesis (Zalo AI)
+  // Handle Speech Synthesis (FPT.AI with region-based voice)
   const speak = async (text: string) => {
     const fallbackToWebSpeech = () => {
       setTtsLoading(false);
@@ -146,7 +144,10 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       setTtsFallback(false);
       if (audioUrl) URL.revokeObjectURL(audioUrl);
 
-      const url = await synthesizeSpeech(text, DEFAULT_TTS_SPEAKER_ID);
+      // Pass farmer location for automatic regional voice selection
+      const rawLoc = collectedFieldsRef.current?.location;
+      const farmerLocation = typeof rawLoc === "string" && rawLoc.trim() ? rawLoc : undefined;
+      const url = await synthesizeSpeech(text, farmerLocation);
       setTtsLoading(false);
 
       // Validate blob before playing — fetch it and check size
@@ -305,6 +306,39 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       const updatedFields = { ...collectedFieldsRef.current };
       const updatedConfidences = { ...confidencesRef.current };
 
+      // Validate that a value makes sense for the target field
+      const isValidForField = (field: string, value: unknown): boolean => {
+        if (value === undefined || value === null || value === "") return false;
+        switch (field) {
+          case "price":
+          case "quantity":
+            return typeof value === "number" || (typeof value === "string" && !isNaN(Number(value)));
+          case "location":
+          case "name":
+          case "description":
+            return typeof value === "string" && isNaN(Number(value)); // Must be text, not a number
+          case "harvestDate":
+            return typeof value === "string"; // Date string
+          case "farmingMethod":
+            return typeof value === "string"; // Enum string
+          default:
+            return true;
+        }
+      };
+
+      // Coerce numeric fields to numbers aggressively
+      const coerceValue = (field: string, value: unknown): unknown => {
+        if ((field === "price" || field === "quantity")) {
+          if (typeof value === "number") return Math.abs(value);
+          if (typeof value === "string") {
+            // Extract the first sequence of digits
+            const match = value.replace(/\./g, "").match(/\d+/);
+            if (match) return Math.abs(Number(match[0]));
+          }
+        }
+        return value;
+      };
+
       if (response.intent === "skip") {
         nextIndex++;
       } else if (response.intent === "go_back") {
@@ -312,25 +346,43 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
       } else if (response.intent === "correct") {
         // Target specifically
         if (response.correction_target) {
-           updatedFields[response.correction_target] = response.correction_value;
+           const val = coerceValue(response.correction_target, response.correction_value);
+           if (isValidForField(response.correction_target, val)) {
+             updatedFields[response.correction_target] = val;
+           }
         }
+      } else if (response.intent === "unclear") {
+        // AI didn't understand, it will ask again. Do not advance step.
+        // nextIndex stays the same.
       } else {
-        // Answer intent
+        // Answer intent — validate before storing
+        let storedCurrent = false;
         if (response.extracted_value !== undefined && response.extracted_value !== null) {
-          updatedFields[currentField] = response.extracted_value;
-          updatedConfidences[currentField] = response.confidence;
+          const val = coerceValue(currentField, response.extracted_value);
+          if (isValidForField(currentField, val)) {
+            updatedFields[currentField] = val;
+            updatedConfidences[currentField] = response.confidence;
+            storedCurrent = true;
+          } else {
+            console.warn(`Rejected value for ${currentField}:`, val);
+          }
         }
         
-        // Handle extra fields mentioned
+        // Handle extra fields mentioned — also validate each one
         if (response.extra_fields && response.extra_fields.length > 0) {
           response.extra_fields.forEach(f => {
             if (f.value !== undefined && f.value !== null) {
-              updatedFields[f.field] = f.value;
-              updatedConfidences[f.field] = 0.8; 
+              const val = coerceValue(f.field, f.value);
+              if (isValidForField(f.field, val)) {
+                updatedFields[f.field] = val;
+                updatedConfidences[f.field] = 0.8; 
+                if (f.field === currentField) storedCurrent = true;
+              }
             }
           });
         }
         
+        // Advance step if we got the value, or if AI thinks it's moving on
         nextIndex++;
         // Skip ahead if we already have the next field filled via extra_fields
         while (nextIndex < FLOW_STEPS.length - 1 && updatedFields[FLOW_STEPS[nextIndex]] !== undefined) {
@@ -428,10 +480,10 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
         const sum = dataArray.reduce((a, b) => a + b, 0);
         const average = sum / bufferLength;
 
-        if (average > 15) { // User is speaking
+        if (average > 30) { // User is speaking (raised from 15 to ignore ambient noise)
           silenceStart = Date.now();
         } else { // Silence
-          if (Date.now() - silenceStart > 2000) { // 2 seconds of silence
+          if (Date.now() - silenceStart > 1500) { // 1.5 seconds of silence (was 2s)
             if (mediaRecorder.state === "recording") {
               mediaRecorder.stop();
             }
@@ -472,7 +524,7 @@ export default function ConversationalVoiceRecorder({ onResult, onCancel }: Conv
   return (
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-900 rounded-xl max-w-2xl mx-auto overflow-hidden shadow-sm flex flex-col h-[500px]">
       
-      {/* Hidden audio element for Zalo TTS */}
+      {/* Hidden audio element for FPT.AI TTS */}
       <audio ref={audioRef} onEnded={handleAudioEnd} className="hidden" />
 
       {/* Header */}

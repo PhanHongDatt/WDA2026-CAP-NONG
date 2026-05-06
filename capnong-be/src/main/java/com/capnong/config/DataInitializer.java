@@ -357,7 +357,7 @@ public class DataInitializer implements CommandLineRunner {
                                 "KG", new BigDecimal("35000"), new BigDecimal("200"),
                                 FarmingMethod.VIETGAP, true, "TP Đà Lạt, Lâm Đồng",
                                 ProductStatus.IN_SEASON, LocalDate.now().minusDays(1),
-                                "https://images.unsplash.com/photo-1546470427-e26264be0b11?w=800");
+                                "https://images.unsplash.com/photo-1595853035070-59a39fe84ee3?w=800");
 
                 createProduct(shopFarmer2, "Xà Lách Lolo Rosa", ProductCategory.VEGETABLE,
                                 "Xà lách Lolo Rosa Đà Lạt, lá xoăn tím đẹp mắt, giòn ngọt. Trồng thủy canh trong nhà kính sạch.",

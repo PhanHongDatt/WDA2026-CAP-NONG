@@ -535,7 +535,12 @@ async def get_price_advice(
     current_price: float | None = None,
 ) -> dict:
     """Gọi Gemini để lấy gợi ý giá."""
-    model = _get_model()
+    model = genai.GenerativeModel(
+        model_name=settings.gemini_model,
+        generation_config=GENERATION_CONFIG,
+        safety_settings=SAFETY_SETTINGS,
+        system_instruction="Bạn là chuyên gia phân tích thị trường nông sản Việt Nam."
+    )
 
     prompt = f"""Bạn là chuyên gia phân tích thị trường nông sản Việt Nam.
 Nhiệm vụ: Đưa ra định giá thị trường hợp lý cho sản phẩm sau:
