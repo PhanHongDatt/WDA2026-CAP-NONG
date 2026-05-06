@@ -178,7 +178,7 @@ export default function CatalogPage() {
 
       {/* Filters Row */}
       <div
-        className={`sticky top-[73px] z-30 bg-white dark:bg-background py-3 -mx-4 px-4 border-b border-border/50 mb-6 ${
+        className={`bg-white dark:bg-background py-3 -mx-4 px-4 border-b border-border/50 mb-6 ${
           showFilters ? "block" : "hidden md:block"
         }`}
       >

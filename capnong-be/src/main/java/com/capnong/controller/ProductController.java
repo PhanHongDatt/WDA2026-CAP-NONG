@@ -60,6 +60,13 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin sản phẩm thành công", product));
     }
 
+    @GetMapping("/random")
+    @Operation(summary = "Sản phẩm ngẫu nhiên", description = "Lấy ngẫu nhiên n sản phẩm")
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getRandomProducts(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(ApiResponse.success("Lấy sản phẩm ngẫu nhiên thành công", productService.getRandomProducts(limit)));
+    }
+
     @GetMapping("/seller")
     @PreAuthorize("hasAnyRole('FARMER', 'HTX_MEMBER', 'HTX_MANAGER')")
     @Operation(summary = "Danh sách sản phẩm của tôi", description = "Lấy tất cả sản phẩm của Nông dân (Seller) đang đăng nhập, bất kể trạng thái (HIDDEN, OUT_OF_STOCK...). Dùng cho trang Quản lý Sản phẩm.")

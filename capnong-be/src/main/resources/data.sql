@@ -233,7 +233,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 7. PRODUCT IMAGES  (extends BaseEntity → needs deleted)
 -- ═══════════════════════════════════════════════
 INSERT INTO product_images (id, product_id, url, sort_order, deleted, created_at, updated_at) VALUES
-(gen_random_uuid(), 'e0000000-0000-0000-0000-000000000001', 'https://images.unsplash.com/photo-1546470427-e26264be0b11?w=800', 0, false, NOW(), NOW()),
+(gen_random_uuid(), 'e0000000-0000-0000-0000-000000000001', 'https://images.unsplash.com/photo-1595853035070-59a39fe84ee3?w=800', 0, false, NOW(), NOW()),
 (gen_random_uuid(), 'e0000000-0000-0000-0000-000000000001', 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=800', 1, false, NOW(), NOW()),
 (gen_random_uuid(), 'e0000000-0000-0000-0000-000000000002', 'https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?w=800', 0, false, NOW(), NOW()),
 (gen_random_uuid(), 'e0000000-0000-0000-0000-000000000003', 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=800', 0, false, NOW(), NOW()),

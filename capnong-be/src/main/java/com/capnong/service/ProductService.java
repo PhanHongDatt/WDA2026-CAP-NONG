@@ -22,6 +22,9 @@ public interface ProductService {
 
     ProductResponse getProductById(UUID productId);
 
+    /** Get N random active products */
+    List<ProductResponse> getRandomProducts(int limit);
+
     ProductResponse updateProduct(UUID productId, ProductCreateRequest request, String username);
     void softDeleteProduct(UUID productId, String username);
 

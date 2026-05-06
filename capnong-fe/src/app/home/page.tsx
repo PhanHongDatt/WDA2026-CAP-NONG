@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, Leaf, Truck, ShieldCheck, Users } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import ProductCard from "@/components/ui/ProductCard";
 import FarmCard from "@/components/ui/FarmCard";
 import HeroBanner from "@/components/ui/HeroBanner";
+import ProductionJourney from "@/components/ui/ProductionJourney";
 import CategoryGrid from "@/components/ui/CategoryGrid";
-import FlashDeal from "@/components/ui/FlashDeal";
-import CoopPoolCard from "@/components/ui/CoopPoolCard";
+import { LeafIcon } from "@/components/ui/icons/LeafIcon";
 import { productService, shopService } from "@/services";
-import { getOpenBundles } from "@/services/api/htx";
-import { MOCK_SEASONAL_PRODUCTS, MOCK_NEW_PRODUCTS, MOCK_SHOPS, MOCK_BUNDLE } from "@/lib/mock-data";
-import type { Bundle } from "@/types/order";
+import { getRandomProducts } from "@/services/api/product";
+import { MOCK_SEASONAL_PRODUCTS, MOCK_NEW_PRODUCTS, MOCK_SHOPS } from "@/lib/mock-data";
 
 
 
@@ -61,7 +60,7 @@ const jsonLd = {
 };
 
 export default async function HomePage() {
-  const [seasonalProducts, newProducts, shops, openBundles] = await Promise.all([
+  const [seasonalProducts, newProducts, shops, randomProducts] = await Promise.all([
     productService.getSeasonalProducts().then((result) => {
       // If the backend API returns an empty list, forcibly inject mock data to ensure the UI is not empty
       if (result && result.length > 0) return result;
@@ -78,14 +77,11 @@ export default async function HomePage() {
       return MOCK_SHOPS;
     }).catch(() => MOCK_SHOPS),
 
-    // Fetch open bundles — BE: GET /api/v1/cooperatives/bundles (snake_case response)
-    getOpenBundles().then((result) => {
-      if (Array.isArray(result) && result.length > 0) {
-        // BE response already snake_case — khớp với Bundle type trong types/order.ts
-        return result as unknown as Bundle[];
-      }
-      return [MOCK_BUNDLE];
-    }).catch(() => [MOCK_BUNDLE]),
+    getRandomProducts(10).then((result) => {
+      if (result && result.length > 0) return result;
+      // Fallback to mock data if random API fails or is empty
+      return [...MOCK_SEASONAL_PRODUCTS, ...MOCK_NEW_PRODUCTS].slice(0, 10);
+    }).catch(() => [...MOCK_SEASONAL_PRODUCTS, ...MOCK_NEW_PRODUCTS].slice(0, 10)),
   ]);
   return (
     <>
@@ -95,71 +91,64 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Feature Cards — gradient + icon overflow (tham khảo Hình 6-8) */}
-      <section className="py-6">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" suppressHydrationWarning>
-            {[
-              { gradient: "card-gradient-organic", icon: <Leaf className="w-7 h-7 text-green-600" />, title: "Hữu cơ", desc: "VietGAP / GlobalGAP" },
-              { gradient: "card-gradient-delivery", icon: <Truck className="w-7 h-7 text-blue-600" />, title: "Giao tận nhà", desc: "Tươi ngon mỗi ngày" },
-              { gradient: "card-gradient-trace", icon: <ShieldCheck className="w-7 h-7 text-indigo-600" />, title: "Truy xuất", desc: "Nguồn gốc minh bạch" },
-              { gradient: "card-gradient-coop", icon: <Users className="w-7 h-7 text-orange-600" />, title: "Gom đơn", desc: "Tiết kiệm 20-40%" },
-            ].map((item) => (
-              <div
-                key={item.title}
-                suppressHydrationWarning
-                className={`${item.gradient} relative overflow-visible rounded-2xl p-5 pt-10 text-center shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-300`}
-              >
-                {/* Icon — nhô lên trên viền card */}
-                <span className="absolute -top-4 left-1/2 -translate-x-1/2 drop-shadow-lg bg-white/90 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center border border-white/20">
-                  {item.icon}
-                </span>
-                <p className="font-extrabold text-white text-base leading-tight">{item.title}</p>
-                <p className="text-white/80 text-xs mt-1">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* HERO SECTION — Full-width farm background + mascot */}
+      <HeroBanner />
 
-      {/* HERO BANNER — Shopee-style carousel + side banners */}
-      <div className="py-4 bg-gradient-to-b from-primary/5 to-transparent">
-        <HeroBanner />
-      </div>
+      {/* HÀNH TRÌNH NÔNG SẢN — Farm-to-table story timeline */}
+      <ProductionJourney />
 
       {/* CATEGORY GRID — Shopee-style "DANH MỤC" (below fold → content-visibility) */}
-      <div className="cv-auto">
+      <div>
         <CategoryGrid />
       </div>
 
-      {/* FLASH DEAL — Shopee-style countdown + scroll */}
-      <div className="cv-auto">
-        <FlashDeal />
-      </div>
+      <main className="max-w-7xl mx-auto px-4 py-2 relative">
+        {/* Floating leaf decoration removed as requested */}
 
-      <main className="max-w-7xl mx-auto px-4 py-2">
+        {/* SVG Filter for Torn Paper (Gợi ý cho bạn) */}
+        <svg width="0" height="0" className="absolute pointer-events-none">
+          <filter id="torn-paper" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </svg>
+
         {/* SECTION: Seasonal Products */}
-        <section className="mb-12 -mx-4 px-4 py-8 bg-gradient-to-b from-green-50/50 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
+        <section className="-mx-4 px-4 py-10 md:py-[30px] xl:py-[40px]  rounded-3xl">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 mb-6">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
-                Nông sản đang mùa tại Cạp Nông
+              <h2 className="journey-title text-left">
+                <span className="journey-title-text">
+                  Nông sản đang mùa tại{" "}
+                  <span className="journey-title-highlight">
+                    Cạp Nông
+                    {/* Paint-stroke underline */}
+                    <svg className="journey-paint-stroke" viewBox="0 0 120 12" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M2 8 C20 3, 40 10, 60 6 S100 3, 118 7" stroke="var(--color-primary, #2E7D32)" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.35"/>
+                    </svg>
+                  </span>
+                </span>
+                <LeafIcon />
               </h2>
               <div className="flex flex-wrap gap-2 sm:gap-3">
-                {["Tất cả", "Trái cây", "Rau củ", "Thủy hải sản"].map(
-                  (cat, i) => (
-                    <button type="button"
-                      key={cat}
-                      className={
-                        i === 0
-                          ? "px-4 sm:px-5 py-1.5 rounded-full bg-primary text-white text-xs sm:text-sm font-medium"
-                          : "px-4 sm:px-5 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs sm:text-sm font-medium hover:bg-gray-200"
-                      }
-                    >
-                      {cat}
-                    </button>
-                  )
-                )}
+                {[
+                  { label: "Tất cả", href: "/catalog?status=IN_SEASON" },
+                  { label: "Trái cây", href: "/catalog?status=IN_SEASON&category=FRUIT" },
+                  { label: "Rau củ", href: "/catalog?status=IN_SEASON&category=VEGETABLE" },
+                  { label: "Thủy hải sản", href: "/catalog?status=IN_SEASON&category=SEAFOOD" },
+                ].map((cat, i) => (
+                  <Link
+                    key={cat.label}
+                    href={cat.href}
+                    className={
+                      i === 0
+                        ? "px-4 sm:px-5 py-1.5 rounded-full bg-primary text-white text-xs sm:text-sm font-medium"
+                        : "px-4 sm:px-5 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs sm:text-sm font-medium hover:bg-gray-200"
+                    }
+                  >
+                    {cat.label}
+                  </Link>
+                ))}
               </div>
             </div>
             <Link
@@ -177,11 +166,20 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mb-12 relative">
+        <section className="py-10 md:py-[60px] xl:py-[80px] relative">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
-                Sản phẩm mới
+              <h2 className="journey-title text-left">
+                <span className="journey-title-text">
+                  Sản phẩm{" "}
+                  <span className="journey-title-highlight">
+                    mới
+                    <svg className="journey-paint-stroke" viewBox="0 0 120 12" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M2 8 C20 3, 40 10, 60 6 S100 3, 118 7" stroke="var(--color-primary, #2E7D32)" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.35"/>
+                    </svg>
+                  </span>
+                </span>
+                <LeafIcon />
               </h2>
             </div>
             <Link
@@ -199,61 +197,93 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* SECTION: Cooperative Pool — Gom đơn nông sản */}
-        {openBundles.length > 0 && openBundles.filter(b => b.status === "OPEN").slice(0, 1).map((bundle) => (
-          <CoopPoolCard key={bundle.id} pool={bundle} />
-        ))}
+
 
         {/* SECTION: Featured Farms — giống hình tham khảo carousel */}
-        <section className="mb-12 relative">
-          {/* Scalloped decorative border — sóng xanh giống hình */}
+        <section className="py-10 md:py-[60px] xl:py-[80px] relative">
+          {/* Roof tile decorative border using the actual roof SVG */}
+          {/* Roof tile decorative border using the actual roof SVG */}
           <div
-            className="h-4 w-full mb-4"
+            className="w-full mb-8"
             style={{
-              background: 'radial-gradient(circle 8px at 16px 0, transparent 8px, var(--color-primary, #2E7D32) 8.5px)',
-              backgroundSize: '32px 16px',
-              backgroundPosition: 'top center',
+              height: '32px',
+              backgroundImage: 'url(/images/farms/roof-red-white.svg)',
+              backgroundSize: '320px 100%',
+              backgroundPosition: 'top left',
               backgroundRepeat: 'repeat-x',
-              borderRadius: '0 0 4px 4px',
-              opacity: 0.15,
+              opacity: 0.9,
             }}
+            aria-hidden="true"
           />
           <div className="text-center mb-6">
-            <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-foreground">
-              Khám phá <span className="text-primary">nhà cung cấp</span> dành riêng cho bạn!
+            <h2 className="journey-title">
+              <span className="journey-title-text">
+                Khám phá{" "}
+                <span className="journey-title-highlight">
+                  nhà cung cấp
+                  <svg className="journey-paint-stroke" viewBox="0 0 120 12" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M2 8 C20 3, 40 10, 60 6 S100 3, 118 7" stroke="var(--color-primary, #2E7D32)" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.35"/>
+                  </svg>
+                </span>{" "}
+                dành riêng cho bạn!
+              </span>
+              <LeafIcon />
             </h2>
           </div>
-          {/* Horizontal scroll carousel */}
+          {/* Grid layout — 4 equal cards */}
           <div className="relative group/carousel">
-            <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory px-1">
-              {shops.map((shop) => (
-                <div key={shop.id} className="min-w-[280px] md:min-w-[320px] snap-start flex-shrink-0">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {shops.slice(0, 3).map((shop) => (
+                <div key={shop.id}>
                   <FarmCard shop={shop} />
                 </div>
               ))}
+              
+              {/* Solid Color CTA Block — matches FarmCard height */}
+              <div>
+                <div className="h-full bg-primary rounded-2xl p-6 flex flex-col justify-center items-center text-center shadow-md relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white mb-2 leading-tight">
+                    Bạn muốn trở thành<br/>nhà vườn ở Cạp Nông?
+                  </h3>
+                  <p className="text-white/90 text-xs sm:text-sm mb-5 max-w-[220px]">
+                    Đăng ký ngay để mang nông sản sạch của bạn đến hàng ngàn khách hàng!
+                  </p>
+                  <Link href="/register?role=FARMER" className="bg-white text-primary px-5 py-2 rounded-full font-bold text-sm hover:bg-gray-50 transition-colors duration-300 shadow-sm active:scale-95">
+                    Đăng Ký Ngay
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         {/* SECTION: "Gợi ý cho bạn" — Shopee-style product grid */}
-        <section className="mb-12 -mx-4 px-4 py-8 bg-gradient-to-b from-primary-50/40 to-transparent dark:from-primary/5 dark:to-transparent rounded-3xl">
+        <section className="mb-20 -mx-4 px-9 pb-28 md:pt-[40px] md:pb-[40px] xl:pt-[50px] xl:pb-[50px] relative z-0">
+          <div className="!absolute inset-0 journey-content [filter:url(#torn-paper)] z-[-1] mx-4 rounded-3xl" />
           <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-primary uppercase tracking-widest">
-              Gợi ý cho bạn
+            <h2 className="journey-title">
+              <span className="journey-title-text">
+                Gợi ý{" "}
+                <span className="journey-title-highlight">
+                  cho bạn
+                  <svg className="journey-paint-stroke" viewBox="0 0 120 12" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M2 8 C20 3, 40 10, 60 6 S100 3, 118 7" stroke="var(--color-primary, #2E7D32)" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.35"/>
+                  </svg>
+                </span>
+              </span>
+              <LeafIcon />
             </h2>
-            <div className="w-20 h-0.5 bg-primary mx-auto mt-2" />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 product-grid-section">
-            {(() => {
-              const seen = new Set<string>();
-              return [...seasonalProducts, ...newProducts].filter((p) => {
-                if (seen.has(p.id)) return false;
-                seen.add(p.id);
-                return true;
-              }).map((product) => (
-                <ProductCard key={`suggest-${product.id}`} product={product} />
-              ));
-            })()}
+            {randomProducts.map((product) => (
+              <ProductCard key={`suggest-${product.id}`} product={product} />
+            ))}
           </div>
         </section>
       </main>

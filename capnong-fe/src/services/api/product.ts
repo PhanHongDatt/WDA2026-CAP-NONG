@@ -268,3 +268,16 @@ export async function deleteProductImages(productId: string, imageIds: string[])
 export async function updateProductImageSort(productId: string, imageIds: string[]): Promise<void> {
   await api.put(`/api/products/${productId}/images/sort`, imageIds);
 }
+
+/**
+ * Lấy danh sách sản phẩm ngẫu nhiên — GET /api/products/random
+ */
+export async function getRandomProducts(limit = 10): Promise<Product[]> {
+  try {
+    const res = await api.get(`/api/products/random?limit=${limit}`);
+    const data = res.data.data || res.data;
+    return normalizeProducts(Array.isArray(data) ? data : []);
+  } catch {
+    return [];
+  }
+}
