@@ -15,7 +15,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8001";
+const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/fastapi";
 
 interface ProactiveNotification {
   type: string;

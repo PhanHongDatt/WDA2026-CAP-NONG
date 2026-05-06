@@ -100,7 +100,7 @@ export async function sendVoiceChatMessage(data: {
 }): Promise<VoiceChatResponse> {
   // Trỏ thẳng URL tuyệt đối để override cái baseURL mặc định (vào backend JAVA), 
   // vì tính năng voice này được xử lý độc lập trên FastAPI.
-  const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8001";
+  const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/fastapi";
   const res = await api.post(`${baseUrl}/ai/voice-chat`, data, { timeout: 60000 });
   return res.data; // FastAPI trả thẳng JSON
 }
@@ -113,7 +113,7 @@ export async function sendVoiceChatMessage(data: {
  * location: truyền địa chỉ nông dân để auto chọn giọng phù hợp vùng miền
  */
 export async function synthesizeSpeech(text: string, location?: string): Promise<string> {
-  const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8001";
+  const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/fastapi";
   const res = await api.post(
     `${baseUrl}/ai/tts`,
     { text, speed: 0, location: location || null },
@@ -128,7 +128,7 @@ export async function synthesizeSpeech(text: string, location?: string): Promise
  * Gửi file ghi âm lên AI Service để chuyển thành văn bản bằng FPT.AI
  */
 export async function transcribeSpeech(audioBlob: Blob): Promise<string> {
-  const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8001";
+  const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/fastapi";
   
   const formData = new FormData();
   formData.append("audio", audioBlob, "recording.webm");
