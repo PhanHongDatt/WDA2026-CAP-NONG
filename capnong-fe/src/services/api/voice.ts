@@ -105,16 +105,18 @@ export async function sendVoiceChatMessage(data: {
   return res.data; // FastAPI trả thẳng JSON
 }
 
-/* ─── Zalo TTS Proxy ─── */
+/* ─── FPT.AI TTS Proxy ─── */
 /**
  * Trả về URL blob audio sau khi load thành công.
- * speaker_id: 1 (Nam nữ 1), 2 (Bắc nữ 1), 3 (Nam nam), 4 (Bắc nam)
+ * FPT.AI voices: banmai (nữ Bắc), lannhi (nữ Nam), leminh (nam Bắc),
+ *                myan (nữ Trung), giahuy (nam Trung), linhsan (nữ Nam)
+ * location: truyền địa chỉ nông dân để auto chọn giọng phù hợp vùng miền
  */
-export async function synthesizeSpeech(text: string, speaker_id: number = 1): Promise<string> {
+export async function synthesizeSpeech(text: string, location?: string): Promise<string> {
   const baseUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://localhost:8001";
   const res = await api.post(
     `${baseUrl}/ai/tts`,
-    { text, speaker_id, speed: 1.0 },
+    { text, speed: 0, location: location || null },
     { responseType: "blob", timeout: 30000 }
   );
   // Tạo blob url từ stream

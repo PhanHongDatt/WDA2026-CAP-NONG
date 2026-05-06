@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Public_Sans } from "next/font/google";
+import { Public_Sans, Signika } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -11,6 +11,13 @@ const publicSans = Public_Sans({
   display: "swap",
   variable: "--font-display",
   preload: true,
+});
+
+const signika = Signika({
+  subsets: ["latin", "vietnamese"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-heading",
 });
 const SITE_URL = "https://capnong.shop";
 
@@ -118,30 +125,19 @@ export default function RootLayout({
         <link rel="preconnect" href="http://localhost:8080" crossOrigin="anonymous" />
         {/* Anti-FOUC: Apply dark mode BEFORE first paint to prevent white flash
             Ref: web.dev/prefers-color-scheme — "blocking script" pattern */}
+        {/* Strip browser-extension attributes (Bitdefender bis_skin_checked, Grammarly data-gr-*, etc.)
+             that cause hydration mismatches. Runs synchronously before React hydrates. */}
         <script
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('capnong-theme');if(t==='dark'){document.documentElement.classList.add('dark')}var f=localStorage.getItem('capnong-font-size');if(f){document.documentElement.classList.add('font-'+f)}}catch(e){}})();
-            if(!window.crypto){window.crypto={}}if(!window.crypto.randomUUID){window.crypto.randomUUID=function(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)})}}`,
-          }}
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                    console.log('ServiceWorker registration successful');
-                  }, function(err) {
-                    console.log('ServiceWorker registration failed: ', err);
-                  });
-                });
-              }
-            `,
+            if(!window.crypto){window.crypto={}}if(!window.crypto.randomUUID){window.crypto.randomUUID=function(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)})}}
+            if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(e){console.log('SW reg failed:',e)})})}
+            (function(){try{var s=['bis_skin_checked','data-gr-ext-installed','data-new-gr-c-s-check-loaded','data-gr-ext-disabled'];document.querySelectorAll('['+s.join('],[')+ ']').forEach(function(el){s.forEach(function(a){el.removeAttribute(a)})});new MutationObserver(function(ms,obs){ms.forEach(function(m){if(m.type==='attributes'&&s.indexOf(m.attributeName)>-1){m.target.removeAttribute(m.attributeName)}});if(document.readyState==='complete'){setTimeout(function(){obs.disconnect()},3000)}}).observe(document.documentElement,{attributes:true,subtree:true,attributeFilter:s})}catch(e){}})();`,
           }}
         />
       </head>
-      <body className={`${publicSans.variable} antialiased min-h-screen flex flex-col`} suppressHydrationWarning>
+      <body className={`${publicSans.variable} ${signika.variable} antialiased min-h-screen flex flex-col`} suppressHydrationWarning>
         <ClientProviders>
           <Header />
           <main className="flex-1">{children}</main>

@@ -20,6 +20,8 @@ export interface Shop {
   isHtxShop: boolean;          // phân biệt shop cá nhân hay shop HTX
   average_rating: number;
   total_reviews: number;
+  product_count?: number;
+  order_count?: number;
   created_at: string;
 }
 

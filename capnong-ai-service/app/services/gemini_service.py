@@ -113,7 +113,7 @@ async def extract_product_from_transcript(transcript: str) -> dict[str, Any]:
 
     for attempt in range(3):
         try:
-            response = model.generate_content(prompt)
+            response = await model.generate_content_async(prompt)
             raw_text = response.text
             logger.debug(f"Gemini raw response (attempt {attempt+1}): {raw_text[:300]}")
             result = _extract_json(raw_text)
@@ -142,7 +142,7 @@ async def refine_description(raw_desc: str, product_name: str | None = None) -> 
         system_instruction=REFINER_SYSTEM_PROMPT,
     )
     prompt = build_refiner_prompt(raw_desc, product_name)
-    response = model.generate_content(prompt)
+    response = await model.generate_content_async(prompt)
     return _extract_json(response.text)
 
 
@@ -165,7 +165,7 @@ async def generate_captions(product_name: str, description: str,
         system_instruction=CAPTION_SYSTEM_PROMPT,
     )
     prompt = build_caption_prompt(product_name, description, province, style)
-    response = model.generate_content(prompt)
+    response = await model.generate_content_async(prompt)
     return _extract_json(response.text)
 
 
@@ -199,7 +199,7 @@ async def generate_poster_content(
     
     for attempt in range(3):
         try:
-            response = model.generate_content(prompt)
+            response = await model.generate_content_async(prompt)
             raw_text = response.text
             return _extract_json(raw_text)
         except ValueError as e:
@@ -274,7 +274,7 @@ Create an image generation prompt for a SQUARE 1:1 MARKETING POSTER that:
 - Clean poster layout suitable for social media advertising
 - Vietnamese tropical farm aesthetic"""
 
-    response = model.generate_content(user_input)
+    response = await model.generate_content_async(user_input)
     enhanced = response.text.strip()
     logger.info(f"Enhanced prompt ({len(enhanced)} chars): {enhanced[:200]}...")
     return enhanced
@@ -535,7 +535,12 @@ async def get_price_advice(
     current_price: float | None = None,
 ) -> dict:
     """Gọi Gemini để lấy gợi ý giá."""
-    model = _get_model()
+    model = genai.GenerativeModel(
+        model_name=settings.gemini_model,
+        generation_config=GENERATION_CONFIG,
+        safety_settings=SAFETY_SETTINGS,
+        system_instruction="Bạn là chuyên gia phân tích thị trường nông sản Việt Nam."
+    )
 
     prompt = f"""Bạn là chuyên gia phân tích thị trường nông sản Việt Nam.
 Nhiệm vụ: Đưa ra định giá thị trường hợp lý cho sản phẩm sau:

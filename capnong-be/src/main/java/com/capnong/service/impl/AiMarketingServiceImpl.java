@@ -24,6 +24,7 @@ import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -50,7 +51,23 @@ public class AiMarketingServiceImpl implements AiMarketingService {
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AiMarketingServiceImpl(AiListingSessionRepository sessionRepository,
+                                  UserRepository userRepository,
+                                  ShopRepository shopRepository,
+                                  ObjectMapper objectMapper) {
+        this.sessionRepository = sessionRepository;
+        this.userRepository = userRepository;
+        this.shopRepository = shopRepository;
+        this.objectMapper = objectMapper;
+        
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10000); // 10s
+        factory.setReadTimeout(120000);   // 120s
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // CAPTION
@@ -279,6 +296,9 @@ public class AiMarketingServiceImpl implements AiMarketingService {
             AiListingSession session = sessionRepository.findById(sessionId).orElse(null);
             if (session != null) {
                 session.setStatus(AiSessionStatus.FAILED);
+                if (error != null && error.length() > 490) {
+                    error = error.substring(0, 490) + "...";
+                }
                 session.setErrorMessage(error);
                 session.setCompletedAt(LocalDateTime.now());
                 sessionRepository.save(session);

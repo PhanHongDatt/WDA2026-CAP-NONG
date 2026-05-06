@@ -80,6 +80,34 @@ public class DataInitializer implements CommandLineRunner {
                 User htxMgr = ensureUser("htx_manager", "htxmanager@capnong.shop", "0900000005", "Võ Thanh Hùng",
                                 Role.HTX_MANAGER, encodedPassword);
 
+                // ─── 1b. Tài khoản demo cho Giám khảo (GK1-GK6) ────────
+                // Mỗi giám khảo có bộ tài khoản riêng, tránh xung đột khi demo đồng thời
+                for (int gk = 1; gk <= 6; gk++) {
+                        ensureUser("farmer_gk" + gk,
+                                        "farmer_gk" + gk + "_demo@capnong.shop",
+                                        "081000000" + gk,
+                                        "Nông dân GK" + gk,
+                                        Role.FARMER, encodedPassword);
+
+                        ensureUser("buyer_gk" + gk,
+                                        "buyer_gk" + gk + "_demo@capnong.shop",
+                                        "082000000" + gk,
+                                        "Người mua GK" + gk,
+                                        Role.BUYER, encodedPassword);
+
+                        ensureUser("htxmgr_gk" + gk,
+                                        "htxmgr_gk" + gk + "_demo@capnong.shop",
+                                        "083000000" + gk,
+                                        "HTX Manager GK" + gk,
+                                        Role.HTX_MANAGER, encodedPassword);
+
+                        ensureUser("admin_gk" + gk,
+                                        "admin_gk" + gk + "_demo@capnong.shop",
+                                        "084000000" + gk,
+                                        "Admin GK" + gk,
+                                        Role.ADMIN, encodedPassword);
+                }
+
                 // ─── 2. Đơn vị đo lường ────────────────────────────────
                 seedUnits();
 
@@ -94,6 +122,19 @@ public class DataInitializer implements CommandLineRunner {
                                 "Rau sạch Đà Lạt, trồng theo phương pháp VietGAP, giao hàng tận nơi",
                                 (short) 5, 8000);
 
+                // ─── 3b. Shop cho các giám khảo farmer ──────────────────
+                for (int gk = 1; gk <= 6; gk++) {
+                        var gkFarmer = userRepository.findByUsername("farmer_gk" + gk).orElse(null);
+                        if (gkFarmer != null) {
+                                ensureShop(gkFarmer,
+                                                "vuon-gk" + gk + "-demo",
+                                                "Vườn Giám Khảo " + gk,
+                                                "Bến Tre", "Châu Thành",
+                                                "Shop demo cho Giám khảo " + gk + " — nông sản tươi sạch",
+                                                (short) 5, 10000);
+                        }
+                }
+
                 // ─── 4. HTX + HtxShop ──────────────────────────────────
                 seedHtx(htxMgr, htxMember);
 
@@ -107,7 +148,8 @@ public class DataInitializer implements CommandLineRunner {
                 log.info("═══════════════════════════════════════════");
                 log.info("✅  Seed data hoàn tất!");
                 log.info("   Mật khẩu chung: {}", DEFAULT_PASSWORD);
-                log.info("   Tài khoản: admin, buyer, farmer, farmer2, htx_member, htx_manager");
+                log.info("   Tài khoản gốc: admin, buyer, farmer, farmer2, htx_member, htx_manager");
+                log.info("   Tài khoản GK:  farmer_gk[1-6], buyer_gk[1-6], htxmgr_gk[1-6], admin_gk[1-6]");
                 log.info("═══════════════════════════════════════════");
         }
 
@@ -357,7 +399,7 @@ public class DataInitializer implements CommandLineRunner {
                                 "KG", new BigDecimal("35000"), new BigDecimal("200"),
                                 FarmingMethod.VIETGAP, true, "TP Đà Lạt, Lâm Đồng",
                                 ProductStatus.IN_SEASON, LocalDate.now().minusDays(1),
-                                "https://images.unsplash.com/photo-1546470427-e26264be0b11?w=800");
+                                "https://images.unsplash.com/photo-1595853035070-59a39fe84ee3?w=800");
 
                 createProduct(shopFarmer2, "Xà Lách Lolo Rosa", ProductCategory.VEGETABLE,
                                 "Xà lách Lolo Rosa Đà Lạt, lá xoăn tím đẹp mắt, giòn ngọt. Trồng thủy canh trong nhà kính sạch.",

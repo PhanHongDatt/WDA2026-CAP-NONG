@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Leaf, Loader2, Eye, EyeOff, CheckCircle2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { TornEdgeBottom } from "@/components/ui/TornEdges";
+import DemoLoginPanel from "@/components/ui/DemoLoginPanel";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -191,10 +193,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 bg-background-light">
-      <div className="w-full max-w-md">
-        {/* Card */}
-        <div className="bg-white dark:bg-surface rounded-2xl shadow-lg border border-border p-8">
+    <div className="relative w-full">
+      <div 
+        className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-16 relative z-0"
+        style={{
+          backgroundImage: 'url("/images/banners/banner-background.png")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        <div className="absolute inset-0 bg-white/20 dark:bg-black/40 z-[-1]" />
+        
+        <div className="w-full max-w-md my-8 relative z-10">
+          {/* Card */}
+          <div className="bg-white dark:bg-surface rounded-2xl shadow-xl border border-border p-8">
           {/* Logo */}
           <div className="text-center mb-8">
             <img
@@ -315,8 +327,16 @@ export default function LoginPage() {
               Đăng ký ngay
             </Link>
           </p>
+          </div>
+
+          {/* ═══ Demo Quick Login Panel ═══ */}
+          <DemoLoginPanel
+            onSelectAccount={(username, password) => {
+              setIdentifier(username);
+              setPassword(password);
+            }}
+          />
         </div>
-      </div>
       {/* Google Registration Modal */}
       {showGoogleRegister && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -460,6 +480,9 @@ export default function LoginPage() {
           </div>
         </div>
       )}
+
+      </div>
+      <TornEdgeBottom />
     </div>
   );
 }

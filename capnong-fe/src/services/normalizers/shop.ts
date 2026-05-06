@@ -45,6 +45,8 @@ export function normalizeShop(raw: any): Shop {
     isHtxShop: raw.isHtxShop ?? raw.is_htx_shop ?? false,
     average_rating: Number(raw.averageRating ?? raw.average_rating ?? 0),
     total_reviews: Number(raw.totalReviews ?? raw.total_reviews ?? 0),
+    product_count: raw.productCount ?? raw.product_count ?? undefined,
+    order_count: raw.orderCount ?? raw.order_count ?? undefined,
     created_at: raw.createdAt || raw.created_at || new Date().toISOString(),
   } as Shop;
 }
