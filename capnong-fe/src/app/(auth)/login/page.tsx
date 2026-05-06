@@ -7,6 +7,7 @@ import { Leaf, Loader2, Eye, EyeOff, CheckCircle2, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { TornEdgeBottom } from "@/components/ui/TornEdges";
+import DemoLoginPanel from "@/components/ui/DemoLoginPanel";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -326,8 +327,16 @@ export default function LoginPage() {
               Đăng ký ngay
             </Link>
           </p>
+          </div>
+
+          {/* ═══ Demo Quick Login Panel ═══ */}
+          <DemoLoginPanel
+            onSelectAccount={(username, password) => {
+              setIdentifier(username);
+              setPassword(password);
+            }}
+          />
         </div>
-      </div>
       {/* Google Registration Modal */}
       {showGoogleRegister && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
